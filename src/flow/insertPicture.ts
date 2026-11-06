@@ -37,11 +37,14 @@ type Saved = {
 
 /**
  * Downloads the picture to the private temporary file, then prepares it for e-ink into the library
- * file. When the preparation fails, the picture is downloaded again straight into the library under
+ * file, as a contour drawing when `contour` (#66). When the preparation fails, the picture is downloaded again straight into the library under
  * its own name, because the note app may not read the private folder (brief section 6.6), and it
  * is recorded like a prepared one; the failure is in the log (#62).
  */
-async function download(result: SearchResult): Promise<Result<Saved>> {
+async function download(
+  result: SearchResult,
+  contour: boolean,
+): Promise<Result<Saved>> {
   const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
   const dir = await pluginFolder();
@@ -55,8 +58,9 @@ async function download(result: SearchResult): Promise<Result<Saved>> {
   if (!bytes.ok) {
     return bytes;
   }
-  const prepared = await logged(`prepareForEink(${raw})`, () =>
-    prepareForEink(raw, `${base}.png`, INSERT_WIDTH),
+  const prepared = await logged(
+    `prepareForEink(${raw}${contour ? ', contour' : ''})`,
+    () => prepareForEink(raw, `${base}.png`, INSERT_WIDTH, 'png', contour),
   );
   if (prepared.ok) {
     return ok({path: `${base}.png`, size: prepared.value, record: true});
@@ -69,7 +73,10 @@ async function download(result: SearchResult): Promise<Result<Saved>> {
 }
 
 /** A library picture, a search result already in the library, else a download. */
-async function picture(result: SearchResult): Promise<Result<Saved>> {
+async function picture(
+  result: SearchResult,
+  contour: boolean,
+): Promise<Result<Saved>> {
   if (result.localPath) {
     return ok({
       path: result.localPath,
@@ -86,7 +93,7 @@ async function picture(result: SearchResult): Promise<Result<Saved>> {
         : null;
     return ok({path: known.path, size, record: false});
   }
-  return download(result);
+  return download(result, contour);
 }
 
 /** At the lasso when the view opened from the lasso (#20), else where the host puts it. */
@@ -114,8 +121,9 @@ export async function insertPicture(
   result: SearchResult,
   query: string,
   place: LassoPlace | null = null,
+  contour = false,
 ): Promise<Done<string>> {
-  const saved = await picture(result);
+  const saved = await picture(result, contour);
   if (!saved.ok) {
     return atStep('download', saved);
   }

@@ -22,6 +22,19 @@ describe('prepareForEink (#17)', () => {
       '/s/a.png',
       640,
       'png',
+      false,
+    );
+  });
+
+  it('asks for a contour drawing (#66)', async () => {
+    native.prepareForEink.mockResolvedValue({width: 400, height: 300});
+    await prepareForEink('/p/t', '/p/t.contour.png', 400, 'png', true);
+    expect(native.prepareForEink).toHaveBeenCalledWith(
+      '/p/t',
+      '/p/t.contour.png',
+      400,
+      'png',
+      true,
     );
   });
 

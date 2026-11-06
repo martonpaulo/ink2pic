@@ -207,9 +207,14 @@ function App(): React.JSX.Element {
   }, []);
 
   /** An insert that ends after a close or a newer opening never closes the newer view (#44). */
-  const pick = async (result: SearchResult, query: string, flow: number) => {
-    log(`picked ${result.id}`);
-    const inserted = await insertPicture(result, query, place.current);
+  const pick = async (
+    result: SearchResult,
+    query: string,
+    flow: number,
+    contour = false,
+  ) => {
+    log(`picked ${result.id}${contour ? ' (contour)' : ''}`);
+    const inserted = await insertPicture(result, query, place.current, contour);
     if (inserted.ok && isCurrent(opening.current, flow)) {
       await logged('closePluginView', closePluginView);
     }
@@ -231,7 +236,9 @@ function App(): React.JSX.Element {
           key={screen.opened}
           initialQuery={screen.query}
           lassoFailure={screen.lassoFailure}
-          onPick={(result, query) => pick(result, query, screen.flow)}
+          onPick={(result, query, contour) =>
+            pick(result, query, screen.flow, contour)
+          }
           onClose={() => closePluginView()}
         />
       );

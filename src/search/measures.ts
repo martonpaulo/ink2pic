@@ -46,9 +46,18 @@ export type Measures = {
   ms: number;
 };
 
-/** Measures picture files; the device's is the plugin's Java module. */
+/** A picture file written by `toContour`: its size and the time it took. */
+export type ConvertedImage = {width: number; height: number; ms: number};
+
+/** Measures and converts picture files; the device's is the plugin's Java module. */
 export type ImageAnalyzer = {
   measure: (path: string) => Promise<Result<Measures>>;
+  /** Writes `dest` as a contour drawing of `src`, scaled down to `width` (never up). */
+  toContour: (
+    src: string,
+    dest: string,
+    width: number,
+  ) => Promise<Result<ConvertedImage>>;
 };
 
 /**
@@ -105,6 +114,35 @@ export function pixelKind(m: Measures): PixelKind {
     return 'outline';
   }
   return clean ? 'clean' : 'plain';
+}
+
+/** The person asked for line work: every picture that is not already line work is converted. */
+const OUTLINE_QUERY =
+  /\b(outlines?|drawings?|line ?art|contours?|colou?ring( page)?s?|sketch(es)?)\b/i;
+/** The person asked for the tones themselves: nothing is converted (research section 6, rule 3). */
+const TONES_QUERY = /\b(photos?|photographs?|paintings?)\b/i;
+const CONVERTED: ReadonlySet<PixelKind> = new Set(['dark', 'photo']);
+const ALREADY_LINES: ReadonlySet<PixelKind> = new Set([
+  'outline',
+  'text',
+  'faint',
+  'blank',
+]);
+
+/**
+ * Whether the picture is shown and inserted as a contour drawing (owner decision D5 A): a dark
+ * picture or a photo, or any picture not already line work when the query asks for an outline;
+ * never when the query asks for a photo or a painting.
+ */
+export function needsContour(m: Measures, query: string): boolean {
+  if (TONES_QUERY.test(query)) {
+    return false;
+  }
+  const kind = pixelKind(m);
+  return (
+    CONVERTED.has(kind) ||
+    (OUTLINE_QUERY.test(query) && !ALREADY_LINES.has(kind))
+  );
 }
 
 /** The weights of the line-art score (research D, section 3). */
@@ -199,7 +237,11 @@ export function pixelScorer(measures: ReadonlyMap<string, Measures>): Scorer {
     }
     const score = scores.get(result.id);
     const scaled =
-      score === undefined ? UNMEASURED : range > 0 ? (score - low) / range : HALF;
+      score === undefined
+        ? UNMEASURED
+        : range > 0
+        ? (score - low) / range
+        : HALF;
     return LINE_ART_WEIGHT * scaled;
   };
 }

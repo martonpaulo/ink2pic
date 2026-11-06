@@ -66,10 +66,12 @@ describe('insertPicture (#12)', () => {
       // Private: replacing a file in MyStyle needs FILE:DELETE (#62).
       '/data/plugin/insert-download.png',
     ]);
-    expect(image.prepareForEink.mock.calls[0].slice(0, 3)).toEqual([
+    expect(image.prepareForEink.mock.calls[0].slice(0, 5)).toEqual([
       '/data/plugin/insert-download.png',
       path,
       640,
+      'png',
+      false,
     ]);
     expect(PluginNoteAPI.insertImage).toHaveBeenCalledWith(path);
     const saved = native.writeText.mock.calls.find(
@@ -81,6 +83,11 @@ describe('insertPicture (#12)', () => {
       query: 'soup',
       path,
     });
+  });
+
+  it('prepares a contour drawing when the tile showed one (#66)', async () => {
+    expect((await insertPicture(result, 'soup', null, true)).ok).toBe(true);
+    expect(image.prepareForEink.mock.calls[0][4]).toBe(true);
   });
 
   it('inserts a library picture without a download (#15)', async () => {

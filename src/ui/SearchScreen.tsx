@@ -10,7 +10,12 @@ import {libraryResults} from '../library/asResults';
 import {getLibrary} from '../library/device';
 import type {Library} from '../library/types';
 import {Done, failureText, searchNotice, StepFailure} from '../flow/failure';
-import {measureFirstPages} from '../flow/measure';
+import {
+  insertsContour,
+  measureFirstPages,
+  MeasuredPages,
+  unmeasured,
+} from '../flow/measure';
 import {afterSearch, runSearch} from '../flow/search';
 import {log} from '../log/memory';
 import type {SearchOutcome, Source} from '../search/search';
@@ -31,8 +36,15 @@ export type SearchScreenProps = {
   initialQuery: string;
   /** Reading the lasso failed: show why, with the field empty and focused. */
   lassoFailure: StepFailure | null;
-  /** Inserts the picture; a failure shows its sentence (#37). */
-  onPick: (result: SearchResult, query: string) => Promise<Done<unknown>>;
+  /**
+   * Inserts the picture, as a contour drawing when its tile shows one (#66); a failure shows its
+   * sentence (#37).
+   */
+  onPick: (
+    result: SearchResult,
+    query: string,
+    contour?: boolean,
+  ) => Promise<Done<unknown>>;
   onClose: () => void;
   sources?: Source[];
 };
@@ -56,6 +68,8 @@ export function SearchScreen({
   );
   const [library, setLibrary] = useState<Library | null>(null);
   const [thumbDir, setThumbDir] = useState<string | null>(null);
+  // The shown results' measures and contour thumbnails (#66).
+  const [measured, setMeasured] = useState<MeasuredPages>(() => unmeasured([]));
   // One list per set of items: a new array on each render sent a Library page back to page 1
   // (#46); a new recent search keeps the items, so it keeps the page.
   const libraryItems = library?.items;
@@ -79,7 +93,11 @@ export function SearchScreen({
     }
     inserting.current = true;
     setStatus(copy['insert.running']);
-    const inserted = await onPick(result, query.trim());
+    const inserted = await onPick(
+      result,
+      query.trim(),
+      insertsContour(measured, result.id),
+    );
     inserting.current = false;
     if (inserted.ok) {
       setStatus(null);
@@ -116,7 +134,7 @@ export function SearchScreen({
         return;
       }
       // Pages 1 and 2 re-sorted by their pixels before page 1 shows (#66).
-      const measured = await measureFirstPages(
+      const pages = await measureFirstPages(
         run.outcome.results,
         run.thumbDir,
         word,
@@ -124,7 +142,8 @@ export function SearchScreen({
       if (ticket !== latestSearch.current) {
         return;
       }
-      setOutcome({...run.outcome, results: measured.results});
+      setMeasured(pages);
+      setOutcome({...run.outcome, results: pages.results});
       setSearching(false);
       const next = await afterSearch(word, run.outcome);
       if (next && 'offline' in next) {
@@ -227,6 +246,7 @@ export function SearchScreen({
           emptyText={copy[(outcome && searchNotice(outcome)) ?? 'search.empty']}
           onPick={pick}
           thumbDir={thumbDir}
+          contourThumbs={measured.contourThumbs}
         />
       )}
     </Screen>

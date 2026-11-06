@@ -172,7 +172,10 @@ describe('thumbnail files (#16, #46)', () => {
 });
 
 describe('the grid with stored thumbnails (#16, #46)', () => {
-  function grid(results: SearchResult[]): ReactTestRenderer {
+  function grid(
+    results: SearchResult[],
+    contourThumbs?: ReadonlyMap<string, string>,
+  ): ReactTestRenderer {
     let tree!: ReactTestRenderer;
     act(() => {
       tree = renderer.create(
@@ -182,6 +185,7 @@ describe('the grid with stored thumbnails (#16, #46)', () => {
           sourceDown={false}
           onPick={jest.fn()}
           thumbDir={DIR}
+          contourThumbs={contourThumbs}
         />,
       );
     });
@@ -218,6 +222,20 @@ describe('the grid with stored thumbnails (#16, #46)', () => {
     expect(image().props.source.uri).toBe(result(1).thumbUrl);
     act(() => image().props.onError());
     expect(tree.root.findAllByType(Image)).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  it('shows the contour drawing of a converted picture (#66)', async () => {
+    native.listDir.mockResolvedValue(['openclipart-1', 'openclipart-2']);
+    await prepareThumbs();
+    const contour = `file://${THUMBS}/openclipart-1.contour.png`;
+    const tree = grid(
+      [result(1), result(2)],
+      new Map([[result(1).id, contour]]),
+    );
+    expect(
+      tree.root.findAllByType(Image).map(img => img.props.source.uri),
+    ).toEqual([contour, fileUri(2)]);
     act(() => tree.unmount());
   });
 

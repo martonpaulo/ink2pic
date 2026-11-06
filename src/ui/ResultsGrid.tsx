@@ -55,6 +55,8 @@ export type ResultsGridProps = {
   emptyText?: string;
   /** The plugin folder whose stored thumbnails the grid reads and fills (#16); none for files. */
   thumbDir?: string | null;
+  /** Thumbnails shown as the contour drawing that is inserted (#66): result id to file URI. */
+  contourThumbs?: ReadonlyMap<string, string>;
 };
 
 export function ResultsGrid({
@@ -64,26 +66,28 @@ export function ResultsGrid({
   onPick,
   emptyText = copy['search.empty'],
   thumbDir = null,
+  contourThumbs,
 }: ResultsGridProps): React.JSX.Element {
   // The page belongs to one results list: a new list starts at page 1 in the same render.
   const [paging, setPaging] = useState({results, page: 0});
   const page = paging.results === results ? paging.page : 0;
   const setPage = (next: number) => setPaging({results, page: next});
-  // Chosen once per results list: the stored file, the web URL when there is no store, or null
-  // while the thumbnail must be downloaded first (#46).
+  // Chosen once per results list: the contour drawing that is inserted (#66), the stored file, the
+  // web URL when there is no store, or null while the thumbnail must be downloaded first (#46).
   const thumbUris = useMemo(
     () =>
       new Map<string, string | null>(
         results.map(result => [
           result.id,
-          !thumbDir
-            ? result.thumbUrl
-            : needsDownload(result, thumbDir)
-            ? null
-            : cachedThumbUri(result, thumbDir),
+          contourThumbs?.get(result.id) ??
+            (!thumbDir
+              ? result.thumbUrl
+              : needsDownload(result, thumbDir)
+              ? null
+              : cachedThumbUri(result, thumbDir)),
         ]),
       ),
-    [results, thumbDir],
+    [results, thumbDir, contourThumbs],
   );
   // Each tile's state after its first one, by result id. It is kept across results lists: a tile
   // that keeps its key keeps its loaded image and fires no new onLoad, so a fresh state would hide

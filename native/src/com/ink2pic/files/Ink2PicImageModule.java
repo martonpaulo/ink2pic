@@ -40,11 +40,20 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
     return "Ink2PicImage";
   }
 
-  /** Resolves {width, height, bytes} of the file written to `destPath`. */
+  /**
+   * Resolves {width, height, bytes, ms} of the file written to `destPath`; `ms` is the whole
+   * preparation. With `contour`, the picture is first turned into a contour drawing (#66).
+   */
   @ReactMethod
   public void prepareForEink(
-      String srcPath, String destPath, double targetWidth, String format, Promise promise) {
+      String srcPath,
+      String destPath,
+      double targetWidth,
+      String format,
+      boolean contour,
+      Promise promise) {
     ModuleWork.submit(worker, promise, () -> {
+      long start = System.nanoTime();
       File source = SafePaths.checkPath(srcPath);
       File target = SafePaths.checkPath(destPath);
       int width = (int) targetWidth;
@@ -55,7 +64,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
       if (!png && !JPG.equals(format)) {
         throw new SafePaths.Refused("BAD_FORMAT", "format must be png or jpg: " + format);
       }
-      Bitmap prepared = prepare(source, width, png);
+      Bitmap prepared = prepare(source, width, png, contour);
       try {
         ByteArrayOutputStream encoded = new ByteArrayOutputStream();
         Bitmap.CompressFormat codec = png ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
@@ -68,6 +77,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
         result.putInt("width", prepared.getWidth());
         result.putInt("height", prepared.getHeight());
         result.putDouble("bytes", (double) bytes);
+        result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
         return result;
       } finally {
         prepared.recycle();
@@ -161,10 +171,14 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   /**
    * The gray picture at its output size. PNG is quantized to the screen's 16 levels, which also
    * shrinks the file; JPG is not, since its compression would blur the levels again
-   * [TO TEST, brief section 7, step 5].
+   * [TO TEST, brief section 7, step 5]. A contour drawing is made at the output size.
    */
-  private static Bitmap prepare(File source, int targetWidth, boolean quantize) throws Exception {
+  private static Bitmap prepare(File source, int targetWidth, boolean quantize, boolean contour)
+      throws Exception {
     Pixels pixels = decode(source, targetWidth);
+    if (contour) {
+      Contour.apply(pixels.argb, pixels.width, pixels.height);
+    }
     EinkPixels.toEink(pixels.argb, quantize);
     Bitmap gray =
         Bitmap.createBitmap(pixels.argb, pixels.width, pixels.height, Bitmap.Config.ARGB_8888);

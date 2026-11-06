@@ -2,7 +2,7 @@ import {NativeModules} from 'react-native';
 import {MODULE_CODE} from '../src/sdk/result';
 import {deviceAnalyzer} from '../src/storage/measures';
 
-const native = {measureThumb: jest.fn()};
+const native = {measureThumb: jest.fn(), prepareForEink: jest.fn()};
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -17,6 +17,20 @@ describe('deviceAnalyzer (#66)', () => {
       value: {mean: 240, ms: 3},
     });
     expect(native.measureThumb).toHaveBeenCalledWith('/p/thumbs/a.png');
+  });
+
+  it('writes a contour drawing through the insert preparation', async () => {
+    native.prepareForEink.mockResolvedValue({width: 330, height: 400, ms: 9});
+    expect(
+      await deviceAnalyzer.toContour('/p/a', '/p/a.contour.png', 400),
+    ).toEqual({ok: true, value: {width: 330, height: 400, ms: 9}});
+    expect(native.prepareForEink).toHaveBeenCalledWith(
+      '/p/a',
+      '/p/a.contour.png',
+      400,
+      'png',
+      true,
+    );
   });
 
   it('keeps the module rejection code', async () => {

@@ -1,9 +1,14 @@
-import {measureFirstPages, MeasureDeps} from '../src/flow/measure';
+import {
+  insertsContour,
+  measureFirstPages,
+  MeasureDeps,
+} from '../src/flow/measure';
 import {logLines, startLog} from '../src/log/memory';
 import {ok, fail, MODULE_CODE} from '../src/sdk/result';
 import {
   lineArt,
   Measures,
+  needsContour,
   pixelKind,
   pixelScorer,
   reorderByMeasures,
@@ -133,6 +138,27 @@ describe('pixelKind (#66)', () => {
   });
 });
 
+describe('needsContour (#66, owner decision D5 A)', () => {
+  it('converts dark pictures and photos only', () => {
+    expect(needsContour(darkPainting, 'cervantes')).toBe(true);
+    expect(needsContour(photo, 'jesse jackson')).toBe(true);
+    expect(needsContour(outline, 'cat')).toBe(false);
+    expect(needsContour(glossy, 'apple')).toBe(false);
+  });
+
+  it('converts every picture not already line work when the query asks for an outline', () => {
+    expect(needsContour(glossy, 'apple outline')).toBe(true);
+    expect(needsContour(glossy, 'apple coloring page')).toBe(true);
+    expect(needsContour(outline, 'cat drawing')).toBe(false);
+    expect(needsContour(signature, 'einstein drawing')).toBe(false);
+  });
+
+  it('converts nothing when the query asks for a photo or a painting', () => {
+    expect(needsContour(darkPainting, 'mona lisa painting')).toBe(false);
+    expect(needsContour(photo, 'cat photo')).toBe(false);
+  });
+});
+
 describe('lineArt (#66)', () => {
   it('scores clean outlines above glossy clip art, photos and dark paintings', () => {
     expect(lineArt(outline)).toBeGreaterThan(lineArt(glossy));
@@ -178,7 +204,10 @@ describe('reorderByMeasures (#66)', () => {
   });
 
   it('keeps the title score: three points of line art do not beat a better title by more', () => {
-    const list = [result('cat', 'Cat'), result('other', 'Cat on a roof at night')];
+    const list = [
+      result('cat', 'Cat'),
+      result('other', 'Cat on a roof at night'),
+    ];
     const measures = new Map([
       ['cat', darkPainting],
       ['other', outline],
@@ -237,40 +266,88 @@ describe('reorderByMeasures (#66)', () => {
 });
 
 describe('measureFirstPages (#66)', () => {
-  const list = [result('dark'), result('web'), result('line'), result('bad')];
+  const list = [
+    result('dark'),
+    result('web'),
+    result('gloss'),
+    result('line'),
+    result('bad'),
+  ];
   const byPath: Record<string, Measures> = {
     '/p/thumbs/dark': darkPainting,
     '/p/thumbs/line': outline,
+    '/p/thumbs/gloss': glossy,
+    // The dark painting's contour: thin lines on white.
+    '/p/thumbs/dark.contour.png': {...outline, colours: 16},
   };
+  const converted: string[] = [];
   const deps = (limitMs = 1000): MeasureDeps => ({
     analyzer: {
       measure: async path =>
         byPath[path]
           ? ok(byPath[path])
           : fail(MODULE_CODE, 'NOT_IMAGE: cannot decode', 'NOT_IMAGE'),
+      toContour: async (src, dest, width) => {
+        converted.push(`${src} -> ${dest} at ${width}`);
+        return ok({width: 330, height: 400, ms: 7});
+      },
     },
     thumb: async item =>
       item.id === 'web' ? item.thumbUrl : `file:///p/thumbs/${item.id}`,
     limitMs,
   });
 
-  beforeEach(() => startLog());
+  beforeEach(() => {
+    startLog();
+    converted.length = 0;
+  });
 
   it('re-sorts by the measured files and logs each kind', async () => {
     const measured = await measureFirstPages(list, '/p', 'x', deps());
+    // The dark painting is scored as the contour it shows: line art, near the outline.
     expect(measured.results.map(item => item.id)).toEqual([
       'line',
+      'dark',
       'web',
       'bad',
-      'dark',
+      'gloss',
     ]);
-    expect([...measured.measures.keys()].sort()).toEqual(['dark', 'line']);
+    expect([...measured.measures.keys()].sort()).toEqual([
+      'dark',
+      'gloss',
+      'line',
+    ]);
     const text = logLines().join('\n');
     expect(text).toMatch(/pixels line: outline lineArt \d\.\d\d in 2 ms/);
     expect(text).toContain('pixels dark: dark');
     expect(text).toContain('pixels web: not on the device, not measured');
     expect(text).toContain('pixels bad: NOT_IMAGE: cannot decode');
-    expect(text).toContain('pixels: 2 of 4 measured');
+    expect(text).toContain('pixels: 3 of 5 measured');
+    expect(text).toContain('contour dark: 7 ms, now outline');
+  });
+
+  it('shows and inserts a dark picture as its contour drawing', async () => {
+    const measured = await measureFirstPages(list, '/p', 'x', deps());
+    expect(converted).toEqual([
+      '/p/thumbs/dark -> /p/thumbs/dark.contour.png at 400',
+    ]);
+    expect(measured.contourThumbs.get('dark')).toBe(
+      'file:///p/thumbs/dark.contour.png',
+    );
+    expect(insertsContour(measured, 'dark')).toBe(true);
+    expect(insertsContour(measured, 'line')).toBe(false);
+  });
+
+  it('shows and inserts the picture as it is when the conversion fails', async () => {
+    const failing = deps();
+    failing.analyzer = {
+      ...failing.analyzer,
+      toContour: async () => fail(MODULE_CODE, 'IO: disk full', 'IO'),
+    };
+    const measured = await measureFirstPages(list, '/p', 'x', failing);
+    expect(insertsContour(measured, 'dark')).toBe(false);
+    expect(measured.measures.get('dark')).toBe(darkPainting);
+    expect(logLines().join('\n')).toContain('contour dark: IO: disk full');
   });
 
   it('changes nothing without a thumbnail folder', async () => {
