@@ -28,3 +28,16 @@ export function listFiles(path: string): Promise<Result<string[]>> {
     raw => present(raw, 'listFiles'),
   );
 }
+
+/** Shared-storage roots, for example `/storage/emulated/0`; MyStyle lives under the first. */
+export function getExternalDirPath(): Promise<Result<string[]>> {
+  return attempt(
+    () => FileUtils.getExternalDirPath(),
+    raw =>
+      Array.isArray(raw) &&
+      raw.length > 0 &&
+      raw.every(p => typeof p === 'string')
+        ? ok(raw as string[])
+        : fail(THROWN_CODE, `getExternalDirPath returned ${String(raw)}`),
+  );
+}

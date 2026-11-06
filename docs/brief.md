@@ -340,7 +340,7 @@ Source: `Keplex/supernote-pic2note` (MIT), files `native/BUILD.md`, `scripts/nat
 - Pipeline: `javac` (Java 8 bytecode) then D8 (min API 27) then aapt2, producing `app.npk` (an APK-format ZIP with a binary manifest and the module DEX, no launcher activity).
 - `build.cjs` adds `nativeCodePackage: "/app.npk"` and `reactPackages: [...]` to the generated config and zips the package.
 - Script mostly portable, with `.exe` handling for Windows [CONFIRMED]. Must be adapted to macOS paths.
-- Both Maven Central and `dl.google.com` were reachable during research [CONFIRMED].
+- Both Maven Central and `dl.google.com` were reachable during research [CONFIRMED]. On 2026-11-06 Maven Central (`repo1.maven.org`, `repo.maven.apache.org`) answered HTTP 429 to the cloud IP; Google's mirror `maven-central.storage-download.googleapis.com` served the React Android AAR with the same SHA-1 file. `scripts/native-toolchain.sh` installs build-tools 35.0.0, platform 35 and that AAR into `.toolchain/`, each checked against a pinned SHA-1, and `scripts/native-build.cjs` runs this pipeline ([#11](https://github.com/martonpaulo/ink2pic/issues/11)).
 
 ### 6.4 Full Gradle path (fallback only)
 

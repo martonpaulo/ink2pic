@@ -27,6 +27,10 @@ import {
   Section,
 } from './report';
 import {brief, log, logged} from './log';
+import {exists, getExternalDirPath} from '../sdk/files';
+import {getPluginDirPath} from '../sdk/plugin';
+import {downloadToFile, readText, writeText} from '../storage/files';
+import {libraryDir} from '../storage/paths';
 
 const FETCH_TIMEOUT_MS = 10000;
 const S3_TITLE = 'S3 recognition';
@@ -235,4 +239,41 @@ export async function probeRecognition(): Promise<Section> {
     }
   }
   return {title: S3_TITLE, lines};
+}
+
+/**
+ * S2 write (#11): download one Openclipart picture into MyStyle/Ink2Pic/library through the
+ * plugin's Java module, check it with FileUtils.exists, and round-trip a text file in the
+ * private plugin directory. Insertion is #12.
+ */
+export async function probeWrite(): Promise<Section> {
+  const lines: string[] = [];
+  const roots = await logged('getExternalDirPath', getExternalDirPath);
+  if (roots.ok) {
+    const target = `${libraryDir(roots.value[0])}/spike-340609.png`;
+    const bytes = await logged(`downloadToFile(${target})`, () =>
+      downloadToFile(OPENCLIPART_IMAGE, target),
+    );
+    lines.push(`download: ${describe(bytes, b => `${b} bytes to ${target}`)}`);
+    const there = await logged('exists', () => exists(target));
+    lines.push(`exists: ${describe(there, String)}`);
+  } else {
+    lines.push('download: not attempted, no shared-storage root');
+  }
+  const dir = await logged('getPluginDirPath', getPluginDirPath);
+  if (dir.ok) {
+    const file = `${dir.value}/spike.json`;
+    const text = JSON.stringify({at: new Date().toISOString()});
+    const written = await logged('writeText', () => writeText(file, text));
+    const read = await logged('readText', () => readText(file));
+    lines.push(
+      `text file: write ${describe(written, () => 'ok')}, read back ${describe(
+        read,
+        r => (r === text ? 'same text' : `different: ${brief(r)}`),
+      )}`,
+    );
+  } else {
+    lines.push('text file: not attempted, no plugin directory');
+  }
+  return {title: 'S2 write', lines};
 }

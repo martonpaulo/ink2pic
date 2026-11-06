@@ -18,6 +18,7 @@ import {
   probeHost,
   probeNetwork,
   probeRecognition,
+  probeWrite,
 } from './src/spike/probes';
 import {formatReport, Section} from './src/spike/report';
 import {copy} from './src/ui/copy';
@@ -34,7 +35,7 @@ async function runSpike(buttonId: number): Promise<string> {
   if (buttonId === LASSO_BUTTON_ID) {
     sections.push(await probeRecognition());
   } else {
-    sections.push(await probeHost(), await probeNetwork());
+    sections.push(await probeHost(), await probeNetwork(), await probeWrite());
   }
   const header = `Ink2Pic spike ${pluginConfig.versionName} (${
     pluginConfig.versionCode

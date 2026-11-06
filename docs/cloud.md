@@ -20,8 +20,10 @@ Measured in the first Ink2Pic cloud backlog run, on 2026-11-06:
 - The gate user `ink2pic-gates` exists; run the gate as
   `sudo -u ink2pic-gates -H bash -c 'cd /home/user/ink2pic && npm run validate'`.
 - No Supernote. Every device behavior stays a test the owner runs.
-- No Android SDK build tools (`aapt2`, `d8`) until `scripts/cloud-setup.sh` installs them with a
-  pinned checksum, which the native build issue adds when native code is needed.
+- The native toolchain (build-tools 35.0.0, platform 35, the React Android 0.79.2 AAR) installs on
+  demand with `bash scripts/native-toolchain.sh`, about 260 MB in `.toolchain/`, each archive
+  checked against a pinned SHA-1. Maven Central rate-limits the cloud IP, so the AAR comes from
+  Google's Maven Central mirror.
 
 ## What always runs in the cloud
 

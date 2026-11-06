@@ -65,7 +65,8 @@ jobs:
 
       - name: Build the plugin package
         if: steps.tag.outputs.publish == 'true'
-        run: bash buildPlugin.sh
+        # The JS package, then the Java module (#11); native-toolchain.sh reuses the runner's SDK.
+        run: npm run build
 
       - name: Create the prerelease
         if: steps.tag.outputs.publish == 'true'

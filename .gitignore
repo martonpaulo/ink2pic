@@ -83,3 +83,6 @@ yarn-error.log
 .env.*
 !.env.example
 __pycache__/
+
+# Native toolchain downloaded by scripts/native-toolchain.sh
+.toolchain/

@@ -208,3 +208,17 @@ describe('numeric answers (#23)', () => {
     );
   });
 });
+
+describe('getExternalDirPath (#11)', () => {
+  it('returns the roots or fails on nothing', async () => {
+    mocked(FileUtils.getExternalDirPath).mockResolvedValue([
+      '/storage/emulated/0',
+    ]);
+    expect(await files.getExternalDirPath()).toEqual({
+      ok: true,
+      value: ['/storage/emulated/0'],
+    });
+    mocked(FileUtils.getExternalDirPath).mockResolvedValue([]);
+    expect((await files.getExternalDirPath()).ok).toBe(false);
+  });
+});
