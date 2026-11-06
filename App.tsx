@@ -10,6 +10,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
+import {sessionPaths} from './src/flow/session';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
 import {log, logged, startLog} from './src/log/memory';
 import {needsOnboarding} from './src/onboarding/permissions';
@@ -68,6 +69,8 @@ function App(): React.JSX.Element {
 
   const start = async (buttonId: number) => {
     setScreen({name: 'starting'});
+    // Paths and the session log file first (#21); a failure is logged and the view goes on.
+    await sessionPaths();
     if (await needsOnboarding()) {
       log('onboarding: a permission is missing');
       setScreen({name: 'onboarding', buttonId});
@@ -127,9 +130,9 @@ function App(): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pick = async (result: SearchResult) => {
+  const pick = async (result: SearchResult, query: string) => {
     log(`picked ${result.id}`);
-    const inserted = await insertPicture(result);
+    const inserted = await insertPicture(result, query);
     if (inserted.ok) {
       await logged('closePluginView', closePluginView);
     }

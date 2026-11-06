@@ -38,6 +38,8 @@ export const copy = {
   // Outside the brief's table: insert failure and the starting screen (#12, build 0.1.0 (7)).
   'error.insert': 'Could not add the picture. Open Log to see why.',
   'app.starting': 'Starting…',
+  // Outside the brief's table: the empty Library tab (#15).
+  'library.empty': 'No saved pictures yet. Insert one from a search.',
 } as const;
 
 export type CopyKey = keyof typeof copy;

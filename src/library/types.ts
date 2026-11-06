@@ -13,8 +13,9 @@ export type LibraryItem = {
   /** ISO 8601. */
   savedAt: string;
   path: string;
-  width: number;
-  height: number;
+  /** The width asked of the source; null when unknown. */
+  width: number | null;
+  height: number | null;
 };
 
 export type Library = {items: LibraryItem[]; recentSearches: string[]};

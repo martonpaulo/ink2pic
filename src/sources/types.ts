@@ -10,6 +10,8 @@ export type SearchResult = {
   license: string;
   attribution: string;
   mime?: string;
+  /** Set for a library picture: already on the device, inserted without a download. */
+  localPath?: string;
 };
 
 export type SourceName = 'openclipart' | 'commons';

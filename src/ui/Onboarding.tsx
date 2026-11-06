@@ -2,7 +2,8 @@
  * First open: three short cards and one grouped permission step (brief section 8.7).
  */
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
+import {Button} from './Button';
 import {Denied, requestMissing} from '../onboarding/permissions';
 import {copy} from './copy';
 import {metrics} from './metrics';
@@ -45,15 +46,11 @@ export function Onboarding({onDone}: OnboardingProps): React.JSX.Element {
       {denied.length > 0 && (
         <Text style={styles.text}>{copy['error.permission.settings']}</Text>
       )}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={copy['onboarding.start']}
-        accessibilityState={{disabled: busy}}
+      <Button
+        label={copy['onboarding.start']}
         disabled={busy}
-        style={styles.button}
-        onPress={start}>
-        <Text style={styles.text}>{copy['onboarding.start']}</Text>
-      </Pressable>
+        onPress={start}
+      />
     </View>
   );
 }
@@ -75,13 +72,4 @@ const styles = StyleSheet.create({
   },
   number: {fontSize: metrics.bodyFont * 2, color: metrics.ink},
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
-  button: {
-    minHeight: metrics.buttonHeight,
-    minWidth: metrics.touchTarget * 3,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: metrics.border,
-    borderColor: metrics.ink,
-  },
 });

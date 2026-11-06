@@ -65,7 +65,9 @@ function isItem(value: unknown): value is LibraryItem {
   const record = value as Record<string, unknown>;
   return (
     STRING_FIELDS.every(field => typeof record[field] === 'string') &&
-    NUMBER_FIELDS.every(field => typeof record[field] === 'number')
+    NUMBER_FIELDS.every(
+      field => record[field] === null || typeof record[field] === 'number',
+    )
   );
 }
 

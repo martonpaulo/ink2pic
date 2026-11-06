@@ -7,6 +7,7 @@ import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
 import {pageCount, pageOf} from '../search/pages';
 import type {SearchResult} from '../sources/types';
+import {Button} from './Button';
 import {copy} from './copy';
 import {metrics} from './metrics';
 
@@ -22,6 +23,8 @@ export type ResultsGridProps = {
   /** A source failed while another answered; with no result, this note replaces the empty text. */
   sourceDown: boolean;
   onPick: (result: SearchResult) => void;
+  /** Shown when there is no result; the search's own text by default. */
+  emptyText?: string;
 };
 
 export function ResultsGrid({
@@ -29,6 +32,7 @@ export function ResultsGrid({
   searching,
   sourceDown,
   onPick,
+  emptyText = copy['search.empty'],
 }: ResultsGridProps): React.JSX.Element {
   // The page belongs to one results list: a new list starts at page 1 in the same render.
   const [paging, setPaging] = useState({results, page: 0});
@@ -77,7 +81,7 @@ export function ResultsGrid({
   if (results.length === 0) {
     return (
       <Text style={styles.message}>
-        {sourceDown ? copy['error.sourceDown'] : copy['search.empty']}
+        {sourceDown ? copy['error.sourceDown'] : emptyText}
       </Text>
     );
   }
@@ -122,14 +126,14 @@ export function ResultsGrid({
         ))}
       </View>
       <View style={styles.nav}>
-        <NavButton
+        <Button
           label={copy['nav.previous']}
           accessibilityLabel={copy['nav.previousLabel']}
           disabled={page === 0}
           onPress={() => setPage(page - 1)}
         />
         <Text style={styles.pageNumber}>{`${page + 1} / ${pages}`}</Text>
-        <NavButton
+        <Button
           label={copy['nav.next']}
           accessibilityLabel={copy['nav.nextLabel']}
           disabled={page >= pages - 1}
@@ -137,32 +141,6 @@ export function ResultsGrid({
         />
       </View>
     </View>
-  );
-}
-
-type NavButtonProps = {
-  label: string;
-  accessibilityLabel: string;
-  disabled: boolean;
-  onPress: () => void;
-};
-
-function NavButton({
-  label,
-  accessibilityLabel,
-  disabled,
-  onPress,
-}: NavButtonProps): React.JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{disabled}}
-      disabled={disabled}
-      style={[styles.navButton, disabled && styles.navDisabled]}
-      onPress={onPress}>
-      <Text style={styles.navText}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -192,16 +170,6 @@ const styles = StyleSheet.create({
     gap: metrics.gap,
     marginTop: metrics.gap,
   },
-  navButton: {
-    minWidth: metrics.buttonHeight * 2,
-    height: metrics.buttonHeight,
-    borderWidth: metrics.border,
-    borderColor: metrics.ink,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  navDisabled: {borderStyle: 'dashed'},
-  navText: {fontSize: metrics.bodyFont, color: metrics.ink},
   pageNumber: {fontSize: metrics.bodyFont, color: metrics.ink},
   message: {
     fontSize: metrics.bodyFont,
