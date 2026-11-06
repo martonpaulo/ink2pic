@@ -70,4 +70,16 @@ describe('the crash handler (#36)', () => {
     expect(PluginNoteAPI.insertText).not.toHaveBeenCalled();
     expect(previous).toHaveBeenCalled();
   });
+
+  it('leaves no timer behind once crash.log is written (#56)', async () => {
+    jest.useFakeTimers();
+    try {
+      handler(new Error('boom'), true);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(previous).toHaveBeenCalled();
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

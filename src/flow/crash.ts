@@ -54,8 +54,15 @@ export function catchCrashes(): void {
       return;
     }
     // A fatal error ends the process: crash.log, the only trace, gets a moment to land first.
-    const moment = new Promise(resolve => setTimeout(resolve, CRASH_WRITE_MS));
-    Promise.race([written, moment]).then(() => previous(error, isFatal));
+    // The timer is cleared once the write lands, so nothing outlives the handler (#56).
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const moment = new Promise(resolve => {
+      timer = setTimeout(resolve, CRASH_WRITE_MS);
+    });
+    Promise.race([written, moment]).then(() => {
+      clearTimeout(timer);
+      previous(error, isFatal);
+    });
   });
   log('crash handler: ok');
 }
