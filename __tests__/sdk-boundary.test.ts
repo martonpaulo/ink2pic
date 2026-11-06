@@ -8,6 +8,7 @@ const SKIP = new Set([
   'android',
   '.git',
   '.scratch',
+  '.claude',
   '__mocks__',
 ]);
 /** The only files allowed to import the SDK: the wrappers and tests, which drive its mock. */

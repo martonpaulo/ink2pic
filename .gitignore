@@ -86,3 +86,6 @@ __pycache__/
 
 # Native toolchain downloaded by scripts/native-toolchain.sh
 .toolchain/
+
+# Lane worktrees of backlog runs
+.claude/worktrees/
