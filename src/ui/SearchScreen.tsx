@@ -7,21 +7,12 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
-import {getLibrary, recordSearch} from '../library/device';
+import {getLibrary} from '../library/device';
 import type {Library} from '../library/types';
-import {
-  Done,
-  failureText,
-  isOffline,
-  offlineText,
-  searchNotice,
-  StepFailure,
-} from '../flow/failure';
+import {Done, failureText, searchNotice, StepFailure} from '../flow/failure';
+import {afterSearch, runSearch} from '../flow/search';
 import {log} from '../log/memory';
-import {searchCached} from '../search/device';
-import {SearchOutcome, Source} from '../search/search';
-import {defaultSources} from '../search/sources';
-import {prepareThumbs} from '../search/thumbs';
+import type {SearchOutcome, Source} from '../search/search';
 import type {SearchResult} from '../sources/types';
 import {Button} from './Button';
 import {copy} from './copy';
@@ -113,31 +104,24 @@ export function SearchScreen({
       setView('results');
       setStatus(null);
       const ticket = ++latestSearch.current;
-      log(`search "${word}"`);
       setSearching(true);
-      // The stored thumbnails are listed while the search runs, so the grid knows them at once.
-      const [result, dir] = await Promise.all([
-        searchCached(word, sources ?? defaultSources()),
-        prepareThumbs(),
-      ]);
-      setThumbDir(dir);
-      if (ticket !== latestSearch.current) {
-        log(`search "${word}" ended after a newer one: ignored`);
+      const run = await runSearch(
+        word,
+        sources,
+        () => ticket === latestSearch.current,
+      );
+      setThumbDir(run.thumbDir);
+      if (!run.outcome) {
         return;
       }
-      for (const [name, sourceStatus] of Object.entries(result.statuses)) {
-        log(`source ${name}: ${JSON.stringify(sourceStatus)}`);
-      }
-      setOutcome(result);
+      setOutcome(run.outcome);
       setSearching(false);
-      if (isOffline(result)) {
-        setStatus(await offlineText());
+      const next = await afterSearch(word, run.outcome);
+      if (next && 'offline' in next) {
+        setStatus(next.offline);
         setView('library');
-        return;
-      }
-      if (!result.allFailed) {
-        await recordSearch(word);
-        setLibrary(await getLibrary());
+      } else if (next) {
+        setLibrary(next.library);
       }
     },
     [sources],
