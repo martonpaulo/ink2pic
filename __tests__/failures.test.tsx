@@ -5,6 +5,7 @@
 import React from 'react';
 import {NativeModules, Text} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
+import {PluginManager} from 'sn-plugin-lib';
 import {
   EMPTY_LASSO_CODE,
   failureText,
@@ -62,6 +63,21 @@ describe('visible failures (#19)', () => {
     ]);
     expect(texts(tree)).toEqual(
       expect.arrayContaining([copy['error.offline'], copy['library.empty']]),
+    );
+    act(() => tree.unmount());
+  });
+
+  it('a search with no network and no INTERNET permission names the permission', async () => {
+    (PluginManager.hasPermission as jest.Mock).mockResolvedValue(0);
+    const tree = await render([
+      source('a', {
+        ok: false,
+        kind: 'network',
+        message: 'Network request failed',
+      }),
+    ]);
+    expect(texts(tree)).toContain(
+      `${copy['error.permission.internet']} ${copy['error.permission.settings']}`,
     );
     act(() => tree.unmount());
   });
@@ -134,6 +150,15 @@ describe('the sentence for each failure (#37)', () => {
         'download',
         -2,
         'IO: java.net.SocketException: socket failed: EACCES (Permission denied)',
+      ),
+      sentence('error.permission.internet', 'error.permission.settings'),
+    ],
+    [
+      'the internet permission is missing at the host lookup',
+      at(
+        'download',
+        -2,
+        'IO: java.net.UnknownHostException: Unable to resolve host "openclipart.org": android_getaddrinfo failed: EACCES (Permission denied)',
       ),
       sentence('error.permission.internet', 'error.permission.settings'),
     ],

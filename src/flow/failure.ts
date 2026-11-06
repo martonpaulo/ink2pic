@@ -2,7 +2,8 @@
  * The one mapping from a failure to the sentence the person reads (#37): it names the cause and
  * the next step, never a code. The technical detail stays in the log (`logged` writes it).
  */
-import {TIMEOUT_CODE} from '../log/memory';
+import {logged, TIMEOUT_CODE} from '../log/memory';
+import {hasPermission, PERMISSION_INTERNET} from '../sdk/plugin';
 import type {Failure} from '../sdk/result';
 import type {SearchOutcome} from '../search/search';
 import {copy, CopyKey} from '../ui/copy';
@@ -22,8 +23,11 @@ export const FILE_PERMISSION_CODE = 1503;
 /** The lasso holds no handwriting; SDK codes are positive, module codes -2, timeouts -3. */
 export const EMPTY_LASSO_CODE = -4;
 
-/** Android's answer to a socket opened without the INTERNET permission. */
-const NO_INTERNET_PERMISSION = /socket failed: EACCES/i;
+/**
+ * Android's answer to a socket or a host lookup without the INTERNET permission; checked before
+ * the file-access text, which also says EACCES (review before build 0.1.0 (11)).
+ */
+const NO_INTERNET_PERMISSION = /(socket|getaddrinfo) failed: EACCES/i;
 const NO_FILE_ACCESS = /EACCES|Permission denied/i;
 const STORAGE =
   /ENOSPC|No space left|EROFS|Read-only file system|cannot create folder|cannot rename|cannot replace/i;
@@ -98,6 +102,19 @@ export function isOffline(outcome: SearchOutcome): boolean {
       status => status.state === 'failed' && OFFLINE_KINDS.has(status.kind),
     )
   );
+}
+
+/**
+ * The sentence for a search that found no network: a missing INTERNET permission fails the same
+ * way as no network, so the host is asked which one it is (review before build 0.1.0 (11)).
+ */
+export async function offlineText(): Promise<string> {
+  const allowed = await logged(`hasPermission(${PERMISSION_INTERNET})`, () =>
+    hasPermission(PERMISSION_INTERNET),
+  );
+  const keys: readonly CopyKey[] =
+    allowed.ok && !allowed.value ? MISSING_INTERNET : ['error.offline'];
+  return keys.map(key => copy[key]).join(' ');
 }
 
 /** What a finished search says, or null when its results speak for themselves. */

@@ -12,6 +12,7 @@ import {
   Done,
   failureText,
   isOffline,
+  offlineText,
   searchNotice,
   StepFailure,
 } from '../flow/failure';
@@ -125,7 +126,7 @@ export function SearchScreen({
       setOutcome(result);
       setSearching(false);
       if (isOffline(result)) {
-        setStatus(copy['error.offline']);
+        setStatus(await offlineText());
         setView('library');
         return;
       }
