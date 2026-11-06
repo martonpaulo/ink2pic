@@ -1,0 +1,67 @@
+name: Prerelease
+
+# Each device test build becomes a GitHub prerelease with Ink2Pic.snplg (#22).
+# A cloud session cannot create releases (HTTP 403), but it can push a tag.
+
+on:
+  push:
+    tags: ['v*-dev.*']
+
+permissions:
+  contents: read
+
+jobs:
+  prerelease:
+    name: prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check the tag against PluginConfig.json
+        run: |
+          expected="$(node -p "const c = require('./PluginConfig.json'); 'v' + c.versionName + '-dev.' + c.versionCode")"
+          if [ "$TAG" != "$expected" ]; then
+            echo "::error::Tag $TAG does not match PluginConfig.json ($expected)."
+            exit 1
+          fi
+          if [ ! -f "docs/releases/$TAG.md" ]; then
+            echo "::error::Missing release notes docs/releases/$TAG.md."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the gate
+        run: npm run validate
+
+      - name: Build the plugin package
+        run: bash buildPlugin.sh
+
+      - name: Create the prerelease
+        run: |
+          gh release create "$TAG" build/outputs/Ink2Pic.snplg \
+            --prerelease --verify-tag --title "$TAG" \
+            --notes-file "docs/releases/$TAG.md"
+
+      - name: Read the asset back
+        run: |
+          names="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+          echo "$names"
+          case "$names" in
+            *Ink2Pic.snplg*) ;;
+            *) echo "::error::Ink2Pic.snplg is missing from $TAG."; exit 1 ;;
+          esac

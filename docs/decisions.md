@@ -12,3 +12,4 @@ The history of consequential decisions. Each current rule lives where the last c
 | 2026-11-06 | SemVer from `0.1.0` in `package.json`; `versionCode` per device build; release only on request | Nothing | [`AGENTS.md`](../AGENTS.md#project-identity-and-policy) |
 | 2026-11-06 | npm and ESLint from the Supernote template instead of the fleet's pnpm and Biome | Fleet default | [`AGENTS.md`](../AGENTS.md#project-identity-and-policy) |
 | 2026-11-06 | Generated `ios/` folder and `Gemfile` removed: PluginHost runs on Android only | Template output | [`brief.md`](brief.md#172-bootstrap-commands) |
+| 2026-11-06 | A pushed `v*-dev.*` tag publishes the device test prerelease through the `Prerelease` workflow; `v0.1.0-dev.1` made by hand from a Mac session ([#22](https://github.com/martonpaulo/ink2pic/issues/22), D1 = A) | Releases made only by the session | [`AGENTS.md`](../AGENTS.md#configuration-and-repository-hygiene) |
