@@ -147,7 +147,10 @@ async function readEntries(
     const text = await storage.readText(path);
     return text === null ? {ok: true, entries: []} : parseCache(text);
   } catch (error) {
-    return {ok: false, message: `cannot read the search cache: ${message(error)}`};
+    return {
+      ok: false,
+      message: `cannot read the search cache: ${message(error)}`,
+    };
   }
 }
 

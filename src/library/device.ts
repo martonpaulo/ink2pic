@@ -10,7 +10,8 @@ import {addItem, addRecentSearch, emptyLibrary} from './library';
 import {loadLibrary, saveLibrary} from './store';
 import type {Library, LibraryItem, TextStorage} from './types';
 
-const storage: TextStorage = {
+/** Text files through the Ink2PicFiles module, for every store on the device (DRY). */
+export const deviceStorage: TextStorage = {
   readText: async path => {
     const text = await readText(path);
     if (!text.ok) {
@@ -46,7 +47,7 @@ export async function getLibrary(): Promise<Library> {
   }
   try {
     const loaded = await logged('loadLibrary', () =>
-      loadLibrary(storage, path.value).then(parsed =>
+      loadLibrary(deviceStorage, path.value).then(parsed =>
         parsed.ok ? ok(parsed.library) : fail(-1, parsed.message),
       ),
     );
@@ -65,7 +66,7 @@ async function save(next: Library): Promise<void> {
     return;
   }
   await logged('saveLibrary', () =>
-    saveLibrary(storage, path.value, next).then(
+    saveLibrary(deviceStorage, path.value, next).then(
       () => ok(true),
       error => fail(-1, String(error)),
     ),

@@ -10,7 +10,8 @@ import {getLibrary, recordSearch} from '../library/device';
 import type {Library} from '../library/types';
 import {log} from '../log/memory';
 import type {Result} from '../sdk/result';
-import {SearchOutcome, searchAll, Source} from '../search/search';
+import {searchCached} from '../search/device';
+import {SearchOutcome, Source} from '../search/search';
 import {defaultSources} from '../search/sources';
 import type {SearchResult} from '../sources/types';
 import {probeWrite} from '../spike/probes';
@@ -98,7 +99,7 @@ export function SearchScreen({
       setStatus(null);
       log(`search "${word}"`);
       setSearching(true);
-      const result = await searchAll(word, sources ?? defaultSources());
+      const result = await searchCached(word, sources ?? defaultSources());
       for (const [name, sourceStatus] of Object.entries(result.statuses)) {
         log(`source ${name}: ${JSON.stringify(sourceStatus)}`);
       }
