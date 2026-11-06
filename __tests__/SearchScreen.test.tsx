@@ -33,7 +33,7 @@ async function render(
     tree = renderer.create(
       <SearchScreen
         initialQuery="soup"
-        recognitionFailed={false}
+        lassoFailure={null}
         onPick={jest.fn()}
         onClose={jest.fn()}
         sources={sources()}
@@ -57,7 +57,10 @@ describe('SearchScreen (#13)', () => {
   });
 
   it('shows the recognition failure with an empty, focused field and no search', async () => {
-    const tree = await render({initialQuery: '', recognitionFailed: true});
+    const tree = await render({
+      initialQuery: '',
+      lassoFailure: {ok: false, code: 117, message: 'bad size', step: 'lasso'},
+    });
     expect(search).not.toHaveBeenCalled();
     const input = tree.root.findByType(TextInput);
     expect(input.props.value).toBe('');
@@ -99,16 +102,20 @@ describe('SearchScreen (#13)', () => {
     act(() => tree.unmount());
   });
 
-  it('shows the insert failure and opens the log (#12)', async () => {
-    const onPick = jest
-      .fn()
-      .mockResolvedValue({ok: false, code: -2, message: 'MISSING'});
+  it('shows the insert failure as a sentence and keeps the results (#12, #37)', async () => {
+    const onPick = jest.fn().mockResolvedValue({
+      ok: false,
+      code: 107,
+      message: 'bad element',
+      step: 'place',
+    });
     const tree = await render({onPick});
     await act(async () =>
       tree.root.findByProps({testID: 'tile-openclipart:1'}).props.onPress(),
     );
-    expect(texts(tree)).toContain(copy['error.insert']);
-    expect(tree.root.findByProps({testID: 'log'})).toBeTruthy();
+    expect(texts(tree)).toContain(copy['error.place']);
+    expect(tree.root.findAllByProps({testID: 'log'})).toHaveLength(0);
+    expect(tree.root.findByProps({testID: 'tile-openclipart:1'})).toBeTruthy();
     act(() => tree.unmount());
   });
 });

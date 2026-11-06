@@ -7,6 +7,7 @@ import {getLassoElements, getLassoRect, recognizeElements} from '../sdk/lasso';
 import type {LassoPlace} from './place';
 import {getCurrentFilePath, getCurrentPageNum, getPageSize} from '../sdk/page';
 import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
+import {EMPTY_LASSO_CODE} from './failure';
 
 export type LassoQuery = {query: string; place: LassoPlace | null};
 
@@ -20,7 +21,7 @@ export async function readLassoQuery(): Promise<Result<LassoQuery>> {
     return elements;
   }
   if (elements.value.length === 0) {
-    return fail(THROWN_CODE, 'the lasso holds no handwriting');
+    return fail(EMPTY_LASSO_CODE, 'the lasso holds no handwriting');
   }
   // The rect too, before the slow recognition: lasso context is short-lived (#33).
   const rect = await logged('getLassoRect', getLassoRect);

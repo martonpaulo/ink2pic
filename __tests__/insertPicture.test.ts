@@ -109,6 +109,7 @@ describe('insertPicture (#12)', () => {
       ok: false,
       code: 1501,
       message: 'no FILE:WRITE',
+      step: 'place',
     });
   });
 

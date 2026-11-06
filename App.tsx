@@ -8,6 +8,7 @@
 
 import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {atStep, StepFailure} from './src/flow/failure';
 import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
 import type {LassoPlace} from './src/flow/place';
@@ -34,7 +35,12 @@ import {SearchScreen} from './src/ui/SearchScreen';
 type Screen =
   | {name: 'starting'}
   | {name: 'onboarding'; buttonId: number}
-  | {name: 'search'; query: string; recognitionFailed: boolean; opened: number};
+  | {
+      name: 'search';
+      query: string;
+      lassoFailure: StepFailure | null;
+      opened: number;
+    };
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>({name: 'starting'});
@@ -49,7 +55,7 @@ function App(): React.JSX.Element {
       setScreen({
         name: 'search',
         query: '',
-        recognitionFailed: false,
+        lassoFailure: null,
         opened: Date.now(),
       });
       return;
@@ -63,7 +69,7 @@ function App(): React.JSX.Element {
     setScreen({
       name: 'search',
       query: query.ok ? query.value.query : '',
-      recognitionFailed: !query.ok,
+      lassoFailure: query.ok ? null : atStep('lasso', query),
       opened: Date.now(),
     });
   };
@@ -189,7 +195,7 @@ function App(): React.JSX.Element {
         <SearchScreen
           key={screen.opened}
           initialQuery={screen.query}
-          recognitionFailed={screen.recognitionFailed}
+          lassoFailure={screen.lassoFailure}
           onPick={pick}
           onClose={() => closePluginView()}
         />

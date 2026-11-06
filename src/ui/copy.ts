@@ -35,8 +35,19 @@ export const copy = {
   'action.search': 'Search',
   'action.log': 'Log',
   'action.checkFiles': 'Check files',
-  // Outside the brief's table: insert failure and the starting screen (#12, build 0.1.0 (7)).
-  'error.insert': 'Could not add the picture. Open Log to see why.',
+  'error.emptyLasso':
+    'There is no handwriting in the lasso. Type the word instead.',
+  'error.sourcesDown':
+    'The picture sources did not answer. Try again in a minute.',
+  'error.downloadOffline':
+    'The internet stopped while getting the picture. Try again when you are online.',
+  'error.download': 'Could not get this picture. Try another one.',
+  'error.save':
+    'Could not save the picture. Free some space on the device and try again.',
+  'error.place':
+    'Could not put the picture in the note. Open a note page and try again.',
+  'error.unexpected': 'Something went wrong. Open Log for details.',
+  // Outside the brief's table: the starting screen (#12, build 0.1.0 (7)).
   'app.starting': 'Starting…',
   // Outside the brief's table: the empty Library tab (#15).
   'library.empty': 'No saved pictures yet. Insert one from a search.',

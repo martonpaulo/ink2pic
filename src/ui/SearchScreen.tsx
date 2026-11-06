@@ -8,8 +8,14 @@ import {StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
 import {getLibrary, recordSearch} from '../library/device';
 import type {Library} from '../library/types';
+import {
+  Done,
+  failureText,
+  isOffline,
+  searchNotice,
+  StepFailure,
+} from '../flow/failure';
 import {log} from '../log/memory';
-import type {Result} from '../sdk/result';
 import {searchCached} from '../search/device';
 import {SearchOutcome, Source} from '../search/search';
 import {defaultSources} from '../search/sources';
@@ -22,34 +28,22 @@ import {LogView} from './LogView';
 import {metrics} from './metrics';
 import {ResultsGrid} from './ResultsGrid';
 
-/** Failure kinds that mean the device has no network, not that one source is down. */
-const OFFLINE_KINDS = new Set(['network', 'timeout']);
-
 type View_ = 'results' | 'library' | 'log';
 
 export type SearchScreenProps = {
   /** The recognized word; empty when the sidebar opened the plugin. */
   initialQuery: string;
-  /** Recognition failed: show why, with the field empty and focused. */
-  recognitionFailed: boolean;
-  /** Inserts the picture; a failure is shown with the log. */
-  onPick: (result: SearchResult, query: string) => Promise<Result<unknown>>;
+  /** Reading the lasso failed: show why, with the field empty and focused. */
+  lassoFailure: StepFailure | null;
+  /** Inserts the picture; a failure shows its sentence (#37). */
+  onPick: (result: SearchResult, query: string) => Promise<Done<unknown>>;
   onClose: () => void;
   sources?: Source[];
 };
 
-export function isOffline(outcome: SearchOutcome): boolean {
-  return (
-    outcome.allFailed &&
-    Object.values(outcome.statuses).every(
-      status => status.state === 'failed' && OFFLINE_KINDS.has(status.kind),
-    )
-  );
-}
-
 export function SearchScreen({
   initialQuery,
-  recognitionFailed,
+  lassoFailure,
   onPick,
   onClose,
   sources,
@@ -59,7 +53,7 @@ export function SearchScreen({
   const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
   const [view, setView] = useState<View_>(initialQuery ? 'results' : 'library');
   const [status, setStatus] = useState<string | null>(
-    recognitionFailed ? copy['error.recognition'] : null,
+    lassoFailure ? failureText(lassoFailure) : null,
   );
   const [library, setLibrary] = useState<Library | null>(null);
   const [thumbDir, setThumbDir] = useState<string | null>(null);
@@ -96,8 +90,11 @@ export function SearchScreen({
       setStatus(null);
       return;
     }
-    setStatus(copy['error.insert']);
-    setView('log');
+    log(
+      `insert failed at ${inserted.step}: ${inserted.code} ${inserted.message}`,
+    );
+    // The sentence says what to do; the Log button stays for the detail (#37).
+    setStatus(failureText(inserted));
   };
 
   const search = useCallback(
@@ -161,7 +158,7 @@ export function SearchScreen({
           onSubmitEditing={() => search(query)}
           placeholder={copy['search.placeholder']}
           accessibilityLabel={copy['search.placeholder']}
-          autoFocus={recognitionFailed}
+          autoFocus={lassoFailure !== null}
           returnKeyType="search"
         />
         <Button label={copy['action.search']} onPress={() => search(query)} />
@@ -208,6 +205,7 @@ export function SearchScreen({
           results={outcome?.results ?? []}
           searching={searching}
           sourceDown={outcome?.sourceDown ?? false}
+          emptyText={copy[(outcome && searchNotice(outcome)) ?? 'search.empty']}
           onPick={pick}
           thumbDir={thumbDir}
         />

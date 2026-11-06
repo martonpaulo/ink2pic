@@ -12,6 +12,7 @@ import type {SearchResult} from '../sources/types';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
 import {libraryDir, safeFileName} from '../storage/paths';
+import {atStep, Done} from './failure';
 import {LassoPlace, placeAtLasso} from './place';
 import {sessionPaths} from './session';
 
@@ -71,16 +72,16 @@ export async function insertPicture(
   result: SearchResult,
   query: string,
   place: LassoPlace | null = null,
-): Promise<Result<string>> {
+): Promise<Done<string>> {
   const saved: Result<Saved> = result.localPath
     ? ok({path: result.localPath, size: result.localSize ?? null})
     : await download(result);
   if (!saved.ok) {
-    return saved;
+    return atStep('download', saved);
   }
   const inserted = await insertInNote(saved.value, place);
   if (!inserted.ok) {
-    return inserted;
+    return atStep('place', inserted);
   }
   if (!result.localPath) {
     await recordInsert({
@@ -97,5 +98,5 @@ export async function insertPicture(
       height: saved.value.size?.height ?? null,
     });
   }
-  return ok(saved.value.path);
+  return {ok: true, value: saved.value.path};
 }

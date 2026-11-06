@@ -20,7 +20,7 @@ import {
   openLogFile,
   rotateLogFile,
 } from '../src/log/file';
-import type {Result} from '../src/sdk/result';
+import type {Done} from '../src/flow/failure';
 import type {Source} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';
 import {SearchScreen} from '../src/ui/SearchScreen';
@@ -117,14 +117,14 @@ describe('SearchScreen', () => {
       });
     const sources: Source[] = [{name: 'openclipart', search}];
     const onPick = jest.fn(
-      (): Promise<Result<unknown>> => new Promise(() => {}),
+      (): Promise<Done<unknown>> => new Promise(() => {}),
     );
     let tree!: renderer.ReactTestRenderer;
     await act(async () => {
       tree = renderer.create(
         <SearchScreen
           initialQuery="soup"
-          recognitionFailed={false}
+          lassoFailure={null}
           onPick={onPick}
           onClose={jest.fn()}
           sources={sources}

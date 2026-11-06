@@ -499,12 +499,24 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `error.permission.files` | Ink2Pic needs file access to save pictures to your library. |
 | `error.permission.settings` | To allow it, open Settings > Apps > Plugins > Ink2Pic > Permissions. |
 | `error.recognition` | Could not read the word. Type it instead. |
+| `error.emptyLasso` | There is no handwriting in the lasso. Type the word instead. |
+| `error.sourcesDown` | The picture sources did not answer. Try again in a minute. |
+| `error.downloadOffline` | The internet stopped while getting the picture. Try again when you are online. |
+| `error.download` | Could not get this picture. Try another one. |
+| `error.save` | Could not save the picture. Free some space on the device and try again. |
+| `error.place` | Could not put the picture in the note. Open a note page and try again. |
+| `error.unexpected` | Something went wrong. Open Log for details. |
 | `onboarding.1` | Write a word in your note. |
 | `onboarding.2` | Circle it with the lasso. |
 | `onboarding.3` | Tap Find picture and choose one. |
 | `onboarding.start` | Start |
 
 Permission request descriptions (`requestPermission(permission, desc)`) reuse the `error.permission.*` texts.
+
+Every failure shows one of these sentences, never a code; the log keeps the detail. One module,
+`src/flow/failure.ts`, maps a failure (its step, code and message) to its keys; a missing
+permission (error 1503, or `EACCES` from the file module) shows its `error.permission.*` text
+followed by `error.permission.settings` ([#37](https://github.com/martonpaulo/ink2pic/issues/37)).
 
 ---
 
