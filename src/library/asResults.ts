@@ -8,7 +8,6 @@ export function libraryResults(items: LibraryItem[]): SearchResult[] {
     source: item.source,
     title: item.query,
     thumbUrl: `file://${item.path}`,
-    fullUrl: () => `file://${item.path}`,
     license: item.license,
     attribution: item.attribution,
     localPath: item.path,

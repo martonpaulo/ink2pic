@@ -58,7 +58,6 @@ export function parseSearchPage(html: string): SourceOutcome {
       source: 'openclipart',
       title: decode(ALT.exec(inner)?.[1] ?? ''),
       thumbUrl: imageUrl(id, THUMB_WIDTH),
-      fullUrl: width => imageUrl(id, width),
       license: LICENSE,
       attribution: ATTRIBUTION,
       mime: 'image/png',

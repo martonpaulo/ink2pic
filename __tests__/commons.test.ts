@@ -13,6 +13,7 @@ import {
   searchUrl,
 } from '../src/sources/commons';
 import {PAGE_SIZE} from '../src/search/pages';
+import {fullUrl} from '../src/sources/registry';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -32,7 +33,7 @@ describe('parseSearchResponse', () => {
     expect(bowl.license).toBe('CC BY-SA 4.0');
     expect(bowl.attribution).toBe('Example Artist');
     expect(bowl.thumbUrl).toMatch(/\/330px-Example_bowl_of_soup\.jpg$/);
-    expect(bowl.fullUrl(700)).toMatch(/\/960px-Example_bowl_of_soup\.jpg$/);
+    expect(fullUrl(bowl, 700)).toMatch(/\/960px-Example_bowl_of_soup\.jpg$/);
     expect(engraving.attribution).toBe('Example Archive');
     expect(engraving.mime).toBe('image/png');
   });
@@ -159,31 +160,31 @@ describe('full width (#48)', () => {
         ],
       },
     });
-  const fullUrl = (text: string, width: number) => {
+  const firstUrl = (text: string, width: number) => {
     const outcome = parseSearchResponse(text);
     if (!outcome.ok) {
       throw new Error(outcome.message);
     }
-    return outcome.results[0].fullUrl(width);
+    return fullUrl(outcome.results[0], width);
   };
 
   it('takes the original of a picture narrower than the width, never an upscale', () => {
-    expect(fullUrl(page(576, 'image/jpeg', 'Narrow.jpg'), 960)).toBe(
+    expect(firstUrl(page(576, 'image/jpeg', 'Narrow.jpg'), 960)).toBe(
       'https://upload.wikimedia.org/wikipedia/commons/1/1a/Narrow.jpg',
     );
-    expect(fullUrl(page(960, 'image/png', 'Exact.png'), 960)).toBe(
+    expect(firstUrl(page(960, 'image/png', 'Exact.png'), 960)).toBe(
       'https://upload.wikimedia.org/wikipedia/commons/1/1a/Exact.png',
     );
   });
 
   it('keeps the predefined thumbnail of a wider picture', () => {
-    expect(fullUrl(page(2000, 'image/jpeg', 'Wide.jpg'), 960)).toBe(
+    expect(firstUrl(page(2000, 'image/jpeg', 'Wide.jpg'), 960)).toBe(
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Wide.jpg/960px-Wide.jpg',
     );
   });
 
   it('keeps the rendered thumbnail of an original insertImage cannot read', () => {
-    expect(fullUrl(page(300, 'image/svg+xml', 'Line.svg'), 960)).toBe(
+    expect(firstUrl(page(300, 'image/svg+xml', 'Line.svg'), 960)).toBe(
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Line.svg/960px-Line.svg',
     );
   });

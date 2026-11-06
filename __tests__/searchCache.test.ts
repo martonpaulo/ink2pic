@@ -5,10 +5,10 @@ import {
   cachedSearch,
   cacheKey,
 } from '../src/search/cache';
-import {fullImageUrl, resizeThumb} from '../src/sources/commons';
 import type {SearchOutcome} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';
 import type {TextStorage} from '../src/storage/text';
+import {fullUrl} from '../src/sources/registry';
 
 const PATH = '/plugin/search-cache.json';
 const NOW = Date.UTC(2026, 10, 6, 12);
@@ -20,7 +20,6 @@ const openclipart: SearchResult = {
   source: 'openclipart',
   title: 'soup bowl',
   thumbUrl: 'https://openclipart.org/image/400px/42',
-  fullUrl: width => `https://openclipart.org/image/${width}px/42`,
   license: 'CC0 1.0',
   attribution: 'Openclipart',
   mime: 'image/png',
@@ -30,7 +29,6 @@ const commons: SearchResult = {
   source: 'commons',
   title: 'Soup',
   thumbUrl: THUMB,
-  fullUrl: width => resizeThumb(THUMB, width),
   license: 'CC BY-SA 4.0',
   attribution: 'Example Artist',
 };
@@ -77,7 +75,7 @@ describe('cachedSearch', () => {
     ]);
   });
 
-  it('rebuilds fullUrl per source', async () => {
+  it('gives a cached result the URL of each source', async () => {
     const {storage} = memoryStorage();
     await cachedSearch('soup', runner(), storage, PATH, NOW);
     const {outcome: cached} = await cachedSearch(
@@ -88,21 +86,16 @@ describe('cachedSearch', () => {
       NOW,
     );
     const [clip, photo] = cached.results;
-    expect(clip.fullUrl(1000)).toBe('https://openclipart.org/image/1000px/42');
-    expect(photo.fullUrl(1000)).toBe(THUMB.replace('/330px-', '/1280px-'));
+    expect(fullUrl(clip, 1000)).toBe('https://openclipart.org/image/1000px/42');
+    expect(fullUrl(photo, 1000)).toBe(THUMB.replace('/330px-', '/1280px-'));
   });
 
   it('keeps a narrow Commons original, so a cached result is never upscaled (#55)', async () => {
     const original = {
       url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Soup.png',
       width: 576,
-      mime: 'image/png',
     };
-    const narrow: SearchResult = {
-      ...commons,
-      mime: 'image/png',
-      fullUrl: width => fullImageUrl(THUMB, width, original),
-    };
+    const narrow: SearchResult = {...commons, mime: 'image/png', original};
     const {storage, files} = memoryStorage();
     const fresh = await cachedSearch(
       'soup',
@@ -121,8 +114,8 @@ describe('cachedSearch', () => {
       NOW,
     );
     expect(fromCache).toBe(true);
-    expect(cached.results[0].fullUrl(960)).toBe(original.url);
-    expect(cached.results[0].fullUrl(960)).toBe(narrow.fullUrl(960));
+    expect(fullUrl(cached.results[0], 960)).toBe(original.url);
+    expect(fullUrl(cached.results[0], 960)).toBe(fullUrl(narrow, 960));
   });
 
   it('searches again once an entry expires', async () => {

@@ -12,7 +12,6 @@ const result: SearchResult = {
   source: 'openclipart',
   title: 'Soup bowl',
   thumbUrl: 'https://openclipart.org/image/400px/1',
-  fullUrl: w => `https://openclipart.org/image/${w}px/1`,
   license: 'CC0 1.0',
   attribution: 'Openclipart',
 };

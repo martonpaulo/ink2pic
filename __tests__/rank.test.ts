@@ -11,7 +11,6 @@ const r = (
   source,
   title,
   thumbUrl: 'https://example.test/t',
-  fullUrl: () => 'https://example.test/f',
   license: 'CC0 1.0',
   attribution: 'x',
   mime,

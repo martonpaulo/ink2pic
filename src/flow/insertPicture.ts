@@ -10,9 +10,8 @@ import {findItem} from '../library/library';
 import {logged, log} from '../log/memory';
 import {insertImage} from '../sdk/note';
 import {fail, ok, Result, THROWN_CODE, TIMEOUT_CODE} from '../sdk/result';
-import {COMMONS_FULL_WIDTH} from '../sources/commons';
-import {OPENCLIPART_FULL_WIDTH} from '../sources/openclipart';
-import type {SearchResult, SourceName} from '../sources/types';
+import {insertUrl} from '../sources/registry';
+import {SearchResult, sourceId} from '../sources/types';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
 import {libraryDir, safeFileName} from '../storage/paths';
@@ -22,12 +21,6 @@ import {LassoPlace, placeAtLasso} from './place';
 
 /** About one third of the 1920 px page (brief section 7): the prepared picture's width. */
 export const INSERT_WIDTH = 640;
-
-/** The width each source is asked for: one it serves with no redirect and no upscale (#48). */
-const FULL_WIDTH: Record<SourceName, number> = {
-  openclipart: OPENCLIPART_FULL_WIDTH,
-  commons: COMMONS_FULL_WIDTH,
-};
 
 /** The raw download, in the private folder, overwritten by each insert (#48). */
 const DOWNLOAD_NAME = 'insert-download';
@@ -55,7 +48,7 @@ async function download(result: SearchResult): Promise<Result<Saved>> {
   if (!dir.ok) {
     return dir;
   }
-  const url = result.fullUrl(FULL_WIDTH[result.source]);
+  const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
   const raw = `${dir.value}/${DOWNLOAD_NAME}.${imageExtension(url)}`;
   const bytes = await logged(`downloadToFile(${url} -> ${raw})`, () =>
@@ -131,8 +124,8 @@ export async function insertPicture(
     await recordInsert({
       id: result.id,
       source: result.source,
-      sourceId: result.id.slice(result.id.indexOf(':') + 1),
-      sourceUrl: result.fullUrl(FULL_WIDTH[result.source]),
+      sourceId: sourceId(result.id),
+      sourceUrl: insertUrl(result),
       query,
       license: result.license,
       attribution: result.attribution,

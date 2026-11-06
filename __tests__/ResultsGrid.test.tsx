@@ -13,7 +13,6 @@ const result = (n: number): SearchResult => ({
   source: 'openclipart',
   title: `Picture ${n}`,
   thumbUrl: `https://openclipart.org/image/400px/${n}`,
-  fullUrl: w => `https://openclipart.org/image/${w}px/${n}`,
   license: 'CC0 1.0',
   attribution: 'Openclipart',
 });

@@ -6,6 +6,7 @@ import {
   searchOpenclipart,
   searchUrl,
 } from '../src/sources/openclipart';
+import {fullUrl} from '../src/sources/registry';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -21,7 +22,7 @@ describe('parseSearchPage', () => {
     expect(ladle.id).toBe('openclipart:340609');
     expect(ladle.title).toBe('Ladle with Hot Soup');
     expect(ladle.thumbUrl).toBe('https://openclipart.org/image/400px/340609');
-    expect(ladle.fullUrl(800)).toBe(
+    expect(fullUrl(ladle, 800)).toBe(
       'https://openclipart.org/image/800px/340609',
     );
     expect(ladle.license).toBe('CC0 1.0');

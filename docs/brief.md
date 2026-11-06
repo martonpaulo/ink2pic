@@ -644,7 +644,8 @@ ink2pic/
     sources/
       openclipart.ts         # HTML parse + URL builders, fixtures in tests
       commons.ts             # Action API client, predefined widths, User-Agent
-      types.ts               # SearchResult { id, source, thumbUrl, fullUrl(width), license, attribution }
+      types.ts               # SearchResult { id, source, thumbUrl, original?, license, attribution }, plain data
+      registry.ts            # fullUrl(result, width) and the insert width, per source (#54)
     search/                  # parallel search, timeouts, ranking for e-ink
     library/                 # metadata index, recent searches
     storage/                 # paths, cache, persistence via native module

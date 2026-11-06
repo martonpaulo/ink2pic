@@ -5,8 +5,11 @@ export type SearchResult = {
   source: SourceName;
   title: string;
   thumbUrl: string;
-  /** The image at a given width; a source may round it to a width it serves. */
-  fullUrl: (width: number) => string;
+  /**
+   * A Commons original and its width, for an insert that takes it as it is (#48, #55); the image
+   * URL at a width comes from `fullUrl` in `./registry`.
+   */
+  original?: {url: string; width: number};
   license: string;
   attribution: string;
   mime?: string;
@@ -19,6 +22,11 @@ export type SearchResult = {
 };
 
 export type SourceName = 'openclipart' | 'commons';
+
+/** The source's own id: the part of a result id after `<source>:`. */
+export function sourceId(id: string): string {
+  return id.slice(id.indexOf(':') + 1);
+}
 
 export type FailureKind =
   | 'network'

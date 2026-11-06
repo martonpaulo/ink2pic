@@ -153,7 +153,10 @@ function toResult(page: Page): SearchResult | null {
     source: 'commons',
     title: page.title.replace(/^File:/, '').replace(/\.[^.]+$/, ''),
     thumbUrl: thumb,
-    fullUrl: width => fullImageUrl(thumb, width, info),
+    ...(info.url &&
+      info.width !== undefined && {
+        original: {url: info.url, width: info.width},
+      }),
     license: plainText(meta.LicenseShortName?.value ?? '') || 'unknown',
     attribution,
     mime: info.mime,

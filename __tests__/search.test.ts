@@ -7,7 +7,6 @@ const result = (id: string): SearchResult => ({
   source: 'openclipart',
   title: id,
   thumbUrl: 'https://example.test/t',
-  fullUrl: () => 'https://example.test/f',
   license: 'CC0 1.0',
   attribution: 'x',
 });

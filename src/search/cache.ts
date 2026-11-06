@@ -5,13 +5,9 @@
  * The file is read once per runtime and kept parsed in memory; a write runs after the results
  * are shown, never before (#46).
  */
-import {
-  COMMONS_FULL_WIDTH,
-  fullImageUrl,
-  resizeThumb,
-} from '../sources/commons';
-import {imageUrl} from '../sources/openclipart';
-import type {SearchResult, SourceName} from '../sources/types';
+import {COMMONS_FULL_WIDTH, resizeThumb} from '../sources/commons';
+import {fullUrl, isSourceName} from '../sources/registry';
+import type {SearchResult} from '../sources/types';
 import type {TextStorage} from '../storage/text';
 import type {SearchOutcome, SourceStatus} from './search';
 
@@ -27,17 +23,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const CACHE_MAX_AGE_MS = 7 * DAY_MS;
 
 /**
- * A Commons original taken as it is (#55). SearchResult does not carry the original's width, so
- * `width` is the insert width the original was found at or below, an upper bound.
+ * A SearchResult as the file keeps it. A Commons `original` is kept only when an insert takes it
+ * as it is (#55), with the insert width as its width, an upper bound. An entry without `original`
+ * stays valid and rebuilds the thumbnail, so the cache version does not change.
  */
-type StoredOriginal = {url: string; width: number};
-/**
- * A SearchResult without its fullUrl function, which JSON cannot hold. An entry without
- * `original` stays valid and rebuilds the thumbnail, so the cache version does not change.
- */
-export type StoredResult = Omit<SearchResult, 'fullUrl'> & {
-  original?: StoredOriginal;
-};
+export type StoredResult = Omit<
+  SearchResult,
+  'canonical' | 'localPath' | 'localSize'
+>;
+type StoredOriginal = NonNullable<SearchResult['original']>;
 type StoredOutcome = Omit<SearchOutcome, 'results'> & {results: StoredResult[]};
 type Entry = {query: string; savedAt: number; outcome: StoredOutcome};
 
@@ -65,28 +59,12 @@ function remembered(storage: TextStorage): Map<string, Entry[]> {
   return byPath;
 }
 
-/** fullUrl rebuilt per source with the same rule the source module uses. */
-const FULL_URL: Record<
-  SourceName,
-  (result: StoredResult) => (width: number) => string
-> = {
-  openclipart: result => {
-    const sourceId = result.id.slice(result.id.indexOf(':') + 1);
-    return width => imageUrl(sourceId, width);
-  },
-  commons: result => width =>
-    fullImageUrl(result.thumbUrl, width, {
-      ...result.original,
-      mime: result.mime,
-    }),
-};
-
 /** The original a fresh Commons result gives at the insert width, when it is not a thumbnail. */
 function commonsOriginal(result: SearchResult): StoredOriginal | undefined {
   if (result.source !== 'commons') {
     return undefined;
   }
-  const url = result.fullUrl(COMMONS_FULL_WIDTH);
+  const url = fullUrl(result, COMMONS_FULL_WIDTH);
   return url === resizeThumb(result.thumbUrl, COMMONS_FULL_WIDTH)
     ? undefined
     : {url, width: COMMONS_FULL_WIDTH};
@@ -109,12 +87,6 @@ function store(result: SearchResult): StoredResult {
     mime,
     ...(original && {original}),
   };
-}
-
-function restore(result: StoredResult): SearchResult {
-  const fields: StoredResult = {...result};
-  delete fields.original;
-  return {...fields, fullUrl: FULL_URL[result.source](result)};
 }
 
 const STRING_FIELDS = [
@@ -141,8 +113,7 @@ function isOriginal(value: unknown): boolean {
 function isStoredResult(value: unknown): value is StoredResult {
   return (
     isObject(value) &&
-    typeof value.source === 'string' &&
-    Object.keys(FULL_URL).includes(value.source) &&
+    isSourceName(value.source) &&
     STRING_FIELDS.every(field => typeof value[field] === 'string') &&
     (value.mime === undefined || typeof value.mime === 'string') &&
     isOriginal(value.original)
@@ -253,7 +224,8 @@ export async function cachedSearch(
   const hit = entries.find(entry => entry.query === key);
   if (hit && isFresh(hit, now)) {
     return {
-      outcome: {...hit.outcome, results: hit.outcome.results.map(restore)},
+      // A new outcome per hit, as a fresh search gives one.
+      outcome: {...hit.outcome, results: [...hit.outcome.results]},
       fromCache: true,
     };
   }

@@ -4,6 +4,7 @@ import {resetSessionForTests} from '../src/storage/session';
 import {closeLogFileForTests} from '../src/storage/logFile';
 import {searchCached} from '../src/search/device';
 import type {Source} from '../src/search/search';
+import {fullUrl} from '../src/sources/registry';
 
 const files: Record<string, string> = {};
 const native = {
@@ -38,7 +39,6 @@ describe('searchCached (#16)', () => {
           source: 'openclipart',
           title: 'Soup',
           thumbUrl: 'https://openclipart.org/image/400px/1',
-          fullUrl: (w: number) => `https://openclipart.org/image/${w}px/1`,
           license: 'CC0 1.0',
           attribution: 'Openclipart',
         },
@@ -48,7 +48,7 @@ describe('searchCached (#16)', () => {
     await searchCached('soup', sources);
     const again = await searchCached('Soup ', sources);
     expect(search).toHaveBeenCalledTimes(1);
-    expect(again.results[0].fullUrl(800)).toBe(
+    expect(fullUrl(again.results[0], 800)).toBe(
       'https://openclipart.org/image/800px/1',
     );
     expect(Object.keys(files)).toContain('/data/plugin/search-cache.json');
