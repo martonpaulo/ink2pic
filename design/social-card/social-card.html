@@ -4,8 +4,9 @@
   Render: bash scripts/social-card.sh -> design/social-card/social-card.jpg
   Rules: Skill Deck skd-project-standards references/public-pages.md section 5
   (https://github.com/martonpaulo/skill-deck/issues/261).
-  Colours: the e-ink screen's own palette, near-black ink on warm paper with greys, no colour and no
-  gradient, because the plugin lives on a Supernote (owner, 2026-11-06).
+  Colours: the tokens in :root; the palette rule lives in docs/decisions.md.
+  The icon is assets/icon.svg, drawn in black; at --icon-opacity over --paper its strokes come out in
+  --ink, because a file:// page may load an SVG only as an image, which takes no colour from the page.
   Visual: a redrawn Supernote-like page in a plain dark bezel (no brand marks): a handwritten
   "soup" in a lasso, and below it the kind of CC0 engraving the plugin inserts.
   tureen.svg: Openclipart 185227 "tureen" by johnny_automatic, CC0, from Dorothy Daly's
@@ -27,6 +28,9 @@
     --screen: #f8f6f1;
     --rule: #dcd8cf;
     --bezel: #262624;
+    --shadow-far: rgba(28, 28, 26, .22);
+    --shadow-near: rgba(28, 28, 26, .14);
+    --icon-opacity: .88;
   }
   html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
   body { position: relative; font-family: "Figtree", sans-serif; color: var(--ink); background: var(--paper); }
@@ -42,12 +46,12 @@
   h1 { font-family: "Gabarito", sans-serif; font-weight: 700; font-size: 88px; line-height: 1; margin: 28px 0 20px; letter-spacing: -.01em; }
   .promise { font-size: 38px; font-weight: 500; line-height: 1.2; margin: 0; }
   .domain { display: flex; align-items: center; gap: 14px; margin-top: 36px; font-size: 24px; font-weight: 500; color: var(--ink-soft); }
-  .domain svg { width: 40px; height: 40px; flex: none; }
+  .domain img { width: 40px; height: 40px; flex: none; opacity: var(--icon-opacity); }
   .device {
     position: absolute; left: 660px; top: 52px; width: 452px; height: 640px;
     box-sizing: border-box; padding: 20px 20px 0;
     background: var(--bezel); border-radius: 30px 30px 0 0;
-    box-shadow: 0 30px 60px rgba(28, 28, 26, .22), 0 6px 16px rgba(28, 28, 26, .14);
+    box-shadow: 0 30px 60px var(--shadow-far), 0 6px 16px var(--shadow-near);
   }
   .screen {
     position: relative; height: 100%; overflow: hidden;
@@ -61,7 +65,7 @@
     font-family: "Caveat", cursive; font-weight: 600; font-size: 104px; line-height: 1;
     transform: rotate(-3deg);
   }
-  .lasso { position: absolute; left: 92px; top: 38px; width: 236px; height: 124px; }
+  .lasso { position: absolute; left: 92px; top: 38px; width: 236px; height: 124px; stroke: var(--ink-soft); }
   .picture { position: absolute; left: 44px; top: 200px; width: 312px; padding: 6px; background: var(--screen); }
 </style>
 </head>
@@ -71,22 +75,14 @@
     <h1>Ink2Pic</h1>
     <p class="promise">Write a word by hand. Insert a matching picture.</p>
     <div class="domain">
-      <svg viewBox="0 0 48 48" fill="none" stroke="#1c1c1a" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <g transform="translate(-0.75 4)">
-          <path d="M24 10H7a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3V24"/>
-          <circle cx="12.5" cy="17.5" r="3"/>
-          <path d="M8 33l8-9 6 6 4-4 4 5"/>
-          <path d="M40.5 2.5l5 5L35 18l-7 2 2-7z"/>
-          <path d="M30 13l5 5"/>
-        </g>
-      </svg>
+      <img src="../../assets/icon.svg" alt="">
       github.com/martonpaulo/ink2pic
     </div>
   </div>
   <div class="device">
     <div class="screen">
       <div class="word">soup</div>
-      <svg class="lasso" viewBox="0 0 236 124" fill="none" stroke="#4a4945" stroke-width="2.5" stroke-dasharray="9 7" stroke-linecap="round" aria-hidden="true">
+      <svg class="lasso" viewBox="0 0 236 124" fill="none" stroke-width="2.5" stroke-dasharray="9 7" stroke-linecap="round" aria-hidden="true">
         <path d="M30 22C70 4 170 2 212 20c24 12 22 62 2 82-34 22-150 22-190 2C2 90 0 40 30 22z"/>
       </svg>
       <img class="picture" src="tureen.svg" alt="">
