@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose a focused improvement to Ink2Pic.
+title: "feat: "
+labels: ["type: feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What do you try to do on the Supernote, and what gets in the way?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: The behavior you want. Ink2Pic has no backend, no phone app and no API keys, by design.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

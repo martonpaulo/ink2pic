@@ -1,0 +1,50 @@
+name: Bug report
+description: Report something in Ink2Pic that does not work as expected.
+title: "bug: "
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach notes, logs or screenshots that show personal content or your device serial number.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Write "soup" in a note and lasso it.
+        2. Tap Find picture.
+        3. Observe…
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and firmware
+      placeholder: Manta, Chauvet 3.31.45
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Ink2Pic version
+      description: Shown in Settings > Apps > Plugins.
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt
+      description: Lines from MyStyle/Ink2Pic/logs/session.log, when the plugin wrote one.
+      render: text

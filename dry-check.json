@@ -1,0 +1,35 @@
+{
+ "magicValues": {
+  "folders": [],
+  "exclude": [
+   "android/**",
+   "buildPlugin.sh",
+   "buildPlugin.ps1",
+   "scripts/**"
+  ],
+  "counts": {
+   "index.js": {
+    "number": 5
+   }
+  }
+ },
+ "duplicates": {
+  "depth": 1,
+  "exclude": [
+   "android/**",
+   "buildPlugin.sh",
+   "buildPlugin.ps1",
+   "scripts/**"
+  ],
+  "counts": {}
+ },
+ "documents": {
+  "files": [
+   "**/*.md"
+  ],
+  "exclude": [
+   "docs/brief.md"
+  ],
+  "repeated": {}
+ }
+}
