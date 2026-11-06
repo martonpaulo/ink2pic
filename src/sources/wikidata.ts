@@ -27,7 +27,9 @@ type Response = {
 
 /**
  * The item by its English Wikipedia title: one request that also resolves case and redirects
- * ("apples" is the article "Apple").
+ * ("apples" is the article "Apple"). The word is lowercased first: recognition answers capitals
+ * ("SOUP"), and MediaWiki raises only the first letter, so «SOUP» would miss «Soup» or find an
+ * acronym's item (#43).
  * shortcut: English titles only, and a word that is a disambiguation page has no pictures;
  * upgrade to wbsearchentities plus wbgetentities if a device test misses a word this way.
  */
@@ -36,7 +38,7 @@ export function entityUrl(query: string): string {
     'action=wbgetentities',
     'format=json',
     'sites=enwiki',
-    `titles=${encodeURIComponent(query.trim())}`,
+    `titles=${encodeURIComponent(query.trim().toLowerCase())}`,
     'normalize=1',
     'props=claims',
   ];

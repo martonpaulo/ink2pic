@@ -20,9 +20,14 @@ describe('entityUrl', () => {
     expect(url).toMatch(/^https:\/\/www\.wikidata\.org\/w\/api\.php\?/);
     expect(url).toContain('action=wbgetentities');
     expect(url).toContain('sites=enwiki');
-    expect(url).toContain('titles=Napoleon%20Bonaparte');
+    expect(url).toContain('titles=napoleon%20bonaparte');
     expect(url).toContain('normalize=1');
     expect(url).toContain('props=claims');
+  });
+
+  it('lowercases the word: recognition answers capitals, MediaWiki raises only the first letter (#43)', () => {
+    // «SOUP» is not the article «Soup»: a title keeps every letter after the first.
+    expect(entityUrl('SOUP')).toContain('titles=soup&');
   });
 });
 
