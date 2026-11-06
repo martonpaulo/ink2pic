@@ -2,6 +2,17 @@
 
 One entry per build sent to the owner's Manta ([brief section 18](brief.md#18-device-test-protocol)).
 
+## Contents
+
+- [Build 0.1.0 (1), 2026-11-06, firmware 3.31.45](#build-010-1-2026-11-06-firmware-33145)
+- [Build 0.1.0 (2), 2026-11-06, firmware 3.31.45](#build-010-2-2026-11-06-firmware-33145)
+- [Build 0.1.0 (3), 2026-11-06, firmware 3.31.45](#build-010-3-2026-11-06-firmware-33145)
+- [Build 0.1.0 (8), 2026-11-06, firmware 3.31.45](#build-010-8-2026-11-06-firmware-33145)
+- [Build 0.1.0 (9), 2026-11-06, firmware 3.31.45](#build-010-9-2026-11-06-firmware-33145)
+- [Build 0.1.0 (10), 2026-11-06, firmware 3.31.45](#build-010-10-2026-11-06-firmware-33145)
+- [Build 0.1.0 (11), 2026-11-06, firmware 3.31.45](#build-010-11-2026-11-06-firmware-33145)
+- [Build 0.1.0 (12), 2026-11-06, firmware 3.31.45](#build-010-12-2026-11-06-firmware-33145)
+
 ## Build 0.1.0 (1), 2026-11-06, firmware 3.31.45
 
 Prerelease [`v0.1.0-dev.1`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.1), commit `3b46a22`, issue [#3](https://github.com/martonpaulo/ink2pic/issues/3). Screenshot: [`device-tests/0.1.0-1.jpg`](device-tests/0.1.0-1.jpg).
@@ -92,3 +103,16 @@ Prerelease [`v0.1.0-dev.11`](https://github.com/martonpaulo/ink2pic/releases/tag
 | 5 Wi-Fi off | The no-internet sentence and the Library | Pass | Owner report |
 | 6 Network Access off | A sentence naming the internet permission | Fail, fixed | The onboarding cards showed with no word on what was missing; Start asked again. Fixed in `c198c4c`: the screen names each missing permission before Start ([#37](https://github.com/martonpaulo/ink2pic/issues/37)) |
 | 7 New note, "cat" | A search for "cat" | Pass | Owner report |
+
+## Build 0.1.0 (12), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.12`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.12), commit `256aae2`. Seen on the owner's screen mirror and reported in chat.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 Network Access off, Find picture | «Ink2Pic needs internet access…» above Start | Pass | Start then showed the host's «Unable to Access the Network» dialog with Go to Settings |
+| 3 Allow, search again | The search runs | Pass | The lasso context was gone after Settings, so the screen said «Could not read the word. Type it instead.»; the typed word searched |
+| Library after the install | The pictures saved in builds 10 and 11 | Fail, fixed | «No saved pictures yet»: `library.json` lived in the private folder, which an install empties ([#41](https://github.com/martonpaulo/ink2pic/issues/41)) |
+| Keyboard after a typed search | The six tiles and the pager | Fail, fixed | The keyboard stayed open over half of the grid ([#42](https://github.com/martonpaulo/ink2pic/issues/42)) |
+| 4 Lasso "apple" again | Pictures at once, from the device | Pass | Owner report ([#16](https://github.com/martonpaulo/ink2pic/issues/16)) |
+| 5 `MyStyle/Ink2Pic/logs/` | `session.log` | Pass | Owner report ([#21](https://github.com/martonpaulo/ink2pic/issues/21)) |
