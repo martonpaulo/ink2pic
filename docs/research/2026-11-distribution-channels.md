@@ -14,6 +14,7 @@ through its source repository, `github/docs`.
 - [How other plugins were announced](#how-other-plugins-were-announced)
 - [GitHub search](#github-search)
 - [Ranked channels](#ranked-channels)
+- [Ink2Pic against the review rules](#ink2pic-against-the-review-rules)
 - [Open points](#open-points)
 
 ## Official channel: InkHub
@@ -136,6 +137,27 @@ By reach for the owner's time; each waits for the readiness bar named.
 | 4 | Post on r/Supernote ([#30](https://github.com/martonpaulo/ink2pic/issues/30)) | 20 minutes | A stable release, a video or GIF, the firmware it needs |
 | 5 | README, topics and preview image ([#26](https://github.com/martonpaulo/ink2pic/issues/26)) | 30 minutes | A device screenshot of the flow |
 | 6 | Facebook group | 15 minutes | A stable release |
+
+## Ink2Pic against the review rules
+
+Each rule of Ratta's post above, and how Ink2Pic meets it at `main` on 2026-11-06
+([#28](https://github.com/martonpaulo/ink2pic/issues/28)).
+
+| Rule | How Ink2Pic meets it | Status |
+| --- | --- | --- |
+| Installs and runs | Builds 0.1.0 (10) to (12) installed and ran on a Manta, firmware 3.31.45 (`docs/device-tests.md`) | Met |
+| Functions match `desc` | `desc` says: write by hand, lasso, insert a matching picture; that is the whole product | Met |
+| Permissions match functions | INTERNET for the search and the downloads; FILE:READ for the page size (error 1503 without it) and the library; FILE:WRITE for the pictures and the logs in `MyStyle/Ink2Pic/`. Each declared permission is requested in `src/onboarding/permissions.ts` (`PERMISSIONS`), and `__tests__/config.test.ts` keeps the declared list equal to the requested one | Met |
+| No abnormal file operation | Writes only under `MyStyle/Ink2Pic/` and the private plugin folder; never deletes in a shared folder (the automatic cleanup of [#57](https://github.com/martonpaulo/ink2pic/issues/57) was reverted for this rule); no FILE:DELETE declared; only its own thumbnail cache in the private folder is pruned | Met |
+| No upload or leak without authorization | The only data sent is the searched word, to Openclipart and Wikimedia Commons; `desc`, the README's Privacy section and the permission sentence say so; the word goes only after the person grants Network Access | Met; `desc` must also name Wikidata if [#43](https://github.com/martonpaulo/ink2pic/issues/43) ships it |
+| No hidden or malicious function | Public source under MIT; no key, account, analytics or backend | Met |
+| Does not disturb normal use | Inserts only on the person's tap; a crash is written to `crash.log` and never into the note ([#36](https://github.com/martonpaulo/ink2pic/issues/36)); the view never blocks the note app | Met, checked on the device in each round |
+| Least privilege | Three permissions, each with a use; no FILE:DELETE | Met |
+| Source code (optional) | Public at github.com/martonpaulo/ink2pic | Met |
+
+Submission: from the Manta, through InkHub, as the moderator's reply above says. The owner sends it
+after a build passes its full device check; a newer version goes through the plugin's page in
+InkHub, Edit, with a higher version.
 
 ## Open points
 

@@ -1,6 +1,7 @@
 import pluginConfig from '../PluginConfig.json';
 import {version} from '../package.json';
 import {USER_AGENT} from '../src/config';
+import {PERMISSIONS} from '../src/onboarding/permissions';
 
 describe('PluginConfig.json', () => {
   it('carries the package version, which the template build does not copy', () => {
@@ -35,10 +36,10 @@ describe('review readiness (#28)', () => {
   });
 
   it('declares only the permissions the code requests', () => {
-    expect(pluginConfig['uses-permissions']).toEqual([
-      'plugin.permission.INTERNET',
-      'plugin.permission.FILE:READ',
-      'plugin.permission.FILE:WRITE',
-    ]);
+    // Derived from the list the onboarding requests, so a permission added in code but not in
+    // the config fails here (build 0.1.0 (2) class, error 1503; Ratta's review, #28).
+    expect([...pluginConfig['uses-permissions']].sort()).toEqual(
+      PERMISSIONS.map(need => need.permission).sort(),
+    );
   });
 });
