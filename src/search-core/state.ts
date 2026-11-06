@@ -9,6 +9,8 @@ export type SearchState =
   | {kind: 'searching'}
   /** Every source answered; `results` is not empty. */
   | {kind: 'ready'; results: SearchResult[]}
+  /** The query found nothing; these are the results of the spelling a source suggested. */
+  | {kind: 'corrected'; results: SearchResult[]; query: string}
   /** A main source failed or was skipped; the others' results, possibly none. */
   | {kind: 'partial'; results: SearchResult[]}
   /** Every source answered and none had a picture. */
@@ -30,6 +32,9 @@ export function searchState(outcome: SearchOutcome): SearchState {
       status => status.state === 'failed' && OFFLINE_KINDS.has(status.kind),
     );
     return {kind: offline ? 'offline' : 'failed'};
+  }
+  if (outcome.correctedQuery && results.length > 0) {
+    return {kind: 'corrected', results, query: outcome.correctedQuery};
   }
   if (outcome.sourceDown) {
     return {kind: 'partial', results};

@@ -550,6 +550,8 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `search.empty` | No pictures found. Try a simpler English word. |
 | `search.recent` | Recent |
 | `search.needWord` | Type a word first. |
+| `search.corrected` | Showing results for {query}. |
+| `search.instead` | Search for {query} instead |
 | `nav.previous` / `nav.next` | ◀ / ▶ |
 | `nav.previousLabel` / `nav.nextLabel` | Previous page / Next page |
 | `insert.running` | Adding to your note… |

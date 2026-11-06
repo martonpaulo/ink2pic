@@ -118,10 +118,11 @@ describe('SearchScreen (#13)', () => {
     let answer!: (value: unknown) => void;
     search.mockReturnValue(new Promise(resolve => (answer = resolve)));
     const tree = await render();
+    // The line sits in its row, which holds the «Search for X instead» action too (#65).
     const place = () => {
-      const line = status(tree);
-      const siblings = line.parent!.children;
-      return siblings.indexOf(line);
+      const row = tree.root.findByProps({testID: 'status-row'});
+      expect(status(tree).parent?.props.testID).toBe('status-row');
+      return row.parent!.children.indexOf(row);
     };
     expect(place()).toBe(1);
     expect(statusText(tree)).toBe('');
@@ -213,6 +214,31 @@ describe('SearchScreen (#13)', () => {
     expect(texts(tree)).toContain(copy['error.place']);
     expect(tree.root.findAllByProps({testID: 'log'})).toHaveLength(0);
     expect(tree.root.findByProps({testID: 'tile-openclipart:1'})).toBeTruthy();
+    act(() => tree.unmount());
+  });
+});
+
+describe('the corrected search on the screen (#65)', () => {
+  it('says which spelling it showed, keeps the typed word, and searches it on request', async () => {
+    search = jest.fn(async (query: string) =>
+      query === 'Confucious Institute'
+        ? {ok: true, results: [], suggestion: 'confucius institute'}
+        : {ok: true, results: query === 'confucius institute' ? [result] : []},
+    );
+    const tree = await render({initialQuery: 'Confucious Institute'});
+    expect(statusText(tree)).toBe('Showing results for confucius institute.');
+    expect(tree.root.findByType(TextInput).props.value).toBe(
+      'Confucious Institute',
+    );
+    const instead = button(tree, 'Search for Confucious Institute instead');
+    expect(instead).toBeTruthy();
+    await act(async () => instead.props.onPress());
+    expect(search).toHaveBeenLastCalledWith(
+      'Confucious Institute',
+      expect.anything(),
+    );
+    expect(statusText(tree)).toBe('');
+    expect(texts(tree)).toContain(copy['search.empty']);
     act(() => tree.unmount());
   });
 });

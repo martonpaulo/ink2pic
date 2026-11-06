@@ -20,6 +20,11 @@ export type SearchOutcome = {
   sourceDown: boolean;
   /** Every source failed: nothing to show but the failure. */
   allFailed: boolean;
+  /**
+   * The spelling a source suggested, when the query found nothing and the suggestion did: the
+   * results are the suggestion's (#65). The query itself stays what the person typed.
+   */
+  correctedQuery?: string;
 };
 
 export type SearchOptions = {
@@ -27,6 +32,8 @@ export type SearchOptions = {
   clock?: Clock;
   /** Per request; a source of `requests` requests gets that many times this. */
   timeoutMs?: number;
+  /** False searches exactly the query: no corrected search («Search for X instead»). */
+  correct?: boolean;
 };
 
 /** A context with no network: every request fails, so a missing fetcher is never an empty answer. */
@@ -76,15 +83,15 @@ function status(outcome: SourceOutcome): SourceStatus {
     : {state: 'empty'};
 }
 
-export async function searchAll(
+type Pass = {outcome: SearchOutcome; suggestion?: string};
+
+async function searchOnce(
   query: string,
   sources: readonly SourceAdapter[],
-  {
-    ctx = NO_NETWORK,
-    clock = systemClock,
-    timeoutMs = SOURCE_TIMEOUT_MS,
-  }: SearchOptions = {},
-): Promise<SearchOutcome> {
+  ctx: SourceContext,
+  clock: Clock,
+  timeoutMs: number,
+): Promise<Pass> {
   const outcomes = await Promise.all(
     sources.map(source =>
       withTimeout(
@@ -106,10 +113,54 @@ export async function searchAll(
   );
   const failed = outcomes.filter(o => !o.ok).length;
   const mainFailed = outcomes.some((o, i) => !o.ok && !sources[i].supplement);
+  // The first source, in adapter order, that suggests a spelling.
+  const suggestion = outcomes.find(o => o.ok && o.suggestion);
   return {
-    results,
-    statuses,
-    sourceDown: mainFailed && failed < sources.length,
-    allFailed: failed === sources.length,
+    outcome: {
+      results,
+      statuses,
+      sourceDown: mainFailed && failed < sources.length,
+      allFailed: failed === sources.length,
+    },
+    suggestion: suggestion?.ok ? suggestion.suggestion : undefined,
+  };
+}
+
+/**
+ * Searches every source in parallel and ranks what they found. When nothing was found and a
+ * source suggested another spelling, the main sources search that spelling once (no supplement,
+ * so at most their own requests more); its results show when it found any.
+ */
+export async function searchAll(
+  query: string,
+  sources: readonly SourceAdapter[],
+  {
+    ctx = NO_NETWORK,
+    clock = systemClock,
+    timeoutMs = SOURCE_TIMEOUT_MS,
+    correct = true,
+  }: SearchOptions = {},
+): Promise<SearchOutcome> {
+  const first = await searchOnce(query, sources, ctx, clock, timeoutMs);
+  const {outcome, suggestion} = first;
+  if (
+    !correct ||
+    !suggestion ||
+    outcome.results.length > 0 ||
+    outcome.allFailed
+  ) {
+    return outcome;
+  }
+  ctx.log(`search "${query}": nothing found, trying "${suggestion}"`);
+  const main = sources.filter(source => !source.supplement);
+  const second = await searchOnce(suggestion, main, ctx, clock, timeoutMs);
+  if (second.outcome.results.length === 0) {
+    ctx.log(`search "${suggestion}": nothing found either`);
+    return outcome;
+  }
+  return {
+    ...second.outcome,
+    statuses: {...outcome.statuses, ...second.outcome.statuses},
+    correctedQuery: suggestion,
   };
 }

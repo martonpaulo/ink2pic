@@ -48,7 +48,7 @@ type Page = {
 type Response = {
   batchcomplete?: boolean;
   error?: {code?: string; info?: string};
-  query?: {pages?: Page[]};
+  query?: {pages?: Page[]; searchinfo?: {suggestion?: string}};
 };
 
 /** The smallest predefined width at or above `width`, else the largest. */
@@ -68,6 +68,14 @@ export function searchUrl(
     'action=query',
     'format=json',
     'formatversion=2',
+    // The generator sends no `searchinfo`; a one-hit list search beside it carries the spelling
+    // suggestion in the same request (research C, 2026-11-06).
+    'list=search',
+    `srsearch=${encodeURIComponent(search)}`,
+    'srnamespace=6',
+    'srlimit=1',
+    'srinfo=suggestion',
+    'srprop=',
     'generator=search',
     'gsrnamespace=6',
     `gsrsearch=${encodeURIComponent(search)}`,
@@ -165,9 +173,21 @@ function toResult(page: Page): SearchResult | null {
 const bySearchRank = (pages: Page[]) =>
   [...pages].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
 
-/** Results in search rank order, or why there are none. */
-export function parseSearchResponse(text: string): SourceOutcome {
-  return parseQuery(text, bySearchRank);
+/** Commons' «did you mean», without the filter keyword it echoes; none when it is the query. */
+function suggestionFor(data: Response, query: string): string | undefined {
+  const suggested = data.query?.searchinfo?.suggestion
+    ?.replace(DRAWING_FILTER, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return suggested &&
+    suggested.toLocaleLowerCase() !== query.trim().toLocaleLowerCase()
+    ? suggested
+    : undefined;
+}
+
+/** Results in search rank order, with Commons' spelling suggestion, or why there are none. */
+export function parseSearchResponse(text: string, query = ''): SourceOutcome {
+  return parseQuery(text, bySearchRank, data => suggestionFor(data, query));
 }
 
 /** The named files in the order given; a missing file is left out. */
@@ -187,6 +207,7 @@ export function parseFilesResponse(
 function parseQuery(
   text: string,
   order: (pages: Page[]) => Page[],
+  suggest: (data: Response) => string | undefined = () => undefined,
 ): SourceOutcome {
   let data: Response;
   try {
@@ -205,11 +226,13 @@ function parseQuery(
       ? {ok: true, results: []}
       : sourceFailure('parse', 'neither query nor error in the response');
   }
+  const suggestion = suggest(data);
   return {
     ok: true,
     results: order(data.query.pages ?? [])
       .map(toResult)
       .filter((r): r is SearchResult => r !== null),
+    ...(suggestion && {suggestion}),
   };
 }
 
@@ -232,25 +255,24 @@ export async function searchCommons(
   query: string,
   ctx: SourceContext,
 ): Promise<SourceOutcome> {
-  const drawings = await ask(
-    searchUrl(query, {drawings: true}),
-    ctx,
-    parseSearchResponse,
-  );
+  const parse = (text: string) => parseSearchResponse(text, query);
+  const drawings = await ask(searchUrl(query, {drawings: true}), ctx, parse);
   if (!drawings.ok || drawings.results.length >= PAGE_SIZE) {
     return drawings;
   }
-  const plain = await ask(searchUrl(query), ctx, parseSearchResponse);
+  const plain = await ask(searchUrl(query), ctx, parse);
   if (!plain.ok) {
     return drawings;
   }
   const seen = new Set(drawings.results.map(result => result.id));
+  const suggestion = drawings.suggestion ?? plain.suggestion;
   return {
     ok: true,
     results: [
       ...drawings.results,
       ...plain.results.filter(result => !seen.has(result.id)),
     ],
+    ...(suggestion && {suggestion}),
   };
 }
 

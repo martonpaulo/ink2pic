@@ -29,8 +29,13 @@ export async function searchCached(
   query: string,
   sources: readonly SourceAdapter[] = DEFAULT_ADAPTERS,
   ctx: SourceContext = deviceContext(),
+  {exact = false}: {exact?: boolean} = {},
 ): Promise<SearchOutcome> {
-  const run = (q: string) => searchAll(q, sources, {ctx});
+  const run = (q: string) => searchAll(q, sources, {ctx, correct: !exact});
+  if (exact) {
+    // The cached answer may be the corrected one: the person asked for the word as typed.
+    return run(query);
+  }
   const dir = await pluginFolder();
   if (!dir.ok) {
     log(`search cache: no plugin folder: ${dir.message}`);

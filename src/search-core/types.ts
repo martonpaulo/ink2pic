@@ -40,7 +40,14 @@ export type FailureKind =
 export type Failure = {ok: false; kind: FailureKind; message: string};
 
 /** A source's answer: results (possibly a real empty list) or why there are none. */
-export type SourceOutcome = {ok: true; results: SearchResult[]} | Failure;
+export type SourceOutcome =
+  | {
+      ok: true;
+      results: SearchResult[];
+      /** A spelling the source suggests instead of the query, when it has one (#65). */
+      suggestion?: string;
+    }
+  | Failure;
 
 export function sourceFailure(kind: FailureKind, message: string): Failure {
   return {ok: false, kind, message};

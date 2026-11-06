@@ -12,6 +12,8 @@ export const copy = {
   'search.empty': 'No pictures found. Try a simpler English word.',
   'search.recent': 'Recent',
   'search.needWord': 'Type a word first.',
+  'search.corrected': 'Showing results for {query}.',
+  'search.instead': 'Search for {query} instead',
   // Outside the brief's table: a page waits for its thumbnails after the search ended (#35).
   'page.loading': 'Loading pictures…',
   'nav.previous': '◀',
@@ -50,8 +52,7 @@ export const copy = {
     'Could not put the picture in the note. Open a note page and try again.',
   'error.placeSlow':
     'The picture may still appear. Check the page before you try again.',
-  'error.unexpected':
-    'Something went wrong. Close Ink2Pic and open it again.',
+  'error.unexpected': 'Something went wrong. Close Ink2Pic and open it again.',
   // Outside the brief's table: the starting screen (#12, build 0.1.0 (7)).
   'app.starting': 'Starting…',
   // Outside the brief's table: the empty Library tab (#15).

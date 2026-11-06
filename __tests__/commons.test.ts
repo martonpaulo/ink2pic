@@ -293,3 +293,46 @@ describe('drawings and canonical files (#43)', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe('the spelling suggestion (#65)', () => {
+  it('asks for it in the same request', () => {
+    const url = searchUrl('Instituto Conficio', {drawings: true});
+    expect(url).toContain('list=search');
+    expect(url).toContain(
+      `srsearch=${encodeURIComponent('Instituto Conficio filetype:drawing')}`,
+    );
+    expect(url).toContain('srinfo=suggestion');
+    expect(url).toContain('srlimit=1');
+    expect(url).toContain('srprop=&');
+  });
+
+  it('reads it without the filter keyword', () => {
+    expect(
+      parseSearchResponse(
+        fixture('commons-suggestion.json'),
+        'Instituto Conficio',
+      ),
+    ).toEqual({ok: true, results: [], suggestion: 'instituto confúcio'});
+  });
+
+  it('gives none when it only repeats the query', () => {
+    const same = JSON.stringify({
+      batchcomplete: true,
+      query: {searchinfo: {suggestion: 'soup filetype:drawing'}, search: []},
+    });
+    expect(parseSearchResponse(same, 'Soup')).toEqual({ok: true, results: []});
+  });
+
+  it('passes the suggestion of either Commons request on', async () => {
+    const fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(fixture('commons-suggestion.json')),
+    });
+    expect(await searchCommons('Instituto Conficio', ctx(fetch))).toEqual({
+      ok: true,
+      results: [],
+      suggestion: 'instituto confúcio',
+    });
+  });
+});

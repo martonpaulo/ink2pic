@@ -224,3 +224,77 @@ describe('sources of two requests and the supplement (#43)', () => {
     expect(byName.openclipart.supplement).toBeUndefined();
   });
 });
+
+describe('the corrected search (#65)', () => {
+  const suggesting = (
+    name: string,
+    answers: Record<string, SourceOutcome>,
+  ): SourceAdapter & {search: jest.Mock} => ({
+    name,
+    search: jest.fn(
+      async (query: string) => answers[query] ?? {ok: true, results: []},
+    ),
+  });
+
+  it('searches the suggestion once when the query found nothing', async () => {
+    const commons = suggesting('commons', {
+      'Confucious Institute': {
+        ok: true,
+        results: [],
+        suggestion: 'confucius institute',
+      },
+      'confucius institute': {ok: true, results: [result('c1')]},
+    });
+    const clipart = suggesting('openclipart', {});
+    const wikidata = {...suggesting('wikidata', {}), supplement: true as const};
+    const outcome = await searchAll('Confucious Institute', [
+      clipart,
+      commons,
+      wikidata,
+    ]);
+    expect(outcome.results.map(x => x.id)).toEqual(['c1']);
+    expect(outcome.correctedQuery).toBe('confucius institute');
+    expect(commons.search).toHaveBeenCalledTimes(2);
+    expect(clipart.search).toHaveBeenLastCalledWith(
+      'confucius institute',
+      expect.anything(),
+    );
+    // The supplement is not asked again: the extra requests stay the main sources' own.
+    expect(wikidata.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('tries one suggestion at most, and keeps the empty answer when it finds nothing', async () => {
+    const commons = suggesting('commons', {
+      qzxv: {ok: true, results: [], suggestion: 'qzxw'},
+      qzxw: {ok: true, results: [], suggestion: 'qzxy'},
+    });
+    const outcome = await searchAll('qzxv', [commons]);
+    expect(outcome.results).toEqual([]);
+    expect(outcome.correctedQuery).toBeUndefined();
+    expect(commons.search).toHaveBeenCalledTimes(2);
+  });
+
+  it('never corrects a query that found pictures, or an exact search', async () => {
+    const found = suggesting('commons', {
+      apple: {ok: true, results: [result('a1')], suggestion: 'apples'},
+    });
+    expect((await searchAll('apple', [found])).correctedQuery).toBeUndefined();
+    const exact = suggesting('commons', {
+      qzxv: {ok: true, results: [], suggestion: 'qzxw'},
+      qzxw: {ok: true, results: [result('w1')]},
+    });
+    expect(
+      (await searchAll('qzxv', [exact], {correct: false})).results,
+    ).toEqual([]);
+    expect(exact.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('never corrects when every source failed', async () => {
+    const down = answering('commons', {
+      ok: false,
+      kind: 'network',
+      message: 'offline',
+    });
+    expect((await searchAll('soup', [down])).allFailed).toBe(true);
+  });
+});

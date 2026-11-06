@@ -128,7 +128,8 @@ function isEntry(value: unknown): value is Entry {
   if (!isObject(value) || !isObject(value.outcome)) {
     return false;
   }
-  const {results, statuses, sourceDown, allFailed} = value.outcome;
+  const {results, statuses, sourceDown, allFailed, correctedQuery} =
+    value.outcome;
   return (
     typeof value.query === 'string' &&
     typeof value.savedAt === 'number' &&
@@ -137,7 +138,8 @@ function isEntry(value: unknown): value is Entry {
     isObject(statuses) &&
     Object.values(statuses).every(isStatus) &&
     typeof sourceDown === 'boolean' &&
-    typeof allFailed === 'boolean'
+    typeof allFailed === 'boolean' &&
+    (correctedQuery === undefined || typeof correctedQuery === 'string')
   );
 }
 

@@ -1,0 +1,11 @@
+{
+  "_fixture": "shape from a live answer of 2026-11-06 (research C, «Instituto Conficio filetype:drawing»): list=search in the same request gives the suggestion, with the filter in it, and no pages",
+  "batchcomplete": true,
+  "query": {
+    "searchinfo": {
+      "totalhits": 0,
+      "suggestion": "instituto confúcio filetype:drawing"
+    },
+    "search": []
+  }
+}

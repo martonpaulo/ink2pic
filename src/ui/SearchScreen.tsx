@@ -16,7 +16,7 @@ import {
   MeasuredPages,
   unmeasured,
 } from '../flow/measure';
-import {afterSearch, runSearch, stateCopy} from '../flow/search';
+import {afterSearch, insteadLabel, runSearch, stateText} from '../flow/search';
 import {log} from '../log/memory';
 import {
   SearchOutcome,
@@ -72,6 +72,8 @@ export function SearchScreen({
   );
   const [library, setLibrary] = useState<Library | null>(null);
   const [thumbDir, setThumbDir] = useState<string | null>(null);
+  // The word the shown results answer, for «Search for X instead» (#65).
+  const [searchedWord, setSearchedWord] = useState('');
   // The shown results' measures and contour thumbnails (#66).
   const [measured, setMeasured] = useState<MeasuredPages>(() => unmeasured([]));
   // One list per set of items: a new array on each render sent a Library page back to page 1
@@ -115,7 +117,7 @@ export function SearchScreen({
   };
 
   const search = useCallback(
-    async (text: string) => {
+    async (text: string, exact = false) => {
       const word = text.trim();
       if (!word) {
         setStatus(copy['search.needWord']);
@@ -132,6 +134,7 @@ export function SearchScreen({
         word,
         sources,
         () => ticket === latestSearch.current,
+        {exact},
       );
       setThumbDir(run.thumbDir);
       if (!run.outcome) {
@@ -147,6 +150,7 @@ export function SearchScreen({
         return;
       }
       setMeasured(pages);
+      setSearchedWord(word);
       setOutcome({...run.outcome, results: pages.results});
       setSearching(false);
       const next = await afterSearch(word, run.outcome);
@@ -173,20 +177,20 @@ export function SearchScreen({
   // The one status line: a set message first, then what the results view lacks (#50). With no
   // results, the grid itself says the state's sentence.
   const state = outcome && searchState(outcome);
-  const stateKey = state && stateCopy(state);
+  const stateLine = state && stateText(state);
   const noSearch = view === 'results' && !searching && !outcome;
   const resultsNote =
-    view === 'results' &&
-    !searching &&
-    stateKey !== null &&
-    (outcome?.results.length ?? 0) > 0;
+    view === 'results' && !searching && (outcome?.results.length ?? 0) > 0;
   const line =
     status ??
     (noSearch
       ? copy['search.needWord']
-      : resultsNote && stateKey
-      ? copy[stateKey]
+      : resultsNote && stateLine
+      ? stateLine
       : '');
+  // After a corrected search, the word as typed is one tap away; the field still holds it.
+  const corrected =
+    status === null && resultsNote && state?.kind === 'corrected';
 
   return (
     <Screen>
@@ -219,12 +223,20 @@ export function SearchScreen({
           onPress={() => toggle('library')}
         />
       </ToolBar>
-      <Text
-        testID="status"
-        style={[shared.text, styles.status]}
-        accessibilityLiveRegion="polite">
-        {line}
-      </Text>
+      <View testID="status-row" style={shared.row}>
+        <Text
+          testID="status"
+          style={[shared.text, styles.status]}
+          accessibilityLiveRegion="polite">
+          {line}
+        </Text>
+        {corrected && (
+          <Button
+            label={insteadLabel(searchedWord)}
+            onPress={() => search(searchedWord, true)}
+          />
+        )}
+      </View>
       {view === 'log' && <LogView />}
       {view === 'library' && (
         <View style={styles.fill}>
@@ -250,7 +262,7 @@ export function SearchScreen({
           results={outcome?.results ?? []}
           searching={searching}
           sourceDown={outcome?.sourceDown ?? false}
-          emptyText={copy[stateKey ?? 'search.empty']}
+          emptyText={stateLine ?? copy['search.empty']}
           onPick={pick}
           thumbDir={thumbDir}
           contourThumbs={measured.contourThumbs}
@@ -268,6 +280,7 @@ const styles = StyleSheet.create({
   },
   // Two lines reserved: the longest failure sentences wrap once on the Manta.
   status: {
+    flex: 1,
     lineHeight: metrics.bodyLineHeight,
     minHeight: metrics.bodyLineHeight * 2,
   },
