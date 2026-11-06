@@ -3,7 +3,7 @@
  * already submitted; the results grid; the Library tab with saved pictures and recent searches,
  * which also opens by itself when there is no network; and the live log.
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
 import {getLibrary, recordSearch} from '../library/device';
@@ -63,6 +63,10 @@ export function SearchScreen({
   );
   const [library, setLibrary] = useState<Library | null>(null);
   const [thumbDir, setThumbDir] = useState<string | null>(null);
+  // One insert at a time: a second tap during a slow e-ink refresh would add a second picture.
+  const inserting = useRef(false);
+  // The newest search wins: an older one that ends later is ignored (#33).
+  const latestSearch = useRef(0);
 
   useEffect(() => {
     getLibrary().then(setLibrary);
@@ -80,8 +84,14 @@ export function SearchScreen({
   };
 
   const pick = async (result: SearchResult) => {
+    if (inserting.current) {
+      log(`picked ${result.id} while an insert runs: ignored`);
+      return;
+    }
+    inserting.current = true;
     setStatus(copy['insert.running']);
     const inserted = await onPick(result, query.trim());
+    inserting.current = false;
     if (inserted.ok) {
       setStatus(null);
       return;
@@ -99,6 +109,7 @@ export function SearchScreen({
       setQuery(word);
       setView('results');
       setStatus(null);
+      const ticket = ++latestSearch.current;
       log(`search "${word}"`);
       setSearching(true);
       // The stored thumbnails are listed while the search runs, so the grid knows them at once.
@@ -107,6 +118,10 @@ export function SearchScreen({
         prepareThumbs(),
       ]);
       setThumbDir(dir);
+      if (ticket !== latestSearch.current) {
+        log(`search "${word}" ended after a newer one: ignored`);
+        return;
+      }
       for (const [name, sourceStatus] of Object.entries(result.statuses)) {
         log(`source ${name}: ${JSON.stringify(sourceStatus)}`);
       }

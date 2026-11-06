@@ -45,4 +45,4 @@ registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
 }).then(result => report('lasso button', result));
 
 // After registerButton, as the official docs order it; before the view exists (gotcha 11).
-startButtonQueue();
+report('button listener', startButtonQueue());

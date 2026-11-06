@@ -12,16 +12,25 @@ export const LOG_FILE_MAX_LINES = 2000;
 let target: string | null = null;
 let writing: Promise<unknown> = Promise.resolve();
 
-/** `<shared root>/MyStyle/Ink2Pic/logs`; keeps the previous session's file once. */
-export async function openLogFile(logsDir: string): Promise<void> {
-  const path = `${logsDir}/session.log`;
-  if (target === path) {
+/** `<shared root>/MyStyle/Ink2Pic/logs`: where flushes write from now on. */
+export function openLogFile(logsDir: string): void {
+  target = `${logsDir}/session.log`;
+}
+
+/**
+ * Keeps the last session's file as session.prev.log; called on each button press, because the
+ * JS runtime outlives the view and every press starts a new log (review of build 0.1.0 (8), #33).
+ */
+export async function rotateLogFile(): Promise<void> {
+  if (!target) {
     return;
   }
-  target = path;
-  const previous = await readText(path);
+  const previous = await readText(target);
   if (previous.ok && previous.value) {
-    await writeText(`${logsDir}/session.prev.log`, previous.value);
+    await writeText(
+      target.replace(/session\.log$/, 'session.prev.log'),
+      previous.value,
+    );
   }
 }
 

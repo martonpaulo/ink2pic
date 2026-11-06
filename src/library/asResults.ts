@@ -12,5 +12,9 @@ export function libraryResults(items: LibraryItem[]): SearchResult[] {
     license: item.license,
     attribution: item.attribution,
     localPath: item.path,
+    localSize:
+      item.width !== null && item.height !== null
+        ? {width: item.width, height: item.height}
+        : undefined,
   }));
 }

@@ -28,15 +28,20 @@ export const deviceStorage: TextStorage = {
 };
 
 let current: Library | null = null;
+/**
+ * False while library.json could not be read: the screen shows an empty library, but nothing is
+ * saved over a file that may still hold the owner's pictures (review of build 0.1.0 (8), #33).
+ */
+let writable = false;
 
 async function libraryPath(): Promise<Result<string>> {
   const paths = await sessionPaths();
   return paths.ok ? ok(`${paths.value.pluginDir}/library.json`) : paths;
 }
 
-/** The library, loaded once; an unreadable file is reported and the library starts empty. */
+/** The library, loaded once; an unreadable file is reported, shown empty, and never overwritten. */
 export async function getLibrary(): Promise<Library> {
-  if (current) {
+  if (current && writable) {
     return current;
   }
   const path = await libraryPath();
@@ -45,16 +50,16 @@ export async function getLibrary(): Promise<Library> {
     current = emptyLibrary();
     return current;
   }
-  try {
-    const loaded = await logged('loadLibrary', () =>
-      loadLibrary(deviceStorage, path.value).then(parsed =>
-        parsed.ok ? ok(parsed.library) : fail(-1, parsed.message),
-      ),
-    );
-    current = loaded.ok ? loaded.value : emptyLibrary();
-  } catch (error) {
-    log(`library: read failed: ${String(error)}`);
-    current = emptyLibrary();
+  const loaded = await logged('loadLibrary', () =>
+    loadLibrary(deviceStorage, path.value).then(
+      parsed => (parsed.ok ? ok(parsed.library) : fail(-1, parsed.message)),
+      error => fail(-1, String(error)),
+    ),
+  );
+  writable = loaded.ok;
+  current = loaded.ok ? loaded.value : emptyLibrary();
+  if (!loaded.ok) {
+    log('library: not saved this session, so the file on the device is kept');
   }
   return current;
 }
@@ -62,7 +67,7 @@ export async function getLibrary(): Promise<Library> {
 async function save(next: Library): Promise<void> {
   current = next;
   const path = await libraryPath();
-  if (!path.ok) {
+  if (!path.ok || !writable) {
     return;
   }
   await logged('saveLibrary', () =>
@@ -83,4 +88,5 @@ export async function recordSearch(query: string): Promise<void> {
 
 export function resetLibraryForTests(): void {
   current = null;
+  writable = false;
 }

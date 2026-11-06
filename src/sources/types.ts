@@ -12,6 +12,8 @@ export type SearchResult = {
   mime?: string;
   /** Set for a library picture: already on the device, inserted without a download. */
   localPath?: string;
+  /** The library picture's size, so it can be placed at the lasso too (#33). */
+  localSize?: {width: number; height: number};
 };
 
 export type SourceName = 'openclipart' | 'commons';

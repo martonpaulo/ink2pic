@@ -2,8 +2,13 @@
 export const SHARED_FOLDER = 'MyStyle/Ink2Pic';
 
 /** `<root>/MyStyle/Ink2Pic/library`, from the first shared-storage root. */
+/** `<root>/MyStyle/Ink2Pic/<folder>`. */
+function sharedDir(externalRoot: string, folder: string): string {
+  return `${externalRoot.replace(/\/+$/, '')}/${SHARED_FOLDER}/${folder}`;
+}
+
 export function libraryDir(externalRoot: string): string {
-  return `${externalRoot.replace(/\/+$/, '')}/${SHARED_FOLDER}/library`;
+  return sharedDir(externalRoot, 'library');
 }
 
 /** A file name safe on the device: letters, digits, dot, dash and underscore only. */
@@ -15,5 +20,5 @@ export function safeFileName(name: string): string {
 
 /** `<root>/MyStyle/Ink2Pic/logs`, where the session log lives (#21). */
 export function logsDir(externalRoot: string): string {
-  return `${externalRoot.replace(/\/+$/, '')}/${SHARED_FOLDER}/logs`;
+  return sharedDir(externalRoot, 'logs');
 }

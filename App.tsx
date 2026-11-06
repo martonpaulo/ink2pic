@@ -12,6 +12,7 @@ import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
 import type {LassoPlace} from './src/flow/place';
 import {sessionPaths} from './src/flow/session';
+import {rotateLogFile} from './src/log/file';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
 import {log, logged, startLog} from './src/log/memory';
 import {needsOnboarding} from './src/onboarding/permissions';
@@ -73,10 +74,32 @@ function App(): React.JSX.Element {
     });
   };
 
+  // One flow at a time; a flow from before the last close is dropped (#33).
+  const running = useRef(false);
+  const generation = useRef(0);
+
   const start = async (buttonId: number) => {
+    if (running.current) {
+      log(`button ${buttonId} while a start runs: ignored`);
+      return;
+    }
+    running.current = true;
+    const mine = generation.current;
+    try {
+      await startFlow(buttonId, mine);
+    } finally {
+      running.current = false;
+    }
+  };
+
+  const startFlow = async (buttonId: number, mine: number) => {
     setScreen({name: 'starting'});
     // Paths and the session log file first (#21); a failure is logged and the view goes on.
     await sessionPaths();
+    await rotateLogFile();
+    if (mine !== generation.current) {
+      return;
+    }
     if (await needsOnboarding()) {
       log('onboarding: a permission is missing');
       setScreen({name: 'onboarding', buttonId});
@@ -109,24 +132,32 @@ function App(): React.JSX.Element {
       log(`lifecycle ${state}`);
       if (state === LifeState.stop) {
         pressed.current = false;
+        generation.current += 1;
         setScreen({name: 'starting'});
+      } else if (state === LifeState.start) {
+        armWatchdog();
       }
     });
-    // 4. Last resort: no press at all within the wait.
-    const watchdog = setTimeout(async () => {
-      if (pressed.current) {
-        return;
-      }
-      log(
-        `no button event after ${BUTTON_EVENT_WAIT_MS} ms; checking the lasso`,
-      );
-      const lasso = await logged('getLassoElements', getLassoElements);
-      start(
-        lasso.ok && lasso.value.length > 0
-          ? LASSO_BUTTON_ID
-          : SIDEBAR_BUTTON_ID,
-      );
-    }, BUTTON_EVENT_WAIT_MS);
+    // 4. Last resort, on mount and each time the view opens again: no press within the wait.
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const armWatchdog = () => {
+      clearTimeout(watchdog);
+      watchdog = setTimeout(async () => {
+        if (pressed.current) {
+          return;
+        }
+        log(
+          `no button event after ${BUTTON_EVENT_WAIT_MS} ms; checking the lasso`,
+        );
+        const lasso = await logged('getLassoElements', getLassoElements);
+        start(
+          lasso.ok && lasso.value.length > 0
+            ? LASSO_BUTTON_ID
+            : SIDEBAR_BUTTON_ID,
+        );
+      }, BUTTON_EVENT_WAIT_MS);
+    };
+    armWatchdog();
     return () => {
       stopPresses();
       stopLife();

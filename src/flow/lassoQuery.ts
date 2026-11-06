@@ -22,6 +22,8 @@ export async function readLassoQuery(): Promise<Result<LassoQuery>> {
   if (elements.value.length === 0) {
     return fail(THROWN_CODE, 'the lasso holds no handwriting');
   }
+  // The rect too, before the slow recognition: lasso context is short-lived (#33).
+  const rect = await logged('getLassoRect', getLassoRect);
   const path = await logged('getCurrentFilePath', getCurrentFilePath);
   if (!path.ok) {
     return path;
@@ -46,7 +48,6 @@ export async function readLassoQuery(): Promise<Result<LassoQuery>> {
   if (!query) {
     return fail(THROWN_CODE, 'the handwriting was recognized as empty text');
   }
-  const rect = await logged('getLassoRect', getLassoRect);
   return ok({
     query,
     place: rect.ok

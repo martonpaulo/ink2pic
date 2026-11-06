@@ -5,7 +5,7 @@
  * picture is already on the device and is inserted without a download (#15).
  */
 import {recordInsert} from '../library/device';
-import {logged} from '../log/memory';
+import {logged, TIMEOUT_CODE} from '../log/memory';
 import {insertImage} from '../sdk/note';
 import {ok, Result} from '../sdk/result';
 import type {SearchResult} from '../sources/types';
@@ -59,7 +59,8 @@ async function insertInNote(
 ): Promise<Result<unknown>> {
   if (place && saved.size) {
     const placed = await placeAtLasso(saved.path, saved.size, place);
-    if (placed.ok) {
+    // After a TIMEOUT the host may still insert it: a fallback could add a second copy (#33).
+    if (placed.ok || placed.code === TIMEOUT_CODE) {
       return placed;
     }
   }
@@ -72,7 +73,7 @@ export async function insertPicture(
   place: LassoPlace | null = null,
 ): Promise<Result<string>> {
   const saved: Result<Saved> = result.localPath
-    ? ok({path: result.localPath, size: null})
+    ? ok({path: result.localPath, size: result.localSize ?? null})
     : await download(result);
   if (!saved.ok) {
     return saved;
@@ -92,7 +93,7 @@ export async function insertPicture(
       attribution: result.attribution,
       savedAt: new Date().toISOString(),
       path: saved.value.path,
-      width: saved.value.size?.width ?? INSERT_WIDTH,
+      width: saved.value.size?.width ?? null,
       height: saved.value.size?.height ?? null,
     });
   }

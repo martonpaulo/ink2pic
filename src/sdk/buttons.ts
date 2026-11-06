@@ -39,13 +39,21 @@ export type ButtonPress = {id: number};
 let pending: number | null = null;
 const pressListeners = new Set<(press: ButtonPress) => void>();
 
-export function startButtonQueue(): void {
-  PluginManager.registerButtonListener({
-    onButtonPress: event => {
-      pending = event.id;
-      pressListeners.forEach(listener => listener({id: event.id}));
-    },
-  });
+export function startButtonQueue(): Result<true> {
+  try {
+    PluginManager.registerButtonListener({
+      onButtonPress: event => {
+        pending = event.id;
+        pressListeners.forEach(listener => listener({id: event.id}));
+      },
+    });
+    return ok(true);
+  } catch (error) {
+    return fail(
+      THROWN_CODE,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 }
 
 /** The press that arrived before the view listened, once; null when there is none. */

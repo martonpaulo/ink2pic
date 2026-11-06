@@ -27,7 +27,7 @@ export async function sessionPaths(): Promise<Result<SessionPaths>> {
     return dir;
   }
   cached = {root: roots.value[0], pluginDir: dir.value};
-  await openLogFile(logsDir(cached.root));
+  openLogFile(logsDir(cached.root));
   setAfterCall(() => {
     flushLogFile();
   });
