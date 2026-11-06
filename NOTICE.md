@@ -5,6 +5,8 @@ Ink2Pic is MIT-licensed ([LICENSE](LICENSE)). It adapts third-party work:
 | Project | License | What Ink2Pic uses | Details |
 | --- | --- | --- | --- |
 | [Keplex/supernote-pic2note](https://github.com/Keplex/supernote-pic2note) at `5a210f8` | MIT | The light native build pipeline without Gradle | [below](#keplexsupernote-pic2note) |
+| [Gabarito](https://github.com/naipefoundry/gabarito), `@fontsource/gabarito` 5.3.0 | OFL-1.1 | The name on the social card, 700 latin WOFF2 | [OFL-Gabarito.txt](design/social-card/fonts/OFL-Gabarito.txt) |
+| [Figtree](https://github.com/erikdkennedy/figtree), `@fontsource/figtree` 5.3.0 | OFL-1.1 | The other social-card text, 500 and 700 latin WOFF2 | [OFL-Figtree.txt](design/social-card/fonts/OFL-Figtree.txt) |
 
 ## Keplex/supernote-pic2note
 

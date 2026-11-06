@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  Ink2Pic social card, 1200x630: the repository's GitHub social preview (#40).
+  Render: bash scripts/social-card.sh -> design/social-card/social-card.jpg
+  Rules: Skill Deck skd-project-standards references/public-pages.md section 5
+  (https://github.com/martonpaulo/skill-deck/issues/261).
+  screen.png: the plugin's results for a handwritten "soup" on a Supernote Manta, from the owner's
+  screen mirror of a device round, cropped to the device screen and turned to grey.
+  Ground: fountain-pen ink blue, because the plugin turns handwritten ink into a picture.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ink2Pic social card</title>
+<style>
+  @font-face { font-family: "Gabarito"; font-weight: 700; src: url("fonts/gabarito-latin-700-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Figtree"; font-weight: 500; src: url("fonts/figtree-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Figtree"; font-weight: 700; src: url("fonts/figtree-latin-700-normal.woff2") format("woff2"); }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative;
+    font-family: "Figtree", sans-serif;
+    color: #fff;
+    background:
+      radial-gradient(circle at 78% 30%, rgba(96, 165, 250, .45), transparent 55%),
+      linear-gradient(135deg, #0a1f5c 0%, #1e3a9e 48%, #2f5bd8 100%);
+  }
+  .copy {
+    position: absolute; left: 96px; top: 0; bottom: 0; width: 440px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .eyebrow {
+    align-self: flex-start;
+    font-size: 19px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 9px 16px; border-radius: 999px;
+    background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .35);
+  }
+  h1 { font-family: "Gabarito", sans-serif; font-weight: 700; font-size: 88px; line-height: 1; margin: 28px 0 20px; letter-spacing: -.01em; }
+  .promise { font-size: 38px; font-weight: 500; line-height: 1.2; margin: 0; }
+  .domain { display: flex; align-items: center; gap: 14px; margin-top: 36px; font-size: 24px; font-weight: 500; }
+  .domain svg { width: 40px; height: 40px; flex: none; }
+  .window {
+    position: absolute; left: 610px; top: 62px; width: 540px;
+    background: #fff; border-radius: 22px; overflow: hidden;
+    box-shadow: 0 40px 80px rgba(15, 23, 42, .30), 0 8px 20px rgba(15, 23, 42, .12);
+  }
+  .window img { display: block; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <span class="eyebrow">Supernote plugin · Open source</span>
+    <h1>Ink2Pic</h1>
+    <p class="promise">Write a word by hand. Insert a matching picture.</p>
+    <div class="domain">
+      <svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <g transform="translate(-0.75 4)">
+          <path d="M24 10H7a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3V24"/>
+          <circle cx="12.5" cy="17.5" r="3"/>
+          <path d="M8 33l8-9 6 6 4-4 4 5"/>
+          <path d="M40.5 2.5l5 5L35 18l-7 2 2-7z"/>
+          <path d="M30 13l5 5"/>
+        </g>
+      </svg>
+      github.com/martonpaulo/ink2pic
+    </div>
+  </div>
+  <div class="window"><img src="screen.png" alt=""></div>
+</body>
+</html>
