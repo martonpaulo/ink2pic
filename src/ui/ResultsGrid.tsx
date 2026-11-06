@@ -1,27 +1,38 @@
 /**
  * Search results as pages of six large tiles, for e-ink (brief section 8.4): no scrolling, no
- * animation, and each page shown once, when all its thumbnails have loaded or failed. A thumbnail
+ * animation, and each page shown once, when all its thumbnails have loaded. A result whose
+ * thumbnail fails, from its file and then from the web, leaves the list: the next result takes its
+ * place and the page count follows, so a page shows only pictures, never a title (#64). A thumbnail
  * not yet stored is downloaded to its file first and the tile renders the file: one request each
  * (#46). Nothing is inserted above the tiles: the page's loading line lies over the hidden grid,
  * and the screen's own status line carries the source note, so no tile shrinks or repaints (#50).
+ * A transparent picture lies on paper white, never on black: the tile and the image are white
+ * behind it (#64).
  */
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
-import {PAGE_SIZE, pageCount, pageOf} from '../search/pages';
-import {
-  cachedThumbUri,
-  needsDownload,
-  thumbUri,
-  webRetryUri,
-} from '../search/thumbs';
+import {PAGE_SIZE} from '../search/pages';
+import {cachedThumbUri, needsDownload, thumbUri} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
 import {Button} from './Button';
 import {copy} from './copy';
 import {metrics} from './metrics';
 import {shared} from './styles';
+import {
+  initialTile,
+  nextTile,
+  tilePage,
+  tileUri,
+  type Tile,
+  type TileEvent,
+} from './tiles';
 
-/** A page shows at the latest after this, with unanswered thumbnails marked failed (#24). */
+/**
+ * A page shows at the latest after this, without its unanswered thumbnails (#24, #64).
+ * shortcut: each round of replacements gets its own wait, so a server that never answers costs
+ * one wait per round; bound the total if a device report shows a page waiting that long.
+ */
 export const THUMB_TIMEOUT_MS = 8000;
 /** Two tiles per row; the rows follow from PAGE_SIZE: three for six. */
 const COLUMNS = 2;
@@ -58,12 +69,6 @@ export function ResultsGrid({
   const [paging, setPaging] = useState({results, page: 0});
   const page = paging.results === results ? paging.page : 0;
   const setPage = (next: number) => setPaging({results, page: next});
-  // Settled ids only grow: a tile that keeps its key keeps its loaded image and fires no new
-  // onLoad, so clearing the set would hide the page for good.
-  const [settled, setSettled] = useState<ReadonlySet<string>>(new Set());
-  const pages = pageCount(results.length);
-  const visible = useMemo(() => pageOf(results, page), [results, page]);
-
   // Chosen once per results list: the stored file, the web URL when there is no store, or null
   // while the thumbnail must be downloaded first (#46).
   const thumbUris = useMemo(
@@ -80,61 +85,42 @@ export function ResultsGrid({
       ),
     [results, thumbDir],
   );
-  // The URIs of thumbnails downloaded for this results list, as each download ends.
-  const [fetched, setFetched] = useState<{
-    results: SearchResult[];
-    uris: ReadonlyMap<string, string>;
-  }>({results, uris: new Map()});
-  const fetchedUris = fetched.results === results ? fetched.uris : null;
-  // Tiles whose stored file failed to show and that now try the web URL, once each (#46).
-  const [retried, setRetried] = useState<ReadonlyMap<string, string>>(
-    new Map(),
-  );
-  const uriOf = (result: SearchResult): string | null =>
-    retried.get(result.id) ??
-    fetchedUris?.get(result.id) ??
-    thumbUris.get(result.id) ??
-    null;
+  // Each tile's state after its first one, by result id. It is kept across results lists: a tile
+  // that keeps its key keeps its loaded image and fires no new onLoad, so a fresh state would hide
+  // the page for good (#23), and a failed thumbnail stays out of every list this grid shows.
+  const [tiles, setTiles] = useState<ReadonlyMap<string, Tile>>(new Map());
+  const tileIn = (map: ReadonlyMap<string, Tile>, result: SearchResult) =>
+    map.get(result.id) ?? initialTile(thumbUris.get(result.id) ?? null);
+  const tileOf = (result: SearchResult): Tile => tileIn(tiles, result);
+  const send = (result: SearchResult, event: TileEvent) =>
+    setTiles(previous =>
+      new Map(previous).set(
+        result.id,
+        nextTile(tileIn(previous, result), event, result),
+      ),
+    );
 
-  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
-
-  // The page timer reads the latest settled ids, not the ones of the render that started it.
-  const settledNow = useRef(settled);
-  settledNow.current = settled;
-
-  const settle = (id: string) =>
-    setSettled(previous => new Set(previous).add(id));
-  const fail = (id: string) => {
-    setFailed(previous => new Set(previous).add(id));
-    settle(id);
-  };
-  /** A stored file that cannot be shown tries its web URL once; anything else has failed. */
-  const failedToShow = (result: SearchResult) => {
-    const uri = uriOf(result);
-    const retry =
-      uri !== null && !retried.has(result.id) ? webRetryUri(result, uri) : null;
-    if (retry === null) {
-      fail(result.id);
-      return;
-    }
-    setRetried(previous => new Map(previous).set(result.id, retry));
-  };
-  const ready = visible.every(result => settled.has(result.id));
+  const cut = tilePage(results, tileOf, page);
+  const visibleIds = cut.visible.map(result => result.id).join('\n');
+  // One array per results list and set of tiles on the page, not per loaded tile, so the
+  // effects below run only when the page's tiles change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const visible = useMemo(() => cut.visible, [results, visibleIds]);
+  const ready = visible.every(result => tileOf(result).status === 'ready');
 
   // A thumbnail that never answers must not hide the page: React Native's Image has no timeout.
+  // A tile that loaded in the meantime ignores the timeout.
   useEffect(() => {
     if (ready) {
       return;
     }
     const timer = setTimeout(() => {
       for (const result of visible) {
-        if (!settledNow.current.has(result.id)) {
-          fail(result.id);
-        }
+        send(result, {type: 'timeout'});
       }
     }, THUMB_TIMEOUT_MS);
     return () => clearTimeout(timer);
-    // The timer restarts per page, not per settled tile.
+    // The timer restarts per set of tiles on the page, not per loaded tile.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, ready]);
 
@@ -149,27 +135,22 @@ export function ResultsGrid({
         continue;
       }
       thumbUri(result, thumbDir).then(uri => {
-        if (!live) {
-          return;
+        if (live) {
+          send(result, {type: 'downloaded', uri});
         }
-        setFetched(previous => ({
-          results,
-          uris: new Map(previous.results === results ? previous.uris : []).set(
-            result.id,
-            uri,
-          ),
-        }));
       });
     }
     return () => {
       live = false;
     };
-  }, [visible, thumbDir, thumbUris, results]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, thumbDir, thumbUris]);
 
   if (searching) {
     return <Text style={shared.text}>{copy['search.running']}</Text>;
   }
-  if (results.length === 0) {
+  // A list whose every thumbnail failed shows no picture, so it reads as no result.
+  if (cut.empty) {
     return (
       <Text style={shared.text}>
         {sourceDown ? copy['error.sourceDown'] : emptyText}
@@ -197,21 +178,17 @@ export function ResultsGrid({
                     accessibilityLabel={result.title}
                     style={[shared.outline, styles.tile]}
                     onPress={() => onPick(result)}>
-                    {failed.has(result.id) ? (
-                      <Text style={[shared.text, styles.failedTitle]}>
-                        {result.title}
-                      </Text>
-                    ) : uriOf(result) === null ? null : (
+                    {tileUri(tileOf(result)) === null ? null : (
                       <Image
                         source={{
-                          uri: uriOf(result) as string,
+                          uri: tileUri(tileOf(result)) as string,
                           headers: THUMB_HEADERS,
                         }}
                         style={styles.image}
                         resizeMode="contain"
                         fadeDuration={0}
-                        onLoad={() => settle(result.id)}
-                        onError={() => failedToShow(result)}
+                        onLoad={() => send(result, {type: 'loaded'})}
+                        onError={() => send(result, {type: 'error'})}
                       />
                     )}
                   </Pressable>
@@ -228,15 +205,15 @@ export function ResultsGrid({
         <Button
           label={copy['nav.previous']}
           accessibilityLabel={copy['nav.previousLabel']}
-          disabled={page === 0}
-          onPress={() => setPage(page - 1)}
+          disabled={cut.page === 0}
+          onPress={() => setPage(cut.page - 1)}
         />
-        <Text style={shared.text}>{`${page + 1} / ${pages}`}</Text>
+        <Text style={shared.text}>{`${cut.page + 1} / ${cut.pages}`}</Text>
         <Button
           label={copy['nav.next']}
           accessibilityLabel={copy['nav.nextLabel']}
-          disabled={page >= pages - 1}
-          onPress={() => setPage(page + 1)}
+          disabled={cut.page >= cut.pages - 1}
+          onPress={() => setPage(cut.page + 1)}
         />
       </View>
     </View>
@@ -253,7 +230,7 @@ const styles = StyleSheet.create({
   row: {flex: 1, flexDirection: 'row', gap: metrics.tileGap},
   hidden: {opacity: 0},
   tile: {flex: 1, backgroundColor: metrics.paper},
-  image: {flex: 1},
-  failedTitle: {margin: metrics.tilePadding},
+  // White behind the picture itself, so a transparent thumbnail never lies on black (#64).
+  image: {flex: 1, backgroundColor: metrics.paper},
   nav: {justifyContent: 'center', marginTop: metrics.sectionGap},
 });

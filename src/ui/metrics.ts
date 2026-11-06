@@ -53,8 +53,6 @@ export const metrics = {
   rowPadding: space,
   /** Between the tiles of the results grid. */
   tileGap: space,
-  /** Around a failed tile's title. */
-  tilePadding: space,
 
   fontSmall: bodyFont * SMALL_FONT_RATIO,
   fontBody: bodyFont,

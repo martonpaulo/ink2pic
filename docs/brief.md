@@ -479,6 +479,8 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 - No animations, no animated spinners. Static "Searching…" text.
 - Black on white, thick borders, large touch targets.
 - Render the grid once when all visible thumbnails are ready (or once per page), not image by image, to avoid repeated e-ink refreshes.
+- A page shows only pictures: a result whose thumbnail fails, from its file and then from the web, or never answers, leaves the list, the next result takes its place and the page count follows; no tile shows a title instead ([#64](https://github.com/martonpaulo/ink2pic/issues/64)). A list whose every thumbnail failed reads as no result.
+- A transparent thumbnail lies on paper white: the tile and the image are white behind it; the inserted picture is flattened on white by `prepareForEink` ([#64](https://github.com/martonpaulo/ink2pic/issues/64)). Whether Fresco on the device keeps the thumbnail's alpha is [TO TEST].
 - One status line, two lines high, sits under the search bar on every view and is always there; no message is inserted above the tiles, so a message never shrinks or repaints them. The page's «Loading pictures…» lies over the hidden grid ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
 - As in the system interface: black fill marks the one primary action of a screen (Start, Search); a selected toggle (Library, Log) shows a bar under its label ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
 - The results view is never blank: before any search, and after Search with an empty field, it says «Type a word first.»; a failed lasso opens on it with the field focused ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).

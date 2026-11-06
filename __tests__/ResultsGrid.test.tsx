@@ -6,6 +6,7 @@ import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {PAGE_SIZE, pageCount, pageOf} from '../src/search/pages';
 import type {SearchResult} from '../src/sources/types';
 import {copy} from '../src/ui/copy';
+import {metrics} from '../src/ui/metrics';
 import {ResultsGrid, THUMB_TIMEOUT_MS} from '../src/ui/ResultsGrid';
 
 const result = (n: number): SearchResult => ({
@@ -47,6 +48,17 @@ const navButton = (tree: ReactTestRenderer, label: string) =>
   tree.root.find(
     node => node.props.accessibilityLabel === label && node.props.onPress,
   );
+const gridOf = (tree: ReactTestRenderer) =>
+  tree.root.findByProps({testID: 'grid'});
+const tileIds = (tree: ReactTestRenderer) =>
+  tree.root
+    .findAll(
+      node =>
+        typeof node.props.testID === 'string' &&
+        node.props.testID.startsWith('tile-') &&
+        typeof node.type === 'string',
+    )
+    .map(node => node.props.testID.slice('tile-'.length));
 const loadAll = (tree: ReactTestRenderer) =>
   act(() => tree.root.findAllByType(Image).forEach(img => img.props.onLoad()));
 
@@ -192,33 +204,75 @@ describe('ResultsGrid', () => {
     ]);
   });
 
-  it('shows a page whose thumbnails never answer, with those tiles failed (#24)', () => {
+  it('shows a page whose thumbnails never answer, without those tiles (#24, #64)', () => {
     jest.useFakeTimers();
     try {
       const tree = render();
       act(() => tree.root.findAllByType(Image)[0].props.onLoad());
-      expect(
-        tree.root.findByProps({testID: 'grid'}).props
-          .accessibilityElementsHidden,
-      ).toBe(true);
+      expect(gridOf(tree).props.accessibilityElementsHidden).toBe(true);
       act(() => jest.advanceTimersByTime(THUMB_TIMEOUT_MS));
-      expect(
-        tree.root.findByProps({testID: 'grid'}).props
-          .accessibilityElementsHidden,
-      ).toBe(false);
-      expect(tree.root.findAllByType(Image)).toHaveLength(1);
-      expect(texts(tree)).toEqual(
-        expect.arrayContaining(['Picture 2', 'Picture 6']),
-      );
+      // Five tiles never answered: the two results left fill their places and load in turn.
+      expect(tileIds(tree)).toEqual([
+        'openclipart:1',
+        'openclipart:7',
+        'openclipart:8',
+      ]);
+      loadAll(tree);
+      expect(gridOf(tree).props.accessibilityElementsHidden).toBe(false);
+      expect(texts(tree)).toContain('1 / 1');
+      expect(texts(tree)).not.toContain('Picture 2');
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('shows the title of a tile whose thumbnail failed (#24)', () => {
+  it('drops a tile whose thumbnail failed and fills its place from the next result (#64)', () => {
     const tree = render();
     act(() => tree.root.findAllByType(Image)[2].props.onError());
-    expect(texts(tree)).toContain('Picture 3');
+    expect(tileIds(tree)).toEqual(
+      [1, 2, 4, 5, 6, 7].map(n => `openclipart:${n}`),
+    );
+    // No tile ever shows its title instead of a picture.
+    expect(texts(tree)).not.toContain('Picture 3');
+    expect(texts(tree)).toContain('1 / 2');
+    act(() => tree.root.findAllByType(Image)[0].props.onError());
+    act(() => tree.root.findAllByType(Image)[0].props.onError());
+    // Six results are left: one page, and next is disabled.
+    expect(texts(tree)).toContain('1 / 1');
+    expect(navButton(tree, copy['nav.nextLabel']).props.disabled).toBe(true);
+    loadAll(tree);
+    expect(gridOf(tree).props.accessibilityElementsHidden).toBe(false);
+  });
+
+  it('moves to the last page left when the open page loses every tile (#64)', () => {
+    const tree = render();
+    act(() => navButton(tree, copy['nav.nextLabel']).props.onPress());
+    act(() =>
+      tree.root.findAllByType(Image).forEach(img => img.props.onError()),
+    );
+    expect(texts(tree)).toContain('1 / 1');
+    expect(tileIds(tree)).toHaveLength(PAGE_SIZE);
+  });
+
+  it('reads as no result when every thumbnail failed (#64)', () => {
+    const tree = render({results: many(2)});
+    act(() =>
+      tree.root.findAllByType(Image).forEach(img => img.props.onError()),
+    );
+    expect(texts(tree)).toEqual([copy['search.empty']]);
+  });
+
+  it('lays every picture on paper white, so a transparent one never shows black (#64)', () => {
+    const tree = render();
+    const image = tree.root.findAllByType(Image)[0];
+    expect(StyleSheet.flatten(image.props.style).backgroundColor).toBe(
+      metrics.paper,
+    );
+    const tile = tree.root.findByProps({testID: 'tile-openclipart:1'});
+    expect(StyleSheet.flatten(tile.props.style).backgroundColor).toBe(
+      metrics.paper,
+    );
+    expect(metrics.paper).toBe('#ffffff');
   });
 
   it('sends the plugin User-Agent with each thumbnail (#24)', () => {

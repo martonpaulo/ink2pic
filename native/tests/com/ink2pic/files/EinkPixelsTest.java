@@ -32,6 +32,10 @@ public final class EinkPixelsTest {
     check(eink(false, 0x00FF0000)[0] == 0xFFFFFFFF, "transparent red becomes white");
     check(eink(false, 0xFF000000)[0] == 0xFF000000, "opaque black stays black");
     check(eink(false, 0xFFFFFFFF)[0] == 0xFFFFFFFF, "opaque white stays white");
+    // The inserted PNG is quantized: a fully transparent pixel, of any color, still comes out
+    // white there, never black (#64).
+    int[] clear = eink(true, 0x00000000, 0x00FFFFFF, 0x00336699);
+    check(Arrays.stream(clear).allMatch(p -> p == 0xFFFFFFFF), "transparent becomes white when quantized");
     int halfBlack = EinkPixels.luminance(0x80000000);
     check(halfBlack > 120 && halfBlack < 135, "half-transparent black is mid gray: " + halfBlack);
 
