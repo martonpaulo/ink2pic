@@ -21,7 +21,7 @@ import {
 } from './src/flow/opening';
 import type {LassoPlace} from './src/flow/place';
 import {sessionPaths} from './src/flow/session';
-import {rotateLogFile} from './src/log/file';
+import {startSession} from './src/log/file';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
 import {log, logged} from './src/log/memory';
 import {missingPermissions, PermissionNeed} from './src/onboarding/permissions';
@@ -113,7 +113,7 @@ function App(): React.JSX.Element {
     show(flow, {name: 'starting'});
     // Paths and the session log file first (#21); a failure is logged and the view goes on.
     await sessionPaths();
-    await rotateLogFile();
+    await startSession();
     if (!isCurrent(opening.current, flow)) {
       return;
     }

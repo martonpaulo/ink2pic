@@ -18,7 +18,7 @@ import {
 import {
   closeLogFileForTests,
   openLogFile,
-  rotateLogFile,
+  startSession,
 } from '../src/log/file';
 import type {Done} from '../src/flow/failure';
 import type {Source} from '../src/search/search';
@@ -112,7 +112,7 @@ it('does not fall back to insertImage after a placement timeout', async () => {
 it('keeps the previous session log on each press', async () => {
   openLogFile('/s/MyStyle/Ink2Pic/logs');
   files['/s/MyStyle/Ink2Pic/logs/session.log'] = 'first press';
-  await rotateLogFile();
+  await startSession();
   expect(files['/s/MyStyle/Ink2Pic/logs/session.prev.log']).toBe('first press');
 });
 

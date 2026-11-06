@@ -5,14 +5,38 @@
  */
 import {fail, Result} from '../sdk/result';
 
+/** Lines kept in memory and in the file: enough for a whole opening, small enough to rewrite (#45). */
+export const LOG_MAX_LINES = 2000;
+
 const lines: string[] = [];
 let started = Date.now();
 const listeners = new Set<(lines: string[]) => void>();
-let afterCall: () => void = () => {};
+let afterCall: () => unknown = () => {};
 
-/** Called after each logged call: the session log file flushes here, on events (#21). */
-export function setAfterCall(hook: () => void): void {
+/**
+ * Called after each logged call, and awaited before a call that can close the plugin: the
+ * session log file flushes here, on events (#21, #45).
+ */
+export function setAfterCall(hook: () => unknown): void {
   afterCall = hook;
+}
+
+/**
+ * Calls that can end the plugin while they run, so their name must be on disk before they start
+ * (#13, #45): closePluginView closes it by design; an insert hands the screen back to the note;
+ * a pending requestPermission is answered -1 when the host hides or destroys the plugin (brief
+ * section 10.5). Every other call flushes once, after its answer.
+ */
+const CLOSING_CALLS = [
+  'closePluginView',
+  'insertImage',
+  'insertPageElements',
+  'insertElements',
+  'requestPermission',
+];
+
+export function canClosePlugin(label: string): boolean {
+  return CLOSING_CALLS.some(name => label.startsWith(name));
 }
 
 /** A call that never answers ends here, so the screen never stays stuck (build 0.1.0 (4), #11). */
@@ -32,15 +56,21 @@ export function onLog(listener: (lines: string[]) => void): () => void {
   return () => listeners.delete(listener);
 }
 
-export function startLog(): void {
-  lines.length = 0;
-  started = Date.now();
+/** Empties the log; `keep` are lines that already belong to the new log, kept with their times. */
+export function startLog(keep: string[] = []): void {
+  lines.splice(0, lines.length, ...keep);
+  if (keep.length === 0) {
+    started = Date.now();
+  }
   listeners.forEach(listener => listener(logLines()));
 }
 
 export function log(line: string): void {
   const entry = `+${Date.now() - started}ms ${line}`;
   lines.push(entry);
+  if (lines.length > LOG_MAX_LINES) {
+    lines.splice(0, lines.length - LOG_MAX_LINES);
+  }
   console.log(`[Ink2Pic] ${entry}`);
   listeners.forEach(listener => listener(logLines()));
 }
@@ -75,8 +105,10 @@ export async function logged<T>(
 ): Promise<Result<T>> {
   const at = Date.now();
   log(`${label} …`);
-  // On disk before the call too: a call that makes the host close the plugin leaves its name (#13).
-  afterCall();
+  // On disk before a call that can close the plugin, so it leaves its name (#13); only those (#45).
+  if (canClosePlugin(label)) {
+    await afterCall();
+  }
   let timer: ReturnType<typeof setTimeout> | undefined;
   const expired = new Promise<Result<T>>(resolve => {
     timer = setTimeout(

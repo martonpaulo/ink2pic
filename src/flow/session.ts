@@ -30,9 +30,7 @@ export async function sessionPaths(): Promise<Result<SessionPaths>> {
   }
   cached = {root: SHARED_ROOT, pluginDir: dir.value};
   openLogFile(logsDir(cached.root));
-  setAfterCall(() => {
-    flushLogFile();
-  });
+  setAfterCall(flushLogFile);
   return cached ? ok(cached) : fail(-1, 'no session paths');
 }
 
