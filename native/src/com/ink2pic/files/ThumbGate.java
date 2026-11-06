@@ -1,5 +1,7 @@
 package com.ink2pic.files;
 
+import java.util.concurrent.Executor;
+
 /**
  * Lets the person's download go first (#46): a thumbnail download waits to start while an insert
  * download runs, at most a bounded time, so a page of thumbnails never pushes the insert past its
@@ -20,6 +22,29 @@ final class ThumbGate {
     if (active == 0) {
       notifyAll();
     }
+  }
+
+  /**
+   * Runs each job on `worker` with the gate held from its submit to its end. A job the worker
+   * refuses releases the gate before the refusal reaches the caller, so begin and end always
+   * pair up and no thumbnail waits for a download that never runs (#46).
+   */
+  Executor holding(Executor worker) {
+    return job -> {
+      begin();
+      try {
+        worker.execute(() -> {
+          try {
+            job.run();
+          } finally {
+            end();
+          }
+        });
+      } catch (RuntimeException refused) {
+        end();
+        throw refused;
+      }
+    };
   }
 
   /**

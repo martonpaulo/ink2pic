@@ -1,6 +1,9 @@
 package com.ink2pic.files;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -45,6 +48,31 @@ public final class ThumbGateTest {
     gate.end();
     gate.end();
     check(gate.awaitFree(0), "an extra end never goes below zero");
+
+    // The person's download holds the gate from its submit to its end (#46).
+    ExecutorService worker = Executors.newSingleThreadExecutor();
+    CountDownLatch release = new CountDownLatch(1);
+    gate.holding(worker).execute(() -> {
+      try {
+        release.await();
+      } catch (InterruptedException interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    });
+    check(!gate.awaitFree(10), "held while the download runs");
+    release.countDown();
+    check(gate.awaitFree(2000), "free once the download ends");
+
+    // A worker that refuses the job never leaves the gate held: thumbnails would wait 20 s each.
+    worker.shutdown();
+    boolean refused = false;
+    try {
+      gate.holding(worker).execute(() -> {});
+    } catch (RejectedExecutionException expected) {
+      refused = true;
+    }
+    check(refused, "the refusal reaches the caller");
+    check(gate.awaitFree(0), "free after a refused job");
 
     if (failures > 0) {
       System.err.println(failures + " failed");

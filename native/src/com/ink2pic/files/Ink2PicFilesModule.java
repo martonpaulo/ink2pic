@@ -34,6 +34,8 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   private final ExecutorService downloads = Executors.newSingleThreadExecutor();
   private final ExecutorService thumbs = Executors.newFixedThreadPool(THUMB_THREADS);
   private final ThumbGate gate = new ThumbGate();
+  /** The person's downloads, holding the gate from submit to end, also when refused (#46). */
+  private final java.util.concurrent.Executor heldDownloads = gate.holding(downloads);
 
   public Ink2PicFilesModule(ReactApplicationContext context) {
     super(context);
@@ -51,14 +53,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   /** The person's download: thumbnails wait to start until it ends. */
   @ReactMethod
   public void downloadToFile(String url, String destPath, ReadableMap headers, Promise promise) {
-    gate.begin();
-    ModuleWork.submit(downloads, promise, () -> {
-      try {
-        return download(url, destPath, headers);
-      } finally {
-        gate.end();
-      }
-    });
+    ModuleWork.submit(heldDownloads, promise, () -> download(url, destPath, headers));
   }
 
   /** A grid thumbnail, in the background: it starts only when no insert download runs. */
