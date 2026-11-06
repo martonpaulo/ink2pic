@@ -369,7 +369,7 @@ Correction to an earlier claim in the conversation: Inkling calls `setLassoBoxSt
 
 - Images passed to `insertImage` should live in **shared storage**, for example `MyStyle/<PluginName>/library/`, with `FILE:WRITE`. Pic2Note writes inserted exports to `MyStyle/LocalImage` and keeps only previews in the private dir. Inkling stages in `/sdcard/EXPORT/lasso_ai` [CONFIRMED by reading both].
 - Whether the note app can read a file in the plugin private directory for `insertImage` is unknown [TO TEST]. Do not rely on it.
-- Plugin state (cache index, recent searches, library metadata) can live in the private directory (no permission), written by the native module.
+- Reconstructible state (the search cache, thumbnails) lives in the private directory (no permission). The library list (`library.json`, with recent searches) lives beside the pictures in `MyStyle/Ink2Pic/library/`, because installing a new version empties the private directory [CONFIRMED on build 0.1.0 (12), [#41](https://github.com/martonpaulo/ink2pic/issues/41)].
 
 ---
 

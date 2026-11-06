@@ -70,7 +70,8 @@ describe('insertPicture (#12)', () => {
     ]);
     expect(PluginNoteAPI.insertImage).toHaveBeenCalledWith(path);
     const saved = native.writeText.mock.calls.find(
-      call => call[0] === '/data/plugin/library.json',
+      call =>
+        call[0] === '/storage/emulated/0/MyStyle/Ink2Pic/library/library.json',
     );
     expect(JSON.parse(saved[1]).items[0]).toMatchObject({
       id: 'openclipart:340609',

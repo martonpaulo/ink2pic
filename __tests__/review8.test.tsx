@@ -68,11 +68,25 @@ beforeEach(() => {
 });
 afterEach(() => jest.useRealTimers());
 
+const SHARED_LIBRARY =
+  '/storage/emulated/0/MyStyle/Ink2Pic/library/library.json';
+
 it('never overwrites a library file it could not read', async () => {
-  files['/p/library.json'] = '{"version": 99}';
+  files[SHARED_LIBRARY] = '{"version": 99}';
   expect((await getLibrary()).items).toEqual([]);
   await recordSearch('soup');
-  expect(files['/p/library.json']).toBe('{"version": 99}');
+  expect(files[SHARED_LIBRARY]).toBe('{"version": 99}');
+});
+
+it('keeps the library beside the pictures, moving an old private one once (#41)', async () => {
+  const old = {version: 1, items: [], recentSearches: ['napoleon']};
+  files['/p/library.json'] = JSON.stringify(old);
+  expect((await getLibrary()).recentSearches).toEqual(['napoleon']);
+  await recordSearch('soup');
+  expect(JSON.parse(files[SHARED_LIBRARY]).recentSearches).toEqual([
+    'soup',
+    'napoleon',
+  ]);
 });
 
 it('does not fall back to insertImage after a placement timeout', async () => {
@@ -116,9 +130,7 @@ describe('SearchScreen', () => {
         results: [{...result, id: 'openclipart:2', title: 'Wine'}],
       });
     const sources: Source[] = [{name: 'openclipart', search}];
-    const onPick = jest.fn(
-      (): Promise<Done<unknown>> => new Promise(() => {}),
-    );
+    const onPick = jest.fn((): Promise<Done<unknown>> => new Promise(() => {}));
     let tree!: renderer.ReactTestRenderer;
     await act(async () => {
       tree = renderer.create(

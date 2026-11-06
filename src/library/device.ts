@@ -1,11 +1,13 @@
 /**
- * The library on the device (#14, #15): library.json in the private plugin folder (brief section
- * 6.6), read once per session and saved after each change.
+ * The library on the device (#14, #15): library.json beside the pictures in MyStyle/Ink2Pic/library,
+ * so it survives a plugin update, which empties the private plugin folder (#41; brief section 6.6).
+ * Read once per session and saved after each change.
  */
 import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
 import {fail, ok, Result} from '../sdk/result';
 import {readText, writeText} from '../storage/files';
+import {libraryDir} from '../storage/paths';
 import {addItem, addRecentSearch, emptyLibrary} from './library';
 import {loadLibrary, saveLibrary} from './store';
 import type {Library, LibraryItem, TextStorage} from './types';
@@ -34,9 +36,38 @@ let current: Library | null = null;
  */
 let writable = false;
 
+const LIBRARY_FILE = 'library.json';
+/** The move from the private folder is checked once per session. */
+let moveChecked = false;
+
 async function libraryPath(): Promise<Result<string>> {
   const paths = await sessionPaths();
-  return paths.ok ? ok(`${paths.value.pluginDir}/library.json`) : paths;
+  if (!paths.ok) {
+    return paths;
+  }
+  const shared = `${libraryDir(paths.value.root)}/${LIBRARY_FILE}`;
+  if (!moveChecked) {
+    moveChecked = true;
+    await moveFromPrivate(`${paths.value.pluginDir}/${LIBRARY_FILE}`, shared);
+  }
+  return ok(shared);
+}
+
+/**
+ * Builds before 0.1.0 (13) kept library.json in the private folder: when the shared file does not
+ * exist yet and the private one does, its text is copied over once (#41).
+ */
+async function moveFromPrivate(old: string, shared: string): Promise<void> {
+  const existing = await readText(shared);
+  if (!existing.ok || existing.value !== null) {
+    return;
+  }
+  const previous = await readText(old);
+  if (previous.ok && previous.value !== null) {
+    await logged(`move ${LIBRARY_FILE} to ${shared}`, () =>
+      writeText(shared, previous.value as string),
+    );
+  }
 }
 
 /** The library, loaded once; an unreadable file is reported, shown empty, and never overwritten. */
@@ -89,4 +120,5 @@ export async function recordSearch(query: string): Promise<void> {
 export function resetLibraryForTests(): void {
   current = null;
   writable = false;
+  moveChecked = false;
 }
