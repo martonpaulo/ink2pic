@@ -196,3 +196,13 @@ describe('ResultsGrid', () => {
     expect(source.headers['User-Agent']).toMatch(/^Ink2Pic\//);
   });
 });
+
+describe('hidden grid (#47)', () => {
+  it('takes no tap while the page is loading', () => {
+    const tree = render();
+    const grid = () => tree.root.find(node => node.props.testID === 'grid');
+    expect(grid().props.pointerEvents).toBe('none');
+    loadAll(tree);
+    expect(grid().props.pointerEvents).toBe('auto');
+  });
+});

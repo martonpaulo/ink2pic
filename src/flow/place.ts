@@ -18,17 +18,23 @@ export type LassoPlace = {rect: Rect; page: number; pageSize: Size};
 
 /** Space between the word and the picture, in page pixels. */
 export const PLACE_GAP = 24;
+/**
+ * The smallest band a picture is placed in: the host's own insertImage minimum per side (brief
+ * section 10.5). A lower band would shrink the picture out of sight (#47).
+ */
+export const MIN_PLACE_BAND = 100;
 
 /**
  * The picture's rect, left-aligned with the word: just below it, else just above it, so it never
  * covers the handwriting (#39). When it fits neither, it shrinks, keeping its proportions, into
- * the larger free band; it also shrinks to the page width.
+ * the larger free band; it also shrinks to the page width. Null when that band is lower than
+ * MIN_PLACE_BAND, so the caller falls back to insertImage (#47).
  */
 export function placeRect(
   lasso: Rect,
   picture: {width: number; height: number},
   page: Size,
-): Rect {
+): Rect | null {
   const below = lasso.bottom + PLACE_GAP;
   const aboveRoom = Math.max(0, lasso.top - PLACE_GAP);
   const belowRoom = Math.max(0, page.height - below);
@@ -36,6 +42,9 @@ export function placeRect(
   let height = picture.height * fitWidth;
   const goesBelow = height <= belowRoom || belowRoom >= aboveRoom;
   const room = goesBelow ? belowRoom : aboveRoom;
+  if (room < MIN_PLACE_BAND) {
+    return null;
+  }
   const scale = fitWidth * Math.min(1, room / height);
   const width = Math.round(picture.width * scale);
   height = Math.round(picture.height * scale);
@@ -49,13 +58,16 @@ export async function placeAtLasso(
   picture: {width: number; height: number},
   place: LassoPlace,
 ): Promise<Result<true>> {
+  const rect = placeRect(place.rect, picture, place.pageSize);
+  if (!rect) {
+    return fail(-1, `no band of ${MIN_PLACE_BAND} px beside the lasso`);
+  }
   const created = await logged('createElement(picture)', () =>
     createElement(PICTURE_TYPE),
   );
   if (!created.ok) {
     return created;
   }
-  const rect = placeRect(place.rect, picture, place.pageSize);
   const element = {
     ...created.value,
     type: PICTURE_TYPE,

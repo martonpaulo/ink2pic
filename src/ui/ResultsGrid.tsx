@@ -120,6 +120,7 @@ export function ResultsGrid({
       <View
         testID="grid"
         style={[styles.grid, !ready && styles.hidden]}
+        pointerEvents={ready ? 'auto' : 'none'}
         accessibilityElementsHidden={!ready}>
         {[0, 1, 2].map(row => (
           <View key={row} style={styles.row}>

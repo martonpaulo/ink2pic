@@ -163,4 +163,36 @@ describe('insertPicture (#12)', () => {
     expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
     expect(PluginNoteAPI.insertImage).toHaveBeenCalled();
   });
+
+  it('fails at place when insertImage answers false, and records nothing (#47)', async () => {
+    (PluginNoteAPI.insertImage as jest.Mock).mockResolvedValue({
+      success: true,
+      result: false,
+    });
+    const done = await insertPicture(result, 'soup');
+    expect(done).toMatchObject({ok: false, step: 'place'});
+    const saved = native.writeText.mock.calls.find(call =>
+      String(call[0]).endsWith('/library.json'),
+    );
+    expect(saved).toBeUndefined();
+  });
+
+  it('falls back to insertImage when the lasso leaves no visible band (#47)', async () => {
+    const place = {
+      rect: {left: 100, top: 40, right: 300, bottom: 2500},
+      page: 1,
+      pageSize: {width: 1920, height: 2560},
+    };
+    (PluginCommAPI.createElement as jest.Mock).mockResolvedValue({
+      success: true,
+      result: {uuid: 'u'},
+    });
+    (PluginCommAPI.insertPageElements as jest.Mock).mockResolvedValue({
+      success: true,
+      result: true,
+    });
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+    expect(PluginCommAPI.insertPageElements).not.toHaveBeenCalled();
+    expect(PluginNoteAPI.insertImage).toHaveBeenCalled();
+  });
 });

@@ -7,7 +7,7 @@
 import {recordInsert} from '../library/device';
 import {logged, TIMEOUT_CODE} from '../log/memory';
 import {insertImage} from '../sdk/note';
-import {ok, Result} from '../sdk/result';
+import {fail, ok, Result} from '../sdk/result';
 import type {SearchResult} from '../sources/types';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
@@ -65,7 +65,13 @@ async function insertInNote(
       return placed;
     }
   }
-  return logged(`insertImage(${saved.path})`, () => insertImage(saved.path));
+  const inserted = await logged(`insertImage(${saved.path})`, () =>
+    insertImage(saved.path),
+  );
+  // `{success: true, result: false}` inserted nothing (#47).
+  return inserted.ok && inserted.value !== true
+    ? fail(-1, 'insertImage answered false')
+    : inserted;
 }
 
 export async function insertPicture(
