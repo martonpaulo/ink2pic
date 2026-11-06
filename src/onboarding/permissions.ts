@@ -7,7 +7,7 @@ import {
   requestPermission,
 } from '../sdk/plugin';
 import {copy} from '../ui/copy';
-import {logged, WAITS_FOR_PERSON} from '../log/memory';
+import {logged, PERSON_TIMEOUT_MS} from '../log/memory';
 
 /** `requestPermission` answers that grant: allowed this time (1) or always (2). */
 const GRANTING_ANSWERS = new Set([1, 2]);
@@ -67,7 +67,7 @@ export async function requestMissing(): Promise<{
     const answer = await logged(
       `requestPermission(${need.permission})`,
       () => requestPermission(need.permission, need.reason),
-      WAITS_FOR_PERSON,
+      PERSON_TIMEOUT_MS,
     );
     if (
       (answer.ok && GRANTING_ANSWERS.has(answer.value)) ||

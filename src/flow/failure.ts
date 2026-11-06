@@ -75,7 +75,10 @@ export function failureKeys(failure: StepFailure): readonly CopyKey[] {
     case 'download':
       return downloadKeys(failure);
     case 'place':
-      return ['error.place'];
+      // The host may still insert it after a TIMEOUT: «try again» could add a second copy (#33).
+      return [
+        failure.code === TIMEOUT_CODE ? 'error.placeSlow' : 'error.place',
+      ];
   }
 }
 
@@ -108,5 +111,6 @@ export function searchNotice(outcome: SearchOutcome): CopyKey | null {
   if (outcome.results.length > 0) {
     return null;
   }
-  return outcome.sourceDown ? 'error.sourceDown' : 'search.empty';
+  // ResultsGrid itself says when one source is down.
+  return 'search.empty';
 }

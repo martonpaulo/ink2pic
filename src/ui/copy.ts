@@ -48,6 +48,8 @@ export const copy = {
     'Could not save the picture. Free some space on the device and try again.',
   'error.place':
     'Could not put the picture in the note. Open a note page and try again.',
+  'error.placeSlow':
+    'The picture may still appear. Check the page before you try again.',
   'error.unexpected': 'Something went wrong. Open Log for details.',
   // Outside the brief's table: the starting screen (#12, build 0.1.0 (7)).
   'app.starting': 'Starting…',
