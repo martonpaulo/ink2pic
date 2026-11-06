@@ -3,9 +3,10 @@
  * The log is still written to the session log file.
  */
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text} from 'react-native';
+import {Screen} from './Screen';
 import {ScreenTools} from './ScreenTools';
-import {metrics} from './metrics';
+import {shared} from './styles';
 
 export type StatusScreenProps = {text: string; onClose: () => void};
 
@@ -14,19 +15,9 @@ export function StatusScreen({
   onClose,
 }: StatusScreenProps): React.JSX.Element {
   return (
-    <View style={styles.screen}>
+    <Screen>
       <ScreenTools onClose={onClose} />
-      <Text style={styles.text}>{text}</Text>
-    </View>
+      <Text style={shared.text}>{text}</Text>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: metrics.paper,
-    padding: metrics.gap,
-    gap: metrics.gap,
-  },
-  text: {fontSize: metrics.bodyFont, color: metrics.ink},
-});

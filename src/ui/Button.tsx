@@ -7,6 +7,7 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {metrics} from './metrics';
+import {shared} from './styles';
 
 export type ButtonProps = {
   label: string;
@@ -35,12 +36,13 @@ export function Button({
       accessibilityState={{disabled, selected}}
       disabled={disabled}
       style={[
+        shared.outline,
         styles.button,
         disabled && styles.disabled,
         primary && styles.primary,
       ]}
       onPress={onPress}>
-      <Text style={[styles.text, primary && styles.primaryText]}>{label}</Text>
+      <Text style={[shared.text, primary && styles.primaryText]}>{label}</Text>
       {/* Drawn over the padding, so turning a toggle on never changes the box (brief 8.4). */}
       {selected && <View testID="selected-bar" style={styles.selectedBar} />}
     </Pressable>
@@ -49,25 +51,22 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: metrics.buttonHeight,
+    minHeight: metrics.controlHeight,
     minWidth: metrics.touchTarget,
-    paddingHorizontal: metrics.gap,
+    paddingHorizontal: metrics.controlPadding,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: metrics.border,
-    borderColor: metrics.ink,
     backgroundColor: metrics.paper,
   },
   disabled: {borderStyle: 'dashed'},
   primary: {backgroundColor: metrics.ink},
-  text: {fontSize: metrics.bodyFont, color: metrics.ink},
   primaryText: {color: metrics.paper},
   selectedBar: {
     position: 'absolute',
-    left: metrics.gap,
-    right: metrics.gap,
-    bottom: Math.round(metrics.gap / 2),
-    height: metrics.border * 2,
+    left: metrics.controlPadding,
+    right: metrics.controlPadding,
+    bottom: metrics.selectedBarInset,
+    height: metrics.selectedBarHeight,
     backgroundColor: metrics.ink,
   },
 });

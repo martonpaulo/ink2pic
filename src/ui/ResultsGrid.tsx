@@ -8,17 +8,22 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
-import {pageCount, pageOf} from '../search/pages';
+import {PAGE_SIZE, pageCount, pageOf} from '../search/pages';
 import {cachedThumbUri, needsDownload, thumbUri} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
 import {Button} from './Button';
 import {copy} from './copy';
 import {metrics} from './metrics';
+import {shared} from './styles';
 
 /** A page shows at the latest after this, with unanswered thumbnails marked failed (#24). */
 export const THUMB_TIMEOUT_MS = 8000;
-/** Two tiles per row, three rows: the six of PAGE_SIZE. */
+/** Two tiles per row; the rows follow from PAGE_SIZE: three for six. */
 const COLUMNS = 2;
+const ROWS = Array.from(
+  {length: Math.ceil(PAGE_SIZE / COLUMNS)},
+  (_, row) => row,
+);
 const THUMB_HEADERS = {'User-Agent': USER_AGENT};
 
 export type ResultsGridProps = {
@@ -139,11 +144,11 @@ export function ResultsGrid({
   }, [visible, thumbDir, thumbUris, results]);
 
   if (searching) {
-    return <Text style={styles.message}>{copy['search.running']}</Text>;
+    return <Text style={shared.text}>{copy['search.running']}</Text>;
   }
   if (results.length === 0) {
     return (
-      <Text style={styles.message}>
+      <Text style={shared.text}>
         {sourceDown ? copy['error.sourceDown'] : emptyText}
       </Text>
     );
@@ -157,7 +162,7 @@ export function ResultsGrid({
           style={[styles.grid, !ready && styles.hidden]}
           pointerEvents={ready ? 'auto' : 'none'}
           accessibilityElementsHidden={!ready}>
-          {[0, 1, 2].map(row => (
+          {ROWS.map(row => (
             <View key={row} style={styles.row}>
               {visible
                 .slice(row * COLUMNS, row * COLUMNS + COLUMNS)
@@ -167,10 +172,12 @@ export function ResultsGrid({
                     testID={`tile-${result.id}`}
                     accessibilityRole="button"
                     accessibilityLabel={result.title}
-                    style={styles.tile}
+                    style={[shared.outline, styles.tile]}
                     onPress={() => onPick(result)}>
                     {failed.has(result.id) ? (
-                      <Text style={styles.failedTitle}>{result.title}</Text>
+                      <Text style={[shared.text, styles.failedTitle]}>
+                        {result.title}
+                      </Text>
                     ) : uriOf(result) === null ? null : (
                       <Image
                         source={{
@@ -191,19 +198,17 @@ export function ResultsGrid({
         </View>
         {/* The search has ended: only this page's thumbnails are loading (#35). */}
         {!ready && (
-          <Text style={[styles.message, styles.over]}>
-            {copy['page.loading']}
-          </Text>
+          <Text style={[shared.text, styles.over]}>{copy['page.loading']}</Text>
         )}
       </View>
-      <View style={styles.nav}>
+      <View style={[shared.row, styles.nav]}>
         <Button
           label={copy['nav.previous']}
           accessibilityLabel={copy['nav.previousLabel']}
           disabled={page === 0}
           onPress={() => setPage(page - 1)}
         />
-        <Text style={styles.pageNumber}>{`${page + 1} / ${pages}`}</Text>
+        <Text style={shared.text}>{`${page + 1} / ${pages}`}</Text>
         <Button
           label={copy['nav.next']}
           accessibilityLabel={copy['nav.nextLabel']}
@@ -220,30 +225,12 @@ const styles = StyleSheet.create({
   // always on screen (build 0.1.0 (6): fixed-size tiles pushed them under the Log button).
   screen: {flex: 1, alignSelf: 'stretch', backgroundColor: metrics.paper},
   area: {flex: 1},
-  grid: {flex: 1, gap: metrics.gap},
+  grid: {flex: 1, gap: metrics.tileGap},
   over: {position: 'absolute', top: 0, left: 0, right: 0},
-  row: {flex: 1, flexDirection: 'row', gap: metrics.gap},
+  row: {flex: 1, flexDirection: 'row', gap: metrics.tileGap},
   hidden: {opacity: 0},
-  tile: {
-    flex: 1,
-    borderWidth: metrics.border,
-    borderColor: metrics.ink,
-    backgroundColor: metrics.paper,
-  },
+  tile: {flex: 1, backgroundColor: metrics.paper},
   image: {flex: 1},
-  failedTitle: {
-    fontSize: metrics.bodyFont,
-    color: metrics.ink,
-    margin: metrics.gap,
-  },
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: metrics.gap,
-    marginTop: metrics.gap,
-  },
-  pageNumber: {fontSize: metrics.bodyFont, color: metrics.ink},
-  // On the screen's left edge, as the status line and the field (#50).
-  message: {fontSize: metrics.bodyFont, color: metrics.ink},
+  failedTitle: {margin: metrics.tilePadding},
+  nav: {justifyContent: 'center', marginTop: metrics.sectionGap},
 });

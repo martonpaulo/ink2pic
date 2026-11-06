@@ -28,10 +28,11 @@ import {copy} from './copy';
 import {LogView} from './LogView';
 import {metrics} from './metrics';
 import {ResultsGrid} from './ResultsGrid';
+import {Screen} from './Screen';
+import {shared} from './styles';
+import {ToolBar} from './ToolBar';
 
 type View_ = 'results' | 'library' | 'log';
-
-const STATUS_LINE_HEIGHT = Math.round(metrics.bodyFont * 1.3);
 
 export type SearchScreenProps = {
   /** The recognized word; empty when the sidebar opened the plugin. */
@@ -168,11 +169,14 @@ export function SearchScreen({
       : '');
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.bar}>
+    <Screen>
+      <ToolBar
+        logShown={view === 'log'}
+        onLog={() => toggle('log')}
+        onClose={onClose}>
         <TextInput
           testID="query"
-          style={styles.input}
+          style={[shared.outline, shared.text, styles.input]}
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => search(query)}
@@ -180,6 +184,9 @@ export function SearchScreen({
           accessibilityLabel={copy['search.placeholder']}
           autoFocus={lassoFailure !== null}
           returnKeyType="search"
+          placeholderTextColor={metrics.placeholder}
+          selectionColor={metrics.selection}
+          cursorColor={metrics.ink}
         />
         <Button
           label={copy['action.search']}
@@ -191,16 +198,10 @@ export function SearchScreen({
           selected={view === 'library'}
           onPress={() => toggle('library')}
         />
-        <Button
-          label={copy['action.log']}
-          selected={view === 'log'}
-          onPress={() => toggle('log')}
-        />
-        <Button label={copy['action.close']} onPress={onClose} />
-      </View>
+      </ToolBar>
       <Text
         testID="status"
-        style={styles.status}
+        style={[shared.text, styles.status]}
         accessibilityLiveRegion="polite">
         {line}
       </Text>
@@ -208,8 +209,8 @@ export function SearchScreen({
       {view === 'library' && (
         <View style={styles.fill}>
           {library && library.recentSearches.length > 0 && (
-            <View style={styles.recent}>
-              <Text style={styles.text}>{copy['search.recent']}</Text>
+            <View style={[shared.row, styles.recent]}>
+              <Text style={shared.text}>{copy['search.recent']}</Text>
               {library.recentSearches.map(word => (
                 <Button key={word} label={word} onPress={() => search(word)} />
               ))}
@@ -234,40 +235,21 @@ export function SearchScreen({
           thumbDir={thumbDir}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: metrics.paper,
-    padding: metrics.gap,
-    gap: metrics.gap,
-  },
-  bar: {flexDirection: 'row', gap: metrics.gap, alignItems: 'center'},
   input: {
     flex: 1,
-    minHeight: metrics.buttonHeight,
-    borderWidth: metrics.border,
-    borderColor: metrics.ink,
-    fontSize: metrics.bodyFont,
-    color: metrics.ink,
-    paddingHorizontal: metrics.gap,
+    minHeight: metrics.controlHeight,
+    paddingHorizontal: metrics.controlPadding,
   },
-  text: {fontSize: metrics.bodyFont, color: metrics.ink},
   // Two lines reserved: the longest failure sentences wrap once on the Manta.
   status: {
-    fontSize: metrics.bodyFont,
-    lineHeight: STATUS_LINE_HEIGHT,
-    minHeight: STATUS_LINE_HEIGHT * 2,
-    color: metrics.ink,
+    lineHeight: metrics.bodyLineHeight,
+    minHeight: metrics.bodyLineHeight * 2,
   },
-  fill: {flex: 1, gap: metrics.gap},
-  recent: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: metrics.gap,
-    alignItems: 'center',
-  },
+  fill: {flex: 1, gap: metrics.sectionGap},
+  recent: {flexWrap: 'wrap'},
 });

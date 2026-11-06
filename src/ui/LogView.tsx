@@ -2,7 +2,7 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {logLines, onLog} from '../log/memory';
-import {metrics} from './metrics';
+import {shared} from './styles';
 
 /**
  * Lines shown: the newest, at the bottom (#45). The view has no scroll on e-ink, so older lines
@@ -15,7 +15,7 @@ export function LogView(): React.JSX.Element {
   useEffect(() => onLog(setLines), []);
   return (
     <View style={styles.frame}>
-      <Text testID="log" style={styles.log}>
+      <Text testID="log" style={shared.textSmall}>
         {lines.slice(-LOG_VIEW_LINES).join('\n')}
       </Text>
     </View>
@@ -25,5 +25,4 @@ export function LogView(): React.JSX.Element {
 const styles = StyleSheet.create({
   // Clipped at the top, so the newest line stays in sight when the lines need more room.
   frame: {flexShrink: 1, overflow: 'hidden', justifyContent: 'flex-end'},
-  log: {fontSize: metrics.bodyFont / 2, color: metrics.ink},
 });

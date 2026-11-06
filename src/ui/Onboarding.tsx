@@ -15,6 +15,8 @@ import {
 } from '../onboarding/permissions';
 import {copy} from './copy';
 import {metrics} from './metrics';
+import {Screen} from './Screen';
+import {shared} from './styles';
 
 const STEPS = [
   copy['onboarding.1'],
@@ -57,23 +59,23 @@ export function Onboarding({
   };
 
   return (
-    <View style={styles.screen}>
+    <Screen>
       <ScreenTools onClose={onClose} />
       {STEPS.map((text, i) => (
-        <View key={text} style={styles.row} accessible>
-          <Text style={styles.number}>{i + 1}</Text>
-          <Text style={styles.text}>{text}</Text>
+        <View key={text} style={[shared.row, styles.row]} accessible>
+          <Text style={shared.textLarge}>{i + 1}</Text>
+          <Text style={shared.text}>{text}</Text>
         </View>
       ))}
       {/* Before Start, what is missing (build 0.1.0 (11): a permission turned off later showed
           only the steps); after a denial, what stayed denied. */}
       {reasonsFor(denied.length > 0 ? denied : missing).map(reason => (
-        <Text key={reason} style={styles.text}>
+        <Text key={reason} style={shared.text}>
           {reason}
         </Text>
       ))}
       {denied.length > 0 && (
-        <Text style={styles.text}>{copy['error.permission.settings']}</Text>
+        <Text style={shared.text}>{copy['error.permission.settings']}</Text>
       )}
       {/* At the trailing edge, as OK in the system dialogs, not a black band across the page. */}
       <View style={styles.actions}>
@@ -84,27 +86,16 @@ export function Onboarding({
           onPress={start}
         />
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: metrics.paper,
-    padding: metrics.gap,
-    gap: metrics.gap,
-  },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: metrics.gap,
-    paddingVertical: metrics.gap,
+    paddingVertical: metrics.rowPadding,
     borderBottomWidth: metrics.border,
     borderStyle: 'dotted',
     borderColor: metrics.ink,
   },
   actions: {alignItems: 'flex-end'},
-  number: {fontSize: metrics.bodyFont * 2, color: metrics.ink},
-  text: {fontSize: metrics.bodyFont, color: metrics.ink},
 });

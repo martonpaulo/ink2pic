@@ -163,6 +163,19 @@ describe('SearchScreen (#13)', () => {
     act(() => tree.unmount());
   });
 
+  it('takes the field placeholder, selection and cursor colours from the tokens (#53)', async () => {
+    const tree = await render();
+    const input = tree.root.findByType(TextInput);
+    expect(input.props.placeholderTextColor).toBe(metrics.placeholder);
+    expect(input.props.selectionColor).toBe(metrics.selection);
+    expect(input.props.cursorColor).toBe(metrics.ink);
+    // A field and its button share one height (interface rule 7).
+    expect(StyleSheet.flatten(input.props.style).minHeight).toBe(
+      metrics.controlHeight,
+    );
+    act(() => tree.unmount());
+  });
+
   it('searches again with the fixed word, closing the keyboard (#42)', async () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const tree = await render();

@@ -3,7 +3,7 @@ import {join} from 'path';
 import React from 'react';
 import {Image, StyleSheet, Text} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
-import {pageCount, pageOf} from '../src/search/pages';
+import {PAGE_SIZE, pageCount, pageOf} from '../src/search/pages';
 import type {SearchResult} from '../src/sources/types';
 import {copy} from '../src/ui/copy';
 import {ResultsGrid, THUMB_TIMEOUT_MS} from '../src/ui/ResultsGrid';
@@ -70,6 +70,14 @@ describe('ResultsGrid', () => {
       true,
     );
     expect(navButton(tree, copy['nav.nextLabel']).props.disabled).toBe(false);
+  });
+
+  it('lays the page out in rows of two, as many as PAGE_SIZE needs (#53)', () => {
+    // The host view of the grid: its children are the rows.
+    const grid = render().root.find(
+      node => node.props.testID === 'grid' && typeof node.type === 'string',
+    );
+    expect(grid.children).toHaveLength(Math.ceil(PAGE_SIZE / 2));
   });
 
   it('disables next on the last page', () => {
