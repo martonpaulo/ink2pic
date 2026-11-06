@@ -83,12 +83,14 @@ describe('ResultsGrid', () => {
     const tree = render();
     const grid = () => tree.root.findByProps({testID: 'grid'});
     expect(grid().props.accessibilityElementsHidden).toBe(true);
-    expect(texts(tree)).toContain(copy['search.running']);
+    // The search has ended: the page says it loads pictures, never «Searching…» (#35).
+    expect(texts(tree)).toContain(copy['page.loading']);
+    expect(texts(tree)).not.toContain(copy['search.running']);
     act(() => tree.root.findAllByType(Image)[0].props.onError());
     expect(grid().props.accessibilityElementsHidden).toBe(true);
     loadAll(tree);
     expect(grid().props.accessibilityElementsHidden).toBe(false);
-    expect(texts(tree)).not.toContain(copy['search.running']);
+    expect(texts(tree)).not.toContain(copy['page.loading']);
   });
 
   it('shows the running, empty and source-down states', () => {

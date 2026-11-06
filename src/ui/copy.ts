@@ -11,6 +11,8 @@ export const copy = {
   'search.running': 'Searching…',
   'search.empty': 'No pictures found. Try a simpler English word.',
   'search.recent': 'Recent',
+  // Outside the brief's table: a page waits for its thumbnails after the search ended (#35).
+  'page.loading': 'Loading pictures…',
   'nav.previous': '◀',
   'nav.next': '▶',
   'nav.previousLabel': 'Previous page',

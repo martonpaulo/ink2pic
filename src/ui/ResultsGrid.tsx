@@ -115,7 +115,8 @@ export function ResultsGrid({
       {sourceDown && (
         <Text style={styles.note}>{copy['error.sourceDown']}</Text>
       )}
-      {!ready && <Text style={styles.message}>{copy['search.running']}</Text>}
+      {/* The search has ended: only this page's thumbnails are loading (#35). */}
+      {!ready && <Text style={styles.message}>{copy['page.loading']}</Text>}
       <View
         testID="grid"
         style={[styles.grid, !ready && styles.hidden]}
