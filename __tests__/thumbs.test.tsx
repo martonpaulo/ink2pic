@@ -207,6 +207,29 @@ describe('the grid with stored thumbnails (#16, #46)', () => {
     act(() => tree.unmount());
   });
 
+  it('retries a file that cannot be shown once from the web, then marks it failed (#46)', async () => {
+    native.listDir.mockResolvedValue(['openclipart-1']);
+    await prepareThumbs();
+    const tree = grid([result(1)]);
+    const image = () => tree.root.findAllByType(Image)[0];
+    expect(image().props.source.uri).toBe(fileUri(1));
+    // Fresco cannot read the extension-less file, or it was not complete yet.
+    act(() => image().props.onError());
+    expect(image().props.source.uri).toBe(result(1).thumbUrl);
+    act(() => image().props.onError());
+    expect(tree.root.findAllByType(Image)).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  it('marks a library file failed at once: it has no web copy', async () => {
+    await prepareThumbs();
+    const local = {...result(1), thumbUrl: 'file:///lib/a.png'};
+    const tree = grid([local]);
+    act(() => tree.root.findAllByType(Image)[0].props.onError());
+    expect(tree.root.findAllByType(Image)).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
   it('costs one request per thumbnail on a new page (audit: two)', async () => {
     await prepareThumbs();
     const results = Array.from({length: 6}, (_, n) => result(n + 1));

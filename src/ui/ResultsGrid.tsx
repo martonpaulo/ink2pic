@@ -9,7 +9,12 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
 import {PAGE_SIZE, pageCount, pageOf} from '../search/pages';
-import {cachedThumbUri, needsDownload, thumbUri} from '../search/thumbs';
+import {
+  cachedThumbUri,
+  needsDownload,
+  thumbUri,
+  webRetryUri,
+} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
 import {Button} from './Button';
 import {copy} from './copy';
@@ -81,8 +86,15 @@ export function ResultsGrid({
     uris: ReadonlyMap<string, string>;
   }>({results, uris: new Map()});
   const fetchedUris = fetched.results === results ? fetched.uris : null;
+  // Tiles whose stored file failed to show and that now try the web URL, once each (#46).
+  const [retried, setRetried] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  );
   const uriOf = (result: SearchResult): string | null =>
-    fetchedUris?.get(result.id) ?? thumbUris.get(result.id) ?? null;
+    retried.get(result.id) ??
+    fetchedUris?.get(result.id) ??
+    thumbUris.get(result.id) ??
+    null;
 
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
@@ -95,6 +107,17 @@ export function ResultsGrid({
   const fail = (id: string) => {
     setFailed(previous => new Set(previous).add(id));
     settle(id);
+  };
+  /** A stored file that cannot be shown tries its web URL once; anything else has failed. */
+  const failedToShow = (result: SearchResult) => {
+    const uri = uriOf(result);
+    const retry =
+      uri !== null && !retried.has(result.id) ? webRetryUri(result, uri) : null;
+    if (retry === null) {
+      fail(result.id);
+      return;
+    }
+    setRetried(previous => new Map(previous).set(result.id, retry));
   };
   const ready = visible.every(result => settled.has(result.id));
 
@@ -188,7 +211,7 @@ export function ResultsGrid({
                         resizeMode="contain"
                         fadeDuration={0}
                         onLoad={() => settle(result.id)}
-                        onError={() => fail(result.id)}
+                        onError={() => failedToShow(result)}
                       />
                     )}
                   </Pressable>

@@ -51,6 +51,16 @@ export function cachedThumbUri(
   return stored(path) ? `${FILE_PREFIX}${path}` : result.thumbUrl;
 }
 
+/**
+ * The web URL to try once when the stored file `uri` could not be shown (Fresco cannot read the
+ * file, or it was incomplete), else null: a library file has no web copy (#46).
+ */
+export function webRetryUri(result: SearchResult, uri: string): string | null {
+  return uri.startsWith(FILE_PREFIX) && result.thumbUrl.startsWith(WEB_PREFIX)
+    ? result.thumbUrl
+    : null;
+}
+
 /** True when the grid must call `thumbUri` before it can render this thumbnail. */
 export function needsDownload(
   result: SearchResult,
