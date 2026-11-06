@@ -1,6 +1,7 @@
 /** The grouped permission step of the first real use (brief section 8.7). */
 import {
   hasPermission,
+  isGranted,
   PERMISSION_FILE_READ,
   PERMISSION_FILE_WRITE,
   PERMISSION_INTERNET,
@@ -9,11 +10,9 @@ import {
 import {copy} from '../ui/copy';
 import {logged, PERSON_TIMEOUT_MS} from '../log/memory';
 
-/** `requestPermission` answers that grant: allowed this time (1) or always (2). */
-const GRANTING_ANSWERS = new Set([1, 2]);
-
 export type PermissionNeed = {permission: string; reason: string};
 
+/** Every permission the plugin requests; PluginConfig.json declares exactly these (config test). */
 export const PERMISSIONS: readonly PermissionNeed[] = [
   {permission: PERMISSION_INTERNET, reason: copy['error.permission.internet']},
   {permission: PERMISSION_FILE_READ, reason: copy['error.permission.files']},
@@ -72,7 +71,7 @@ export async function requestMissing(): Promise<{
       PERSON_TIMEOUT_MS,
     );
     if (
-      (answer.ok && GRANTING_ANSWERS.has(answer.value)) ||
+      (answer.ok && isGranted(answer.value)) ||
       (await grantedNow(need))
     ) {
       granted.push(need);

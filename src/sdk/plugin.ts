@@ -6,10 +6,14 @@ export const PERMISSION_FILE_READ = 'plugin.permission.FILE:READ';
 export const PERMISSION_FILE_WRITE = 'plugin.permission.FILE:WRITE';
 
 /**
- * `hasPermission` answers that mean granted: the SDK's Java documents 1 and 2 (this time, always),
- * its JS only 1; both count (sn-plugin-lib 0.2.3 source, #34).
+ * `hasPermission` and `requestPermission` answers that mean granted: the SDK's Java documents 1
+ * and 2 (this time, always), its JS only 1; both count (sn-plugin-lib 0.2.3 source, #34).
  */
 const GRANTED = new Set([1, 2]);
+
+export function isGranted(answer: number): boolean {
+  return GRANTED.has(answer);
+}
 
 /** A numeric host answer; anything else is a failure, never NaN reported as success. */
 function toNumber(raw: unknown): Result<number> {
@@ -34,7 +38,7 @@ export function hasPermission(permission: string): Promise<Result<boolean>> {
     () => PluginManager.hasPermission(permission),
     raw => {
       const answer = toNumber(raw);
-      return answer.ok ? ok(GRANTED.has(answer.value)) : answer;
+      return answer.ok ? ok(isGranted(answer.value)) : answer;
     },
   );
 }
