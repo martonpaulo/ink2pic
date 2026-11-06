@@ -26,6 +26,9 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   private static final int JPG_QUALITY = 85;
   /** PNG is lossless, so the encoder ignores its quality. */
   private static final int PNG_QUALITY = 100;
+  /** Thumbnails come at 330 (Commons) and 400 px (Openclipart); larger files are sampled down. */
+  private static final int MEASURE_WIDTH = 400;
+  private static final double NANOS_PER_MS = 1e6;
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
   public Ink2PicImageModule(ReactApplicationContext context) {
@@ -73,11 +76,59 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   }
 
   /**
-   * The gray picture at its output size. PNG is quantized to the screen's 16 levels, which also
-   * shrinks the file; JPG is not, since its compression would blur the levels again
-   * [TO TEST, brief section 7, step 5].
+   * The thumbnail's pixel measures (#66): features only; `src/search/measures.ts` reads them.
+   * Resolves {width, height, mean, ..., ms}, `ms` the decode and measure time for the device log.
    */
-  private static Bitmap prepare(File source, int targetWidth, boolean quantize) throws Exception {
+  @ReactMethod
+  public void measureThumb(String path, Promise promise) {
+    ModuleWork.submit(worker, promise, () -> {
+      long start = System.nanoTime();
+      Pixels decoded = decode(SafePaths.checkPath(path), MEASURE_WIDTH);
+      ThumbMeasures m = ThumbMeasures.of(decoded.argb, decoded.width, decoded.height);
+      WritableMap result = Arguments.createMap();
+      result.putInt("width", m.width);
+      result.putInt("height", m.height);
+      result.putDouble("mean", m.mean);
+      result.putDouble("dark", m.dark);
+      result.putDouble("white", m.white);
+      result.putDouble("mid", m.mid);
+      result.putDouble("border", m.border);
+      result.putInt("borderMedian", m.borderMedian);
+      result.putDouble("ink", m.ink);
+      result.putInt("inkLeft", m.inkLeft);
+      result.putInt("inkTop", m.inkTop);
+      result.putInt("inkWidth", m.inkWidth);
+      result.putInt("inkHeight", m.inkHeight);
+      result.putInt("bands", m.bands);
+      result.putDouble("lineAspect", m.lineAspect);
+      result.putDouble("thickness", m.thickness);
+      result.putDouble("edge", m.edge);
+      result.putDouble("edgeBox", m.edgeBox);
+      result.putInt("colours", m.colours);
+      result.putDouble("objectShare", m.objectShare);
+      result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
+      return result;
+    });
+  }
+
+  /** Decoded pixels, unpremultiplied ARGB, and their size. */
+  private static final class Pixels {
+    final int[] argb;
+    final int width;
+    final int height;
+
+    Pixels(int[] argb, int width, int height) {
+      this.argb = argb;
+      this.width = width;
+      this.height = height;
+    }
+  }
+
+  /**
+   * The picture's pixels scaled down to `targetWidth` (never up): bounds-first decode with a
+   * power-of-two sample size, then one bitmap scale.
+   */
+  private static Pixels decode(File source, int targetWidth) throws Exception {
     if (!source.isFile()) {
       throw new SafePaths.Refused("NOT_FOUND", "no file at " + source);
     }
@@ -104,8 +155,19 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
     // getPixels returns unpremultiplied colors, the form EinkPixels expects.
     scaled.getPixels(pixels, 0, size[0], 0, 0, size[0], size[1]);
     scaled.recycle();
-    EinkPixels.toEink(pixels, quantize);
-    Bitmap gray = Bitmap.createBitmap(pixels, size[0], size[1], Bitmap.Config.ARGB_8888);
+    return new Pixels(pixels, size[0], size[1]);
+  }
+
+  /**
+   * The gray picture at its output size. PNG is quantized to the screen's 16 levels, which also
+   * shrinks the file; JPG is not, since its compression would blur the levels again
+   * [TO TEST, brief section 7, step 5].
+   */
+  private static Bitmap prepare(File source, int targetWidth, boolean quantize) throws Exception {
+    Pixels pixels = decode(source, targetWidth);
+    EinkPixels.toEink(pixels.argb, quantize);
+    Bitmap gray =
+        Bitmap.createBitmap(pixels.argb, pixels.width, pixels.height, Bitmap.Config.ARGB_8888);
     gray.setHasAlpha(false);
     return gray;
   }
