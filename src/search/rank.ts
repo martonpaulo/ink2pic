@@ -23,9 +23,10 @@ export function einkScore(result: SearchResult): number {
     score += PHOTO_SCORE;
   }
   if (result.source === 'openclipart') {
+    // Every Openclipart result is a PNG of vector clip art: one bonus, not two, so ties with
+    // Commons line work stay possible and the first page mixes both.
     score += CLIPART_SCORE;
-  }
-  if (result.mime && LINE_FORMATS.has(result.mime)) {
+  } else if (result.mime && LINE_FORMATS.has(result.mime)) {
     score += FORMAT_SCORE;
   }
   return score;

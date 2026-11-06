@@ -100,6 +100,9 @@ export function parseSearchResponse(text: string): SourceOutcome {
   } catch {
     return sourceFailure('parse', 'the response is not JSON');
   }
+  if (data === null || typeof data !== 'object') {
+    return sourceFailure('parse', 'the response is not a JSON object');
+  }
   if (data.error) {
     const kind = THROTTLE_CODES.has(data.error.code ?? '')
       ? 'throttled'

@@ -193,3 +193,18 @@ describe('plain-value calls', () => {
     expect(remove).toHaveBeenCalled();
   });
 });
+
+describe('numeric answers (#23)', () => {
+  it('fails instead of reporting NaN when the host answers nothing', async () => {
+    mocked(PluginManager.getDeviceType).mockResolvedValue(undefined);
+    expect((await plugin.getDeviceType()).ok).toBe(false);
+    mocked(PluginManager.requestPermission).mockResolvedValue(undefined);
+    expect(
+      (await plugin.requestPermission(plugin.PERMISSION_INTERNET)).ok,
+    ).toBe(false);
+    mocked(PluginManager.hasPermission).mockResolvedValue(null);
+    expect((await plugin.hasPermission(plugin.PERMISSION_INTERNET)).ok).toBe(
+      false,
+    );
+  });
+});

@@ -111,4 +111,45 @@ describe('ResultsGrid', () => {
     );
     expect(source).not.toMatch(/\b(ScrollView|FlatList|Animated)\b/);
   });
+
+  it('stays visible when the same items arrive in a new list (#23)', () => {
+    const tree = render();
+    loadAll(tree);
+    act(() => {
+      tree.update(
+        <ResultsGrid
+          results={many(8)}
+          searching={false}
+          sourceDown={false}
+          onPick={jest.fn()}
+        />,
+      );
+    });
+    expect(
+      tree.root.findByProps({testID: 'grid'}).props.accessibilityElementsHidden,
+    ).toBe(false);
+  });
+
+  it('shows page 1 of a new list in its first render (#23)', () => {
+    const tree = render();
+    act(() => navButton(tree, copy['nav.nextLabel']).props.onPress());
+    act(() => {
+      tree.update(
+        <ResultsGrid
+          results={many(3)}
+          searching={false}
+          sourceDown={false}
+          onPick={jest.fn()}
+        />,
+      );
+    });
+    expect(tree.root.findAllByType(Image)).toHaveLength(3);
+    expect(texts(tree)).toContain('1 / 1');
+  });
+
+  it('shows the failure, not the empty text, when a source failed and none matched (#23)', () => {
+    expect(texts(render({results: [], sourceDown: true}))).toEqual([
+      copy['error.sourceDown'],
+    ]);
+  });
 });

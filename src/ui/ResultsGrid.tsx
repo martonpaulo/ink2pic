@@ -2,7 +2,7 @@
  * Search results as pages of six large tiles, for e-ink (brief section 8.4): no scrolling, no
  * animation, and each page shown once, when all its thumbnails have loaded or failed.
  */
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {pageCount, pageOf} from '../search/pages';
 import type {SearchResult} from '../sources/types';
@@ -12,7 +12,7 @@ import {metrics} from './metrics';
 export type ResultsGridProps = {
   results: SearchResult[];
   searching: boolean;
-  /** One source failed; the other one's results are shown. */
+  /** A source failed while another answered; with no result, this note replaces the empty text. */
   sourceDown: boolean;
   onPick: (result: SearchResult) => void;
 };
@@ -23,13 +23,15 @@ export function ResultsGrid({
   sourceDown,
   onPick,
 }: ResultsGridProps): React.JSX.Element {
-  const [page, setPage] = useState(0);
+  // The page belongs to one results list: a new list starts at page 1 in the same render.
+  const [paging, setPaging] = useState({results, page: 0});
+  const page = paging.results === results ? paging.page : 0;
+  const setPage = (next: number) => setPaging({results, page: next});
+  // Settled ids only grow: a tile that keeps its key keeps its loaded image and fires no new
+  // onLoad, so clearing the set would hide the page for good.
   const [settled, setSettled] = useState<ReadonlySet<string>>(new Set());
   const pages = pageCount(results.length);
   const visible = useMemo(() => pageOf(results, page), [results, page]);
-
-  useEffect(() => setPage(0), [results]);
-  useEffect(() => setSettled(new Set()), [visible]);
 
   const settle = (id: string) =>
     setSettled(previous => new Set(previous).add(id));
@@ -39,7 +41,11 @@ export function ResultsGrid({
     return <Text style={styles.message}>{copy['search.running']}</Text>;
   }
   if (results.length === 0) {
-    return <Text style={styles.message}>{copy['search.empty']}</Text>;
+    return (
+      <Text style={styles.message}>
+        {sourceDown ? copy['error.sourceDown'] : copy['search.empty']}
+      </Text>
+    );
   }
 
   return (

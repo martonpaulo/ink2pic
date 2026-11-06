@@ -16,7 +16,8 @@ describe('einkScore', () => {
   it('prefers line work and clip art over photos', () => {
     expect(einkScore(r('commons', 'Soup engraving', 'image/jpeg'))).toBe(2);
     expect(einkScore(r('commons', 'Photo of soup', 'image/jpeg'))).toBe(-1);
-    expect(einkScore(r('openclipart', 'Soup bowl', 'image/png'))).toBe(2);
+    expect(einkScore(r('openclipart', 'Soup bowl', 'image/png'))).toBe(1);
+    expect(einkScore(r('commons', 'Soup bowl', 'image/png'))).toBe(1);
   });
 });
 
@@ -32,10 +33,11 @@ describe('rankForEink', () => {
       r('commons', 'Soup', 'image/png'),
     ];
     const titles = rankForEink([clipart, commons]).map(x => x.title);
+    // Woodcut (2) first; then Bowl, Ladle and Soup tie at 1 and keep their interleaved order (#23).
     expect(titles).toEqual([
+      'Kitchen woodcut',
       'Bowl',
       'Ladle',
-      'Kitchen woodcut',
       'Soup',
       'Photo of a bowl',
     ]);
@@ -45,5 +47,16 @@ describe('rankForEink', () => {
   it('handles empty lists', () => {
     expect(rankForEink([])).toEqual([]);
     expect(rankForEink([[], []])).toEqual([]);
+  });
+
+  it('mixes Commons into the first page when Openclipart has many hits (#23)', () => {
+    const clipart = Array.from({length: 8}, (_, i) =>
+      r('openclipart', `Bowl ${i}`, 'image/png'),
+    );
+    const commons = Array.from({length: 3}, (_, i) =>
+      r('commons', `Bowl ${i}`, 'image/png'),
+    );
+    const firstPage = rankForEink([clipart, commons]).slice(0, 6);
+    expect(firstPage.filter(x => x.source === 'commons')).toHaveLength(3);
   });
 });

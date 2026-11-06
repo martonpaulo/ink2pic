@@ -88,3 +88,15 @@ describe('defaultSources', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('a failure beside an empty answer (#23)', () => {
+  it('flags the failed source even when the other found nothing', async () => {
+    const outcome = await searchAll('soup', [
+      answering('a', {ok: false, kind: 'timeout', message: 'no answer'}),
+      answering('b', {ok: true, results: []}),
+    ]);
+    expect(outcome.results).toEqual([]);
+    expect(outcome.sourceDown).toBe(true);
+    expect(outcome.allFailed).toBe(false);
+  });
+});

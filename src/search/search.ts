@@ -19,7 +19,7 @@ export type SourceStatus =
 export type SearchOutcome = {
   results: SearchResult[];
   statuses: Record<string, SourceStatus>;
-  /** A source failed while another one returned results: show the note. */
+  /** Some source failed and another answered, with or without results: show the note. */
   sourceDown: boolean;
   /** Every source failed: nothing to show but the failure. */
   allFailed: boolean;
@@ -78,7 +78,7 @@ export async function searchAll(
   return {
     results,
     statuses,
-    sourceDown: failed > 0 && results.length > 0,
+    sourceDown: failed > 0 && failed < sources.length,
     allFailed: failed === sources.length,
   };
 }

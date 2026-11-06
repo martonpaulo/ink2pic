@@ -8,12 +8,16 @@ export const PERMISSION_FILE_WRITE = 'plugin.permission.FILE:WRITE';
 /** `hasPermission` answer for a granted permission. */
 export const GRANTED = 1;
 
+/** A numeric host answer; anything else is a failure, never NaN reported as success. */
+function toNumber(raw: unknown): Result<number> {
+  return typeof raw === 'number' && Number.isFinite(raw)
+    ? ok(raw)
+    : fail(THROWN_CODE, `expected a number, got ${String(raw)}`);
+}
+
 /** `5` is the Manta (A5X2), per brief section 2. */
 export function getDeviceType(): Promise<Result<number>> {
-  return attempt(
-    () => PluginManager.getDeviceType(),
-    raw => ok(Number(raw)),
-  );
+  return attempt(() => PluginManager.getDeviceType(), toNumber);
 }
 
 /** The host's answer: 0 denied, 1 allowed once, 2 always, -1 cancelled (brief section 3.6). */
@@ -23,14 +27,17 @@ export function requestPermission(
 ): Promise<Result<number>> {
   return attempt(
     () => PluginManager.requestPermission(permission, description),
-    raw => ok(Number(raw)),
+    toNumber,
   );
 }
 
 export function hasPermission(permission: string): Promise<Result<boolean>> {
   return attempt(
     () => PluginManager.hasPermission(permission),
-    raw => ok(Number(raw) === GRANTED),
+    raw => {
+      const answer = toNumber(raw);
+      return answer.ok ? ok(answer.value === GRANTED) : answer;
+    },
   );
 }
 

@@ -104,3 +104,13 @@ describe('searchCommons', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('non-object bodies (#23)', () => {
+  it('reports a JSON null as a parse failure instead of throwing', () => {
+    expect(parseSearchResponse('null')).toEqual({
+      ok: false,
+      kind: 'parse',
+      message: 'the response is not a JSON object',
+    });
+  });
+});
