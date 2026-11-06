@@ -17,7 +17,6 @@ import {
   OpeningEvent,
   OpeningState,
   step,
-  undecided,
 } from './src/flow/opening';
 import type {LassoPlace} from './src/flow/place';
 import {startSession} from './src/storage/logFile';
@@ -196,10 +195,9 @@ function App(): React.JSX.Element {
     });
     // 3. Closed: the next opening starts fresh; opened again: decide again, unless pressed.
     const stopLife = onLifecycle(state => dispatch({type: 'lifecycle', state}));
-    // 4. Now, on mount, unless a press already chose.
-    if (undecided(opening.current)) {
-      decide();
-    }
+    // 4. Now, on mount, unless a press already chose: the controller starts the session log
+    // before the decision's first logged call (#58).
+    dispatch({type: 'mount'});
     return () => {
       stopPresses();
       stopLife();

@@ -1,5 +1,6 @@
 /** The view opens without the button event and without a timer (#13, build 0.1.0 (8)). */
 import React from 'react';
+import {NativeModules} from 'react-native';
 import renderer, {act} from 'react-test-renderer';
 import {
   FileUtils,
@@ -10,7 +11,12 @@ import {
 import App from '../App';
 import {insertPicture} from '../src/flow/insertPicture';
 import {resetSessionForTests} from '../src/storage/session';
-import {logLines} from '../src/log/memory';
+import {logLines, setAfterCall} from '../src/log/memory';
+import {
+  closeLogFileForTests,
+  flushLogFile,
+  openLogFile,
+} from '../src/storage/logFile';
 import {startButtonQueue} from '../src/sdk/buttons';
 import {copy} from '../src/ui/copy';
 import {SearchScreen} from '../src/ui/SearchScreen';
@@ -201,6 +207,38 @@ describe('the latest opening wins (#44)', () => {
     const tree = await mount();
     expect(shown(tree)).toBe('soup');
     expect(PluginCommAPI.getLassoElements).toHaveBeenCalledTimes(1);
+    act(() => tree.unmount());
+  });
+});
+
+describe('the session log of a new runtime (#58)', () => {
+  const LOGS = '/s/MyStyle/Ink2Pic/logs';
+  afterEach(() => {
+    setAfterCall(() => {});
+    closeLogFileForTests();
+    delete NativeModules.Ink2PicFiles;
+  });
+
+  it('keeps the previous runtime lines in session.prev.log when the view decides on mount', async () => {
+    const files: Record<string, string> = {
+      [`${LOGS}/session.log`]: 'the previous runtime\n',
+    };
+    NativeModules.Ink2PicFiles = {
+      writeText: jest.fn(async (path: string, text: string) => {
+        files[path] = text;
+        return null;
+      }),
+      readText: jest.fn(async (path: string) => files[path] ?? null),
+      listDir: jest.fn(async () => null),
+    };
+    closeLogFileForTests();
+    openLogFile(LOGS);
+    setAfterCall(flushLogFile);
+    // A fresh runtime with no pending press: the view decides on mount.
+    (PluginCommAPI.getLassoElements as jest.Mock).mockReturnValue(ok([]));
+    const tree = await mount();
+    expect(files[`${LOGS}/session.prev.log`]).toBe('the previous runtime\n');
+    expect(files[`${LOGS}/session.log`]).toContain('getLassoElements');
     act(() => tree.unmount());
   });
 });

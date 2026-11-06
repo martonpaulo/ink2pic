@@ -13,7 +13,8 @@
  * waiting press runs once the start ends.
  *
  * Each opening starts its own session log first (#58), so session.log holds one whole opening:
- * its lifecycle line, the lasso decision and the press.
+ * its lifecycle line, the lasso decision and the press. The decision on mount goes through the
+ * controller too, so a fresh runtime keeps the previous runtime's file as session.prev.log.
  */
 import {LifeState} from '../sdk/buttons';
 
@@ -37,6 +38,8 @@ export type OpeningState = {
 };
 
 export type OpeningEvent =
+  /** The view mounted, after any pending press was dispatched. */
+  | {type: 'mount'}
   | {type: 'press'; id: number; how: 'pending' | 'live'; now: number}
   | {type: 'decided'; id: number; lasso: OpenedLasso; now: number}
   | {type: 'lifecycle'; state: number}
@@ -112,8 +115,23 @@ function open(
   };
 }
 
+/**
+ * Starts the session log unless this opening already did, then `then`. The session comes before
+ * the opening's first line and first logged call: a call flushes the log to session.log, and the
+ * first opening of a runtime copies the previous runtime's file to session.prev.log (#58).
+ */
+function inSession(state: OpeningState, then: OpeningAction[]): Step {
+  const opened: OpeningAction[] = state.session ? [] : [{type: 'startSession'}];
+  return {state: {...state, session: true}, actions: [...opened, ...then]};
+}
+
 export function step(state: OpeningState, event: OpeningEvent): Step {
   switch (event.type) {
+    case 'mount':
+      // Decide now, unless a pending press already chose.
+      return undecided(state)
+        ? inSession(state, [{type: 'decide'}])
+        : {state, actions: []};
     case 'press':
       return open(state, event.id, event.how, undefined, event.now);
     case 'decided':
@@ -140,13 +158,7 @@ export function step(state: OpeningState, event: OpeningEvent): Step {
         };
       }
       if (event.state === LifeState.start && undecided(state)) {
-        const opened: OpeningAction[] = state.session
-          ? []
-          : [{type: 'startSession'}];
-        return {
-          state: {...state, session: true},
-          actions: [...opened, logLine, {type: 'decide'}],
-        };
+        return inSession(state, [logLine, {type: 'decide'}]);
       }
       return {state, actions: [logLine]};
     }

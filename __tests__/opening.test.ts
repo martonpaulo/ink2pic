@@ -152,6 +152,21 @@ describe('the session log of an opening (#58)', () => {
     expect(sessions(actions)).toBe(1);
   });
 
+  it('starts the session before the decision on mount, before its first logged call', () => {
+    const {actions} = all([{type: 'mount'}]);
+    expect(actions).toEqual([{type: 'startSession'}, {type: 'decide'}]);
+  });
+
+  it('starts one session for a mount decision and its lifecycle 2', () => {
+    expect(sessions(all([{type: 'mount'}, show]).actions)).toBe(1);
+  });
+
+  it('decides nothing on mount after a pending press', () => {
+    const {actions} = all([press(200, 0), {type: 'mount'}]);
+    expect(actions.filter(a => a.type === 'decide')).toEqual([]);
+    expect(sessions(actions)).toBe(1);
+  });
+
   it('starts one session for a press and its lifecycle 2', () => {
     expect(sessions(all([press(100, 0), show]).actions)).toBe(1);
   });
