@@ -3,8 +3,8 @@ import {FileUtils, PluginManager} from 'sn-plugin-lib';
 import {resetSessionForTests} from '../src/storage/session';
 import {closeLogFileForTests} from '../src/storage/logFile';
 import {searchCached} from '../src/search/device';
-import type {Source} from '../src/search/search';
-import {fullUrl} from '../src/sources/registry';
+import type {SourceAdapter} from '../src/search-core';
+import {fullUrl} from '../src/search-core/registry';
 
 const files: Record<string, string> = {};
 const native = {
@@ -44,7 +44,7 @@ describe('searchCached (#16)', () => {
         },
       ],
     });
-    const sources: Source[] = [{name: 'openclipart', search}];
+    const sources: SourceAdapter[] = [{name: 'openclipart', search}];
     await searchCached('soup', sources);
     const again = await searchCached('Soup ', sources);
     expect(search).toHaveBeenCalledTimes(1);

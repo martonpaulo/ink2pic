@@ -27,7 +27,7 @@ import {missingPermissions, PermissionNeed} from './src/onboarding/permissions';
 import {getLassoElements} from './src/sdk/lasso';
 import {onButtonEvent, onLifecycle, takePendingButton} from './src/sdk/buttons';
 import {closePluginView} from './src/sdk/plugin';
-import type {SearchResult} from './src/sources/types';
+import type {SearchResult} from './src/search-core';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
 import {StatusScreen} from './src/ui/StatusScreen';

@@ -5,8 +5,8 @@
  * implements in `src/storage/measures.ts` and another project can supply.
  */
 import type {Result} from '../sdk/result';
-import {PAGE_SIZE, SearchResult} from '../sources/types';
-import {einkScore} from './rank';
+import {PAGE_SIZE, SearchResult} from '../search-core';
+import {einkScore} from '../search-core/rank';
 
 /**
  * The features `ThumbMeasures.java` computes on gray values flattened on white. Shares are 0 to 1,

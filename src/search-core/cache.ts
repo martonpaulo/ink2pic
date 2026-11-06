@@ -5,11 +5,23 @@
  * The file is read once per runtime and kept parsed in memory; a write runs after the results
  * are shown, never before (#46).
  */
-import {COMMONS_FULL_WIDTH, resizeThumb} from '../sources/commons';
-import {fullUrl, isSourceName} from '../sources/registry';
-import type {SearchResult} from '../sources/types';
-import type {TextStorage} from '../storage/text';
+import {Clock, systemClock} from './clock';
+import {isSourceName, storedOriginal} from './registry';
 import type {SearchOutcome, SourceStatus} from './search';
+import type {SearchResult} from './types';
+
+/** Text files where the cache lives; `readText` gives null when the file does not exist. */
+export type TextStore = {
+  readText: (path: string) => Promise<string | null>;
+  writeText: (path: string, text: string) => Promise<void>;
+};
+
+export type CacheOptions = {
+  storage: TextStore;
+  /** The cache file in `storage`. */
+  path: string;
+  clock?: Clock;
+};
 
 /**
  * Raised when cached results would show in an order the current ranking no longer gives: 2 since
@@ -31,7 +43,6 @@ export type StoredResult = Omit<
   SearchResult,
   'canonical' | 'localPath' | 'localSize'
 >;
-type StoredOriginal = NonNullable<SearchResult['original']>;
 type StoredOutcome = Omit<SearchOutcome, 'results'> & {results: StoredResult[]};
 type Entry = {query: string; savedAt: number; outcome: StoredOutcome};
 
@@ -48,9 +59,9 @@ export type CachedSearch = {
 };
 
 /** Parsed entries per storage and path, newest first, kept for the runtime. */
-const memory = new WeakMap<TextStorage, Map<string, Entry[]>>();
+const memory = new WeakMap<TextStore, Map<string, Entry[]>>();
 
-function remembered(storage: TextStorage): Map<string, Entry[]> {
+function remembered(storage: TextStore): Map<string, Entry[]> {
   let byPath = memory.get(storage);
   if (!byPath) {
     byPath = new Map();
@@ -59,24 +70,13 @@ function remembered(storage: TextStorage): Map<string, Entry[]> {
   return byPath;
 }
 
-/** The original a fresh Commons result gives at the insert width, when it is not a thumbnail. */
-function commonsOriginal(result: SearchResult): StoredOriginal | undefined {
-  if (result.source !== 'commons') {
-    return undefined;
-  }
-  const url = fullUrl(result, COMMONS_FULL_WIDTH);
-  return url === resizeThumb(result.thumbUrl, COMMONS_FULL_WIDTH)
-    ? undefined
-    : {url, width: COMMONS_FULL_WIDTH};
-}
-
 export function cacheKey(query: string): string {
   return query.trim().toLowerCase();
 }
 
 function store(result: SearchResult): StoredResult {
   const {id, source, title, thumbUrl, license, attribution, mime} = result;
-  const original = commonsOriginal(result);
+  const original = storedOriginal(result);
   return {
     id,
     source,
@@ -185,7 +185,7 @@ function message(error: unknown): string {
 }
 
 async function readEntries(
-  storage: TextStorage,
+  storage: TextStore,
   path: string,
 ): Promise<ParsedCache> {
   try {
@@ -201,15 +201,14 @@ async function readEntries(
 
 /**
  * A fresh cached outcome for the query without calling `run`; otherwise `run`'s outcome,
- * stored when worth keeping. `now` is milliseconds since the epoch.
+ * stored when worth keeping.
  */
 export async function cachedSearch(
   query: string,
   run: (query: string) => Promise<SearchOutcome>,
-  storage: TextStorage,
-  path: string,
-  now: number,
+  {storage, path, clock = systemClock}: CacheOptions,
 ): Promise<CachedSearch> {
+  const now = clock.now();
   const key = cacheKey(query);
   const byPath = remembered(storage);
   const inMemory = byPath.get(path);

@@ -4,7 +4,14 @@
  * rest; logos, maps, diagrams and other stylised graphics last (brief sections 5.4, 7 and 8.4).
  * Every signal is one the sources already return: no request per result.
  */
-import type {SearchResult} from '../sources/types';
+import {QueryIntent, readIntent, words} from './query';
+import type {SearchResult} from './types';
+
+/**
+ * One signal of the ranking: points for a result under the query's intent. The ranker adds the
+ * scorers' points; a new signal (pixel measures) is one more scorer, never a change here.
+ */
+export type Scorer = (result: SearchResult, intent: QueryIntent) => number;
 
 const LINE_WORK =
   /\b(engraving|etching|woodcut|drawing|line ?art|sketch|outline|silhouette|illustration|clip ?art|icon|lithograph)\b/i;
@@ -47,13 +54,6 @@ const STYLISED_SCORE = -5;
 const MENTION_SCORE = 1;
 const PLAIN_SUBJECT_SCORE = 3;
 
-function words(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter(word => word !== '' && !/^\d+$/.test(word));
-}
-
 /** Whether `word` is `queryWord` or its plural. */
 function sameWord(word: string, queryWord: string): boolean {
   return (
@@ -61,45 +61,66 @@ function sameWord(word: string, queryWord: string): boolean {
   );
 }
 
-/** How directly the title names the word: 0 not at all, else the mention or plain-subject score. */
-function subjectScore(title: string, query: string): number {
-  const wanted = words(query);
-  const have = words(title);
+/** How directly the title names the subject: 0 not at all, else the mention or plain-subject score. */
+const subjectScorer: Scorer = (result, {subject}) => {
+  const have = words(result.title);
   if (
-    wanted.length === 0 ||
-    !wanted.every(q => have.some(word => sameWord(word, q)))
+    subject.length === 0 ||
+    !subject.every(q => have.some(word => sameWord(word, q)))
   ) {
     return 0;
   }
   const others = new Set(
     have.filter(
-      word => !FORM_WORDS.has(word) && !wanted.some(q => sameWord(word, q)),
+      word => !FORM_WORDS.has(word) && !subject.some(q => sameWord(word, q)),
     ),
   );
   return others.size <= PLAIN_SUBJECT_WORDS
     ? PLAIN_SUBJECT_SCORE
     : MENTION_SCORE;
-}
+};
 
-export function einkScore(result: SearchResult, query = ''): number {
-  let score = subjectScore(result.title, query);
-  if (LINE_WORK.test(result.title)) {
-    score += LINE_WORK_SCORE;
-  }
-  if (PHOTO.test(result.title)) {
-    score += PHOTO_SCORE;
-  }
-  if (STYLISED.test(result.title)) {
-    score += STYLISED_SCORE;
-  }
+const lineWorkScorer: Scorer = result =>
+  LINE_WORK.test(result.title) ? LINE_WORK_SCORE : 0;
+
+const photoScorer: Scorer = result =>
+  PHOTO.test(result.title) ? PHOTO_SCORE : 0;
+
+const stylisedScorer: Scorer = result =>
+  STYLISED.test(result.title) ? STYLISED_SCORE : 0;
+
+const formatScorer: Scorer = result => {
   if (result.source === 'openclipart') {
     // Every Openclipart result is a PNG of vector clip art: one bonus, not two, so ties with
     // Commons line work stay possible and the first page mixes both.
-    score += CLIPART_SCORE;
-  } else if (result.mime && LINE_FORMATS.has(result.mime)) {
-    score += FORMAT_SCORE;
+    return CLIPART_SCORE;
   }
-  return score;
+  return result.mime && LINE_FORMATS.has(result.mime) ? FORMAT_SCORE : 0;
+};
+
+/** The ranking's signals, in the order they are read; every scorer sees every result. */
+export const DEFAULT_SCORERS: readonly Scorer[] = [
+  subjectScorer,
+  lineWorkScorer,
+  photoScorer,
+  stylisedScorer,
+  formatScorer,
+];
+
+function total(
+  result: SearchResult,
+  intent: QueryIntent,
+  scorers: readonly Scorer[],
+): number {
+  return scorers.reduce((sum, score) => sum + score(result, intent), 0);
+}
+
+export function einkScore(
+  result: SearchResult,
+  query = '',
+  scorers: readonly Scorer[] = DEFAULT_SCORERS,
+): number {
+  return total(result, readIntent(query), scorers);
 }
 
 /**
@@ -112,7 +133,9 @@ export function einkScore(result: SearchResult, query = ''): number {
 export function rankForEink(
   lists: readonly SearchResult[][],
   query = '',
+  scorers: readonly Scorer[] = DEFAULT_SCORERS,
 ): SearchResult[] {
+  const intent = readIntent(query);
   const interleaved: SearchResult[] = [];
   const longest = Math.max(0, ...lists.map(list => list.length));
   for (let i = 0; i < longest; i++) {
@@ -125,7 +148,11 @@ export function rankForEink(
   const canonical = interleaved.filter(result => result.canonical);
   const [best, ...rest] = interleaved
     .filter(result => !result.canonical)
-    .map((result, order) => ({result, order, score: einkScore(result, query)}))
+    .map((result, order) => ({
+      result,
+      order,
+      score: total(result, intent, scorers),
+    }))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map(entry => entry.result);
   const ordered = best ? [best, ...canonical, ...rest] : canonical;

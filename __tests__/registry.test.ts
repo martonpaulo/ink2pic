@@ -1,5 +1,5 @@
-import {fullUrl, insertUrl, isSourceName} from '../src/sources/registry';
-import type {SearchResult} from '../src/sources/types';
+import {fullUrl, insertUrl, isSourceName} from '../src/search-core/registry';
+import type {SearchResult} from '../src/search-core/types';
 
 const THUMB =
   'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Soup.png/330px-Soup.png';

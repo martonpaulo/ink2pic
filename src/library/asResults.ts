@@ -1,5 +1,5 @@
 /** Library pictures as grid results: local files, inserted without a download (#15). */
-import type {SearchResult} from '../sources/types';
+import type {SearchResult} from '../search-core';
 import type {LibraryItem} from './types';
 
 export function libraryResults(items: LibraryItem[]): SearchResult[] {

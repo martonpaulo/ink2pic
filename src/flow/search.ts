@@ -6,11 +6,18 @@
 import {getLibrary, recordSearch} from '../library/device';
 import type {Library} from '../library/types';
 import {log} from '../log/memory';
+import {
+  DEFAULT_ADAPTERS,
+  SearchOutcome,
+  SearchState,
+  SearchStateKind,
+  searchState,
+  SourceAdapter,
+} from '../search-core';
 import {searchCached} from '../search/device';
-import type {SearchOutcome, Source} from '../search/search';
-import {defaultSources} from '../search/sources';
 import {prepareThumbs} from '../search/thumbs';
-import {isOffline, offlineText} from './failure';
+import type {CopyKey} from '../ui/copy';
+import {offlineText} from './failure';
 
 export type SearchRun = {
   /** Null when a newer search started meanwhile: this answer is ignored. */
@@ -24,7 +31,7 @@ export type AfterSearch = {offline: string} | {library: Library} | null;
 
 export async function runSearch(
   word: string,
-  sources: readonly Source[] = defaultSources(),
+  sources: readonly SourceAdapter[] = DEFAULT_ADAPTERS,
   isNewest: () => boolean = () => true,
 ): Promise<SearchRun> {
   log(`search "${word}"`);
@@ -48,12 +55,27 @@ export async function afterSearch(
   word: string,
   outcome: SearchOutcome,
 ): Promise<AfterSearch> {
-  if (isOffline(outcome)) {
+  const state = searchState(outcome).kind;
+  if (state === 'offline') {
     return {offline: await offlineText()};
   }
-  if (outcome.allFailed) {
+  if (state === 'failed') {
     return null;
   }
   await recordSearch(word);
   return {library: await getLibrary()};
+}
+
+/** The one sentence of each search state; null when the results speak for themselves. */
+const STATE_COPY: Record<SearchStateKind, CopyKey | null> = {
+  searching: 'search.running',
+  ready: null,
+  partial: 'error.sourceDown',
+  empty: 'search.empty',
+  offline: 'error.offline',
+  failed: 'error.sourcesDown',
+};
+
+export function stateCopy(state: SearchState): CopyKey | null {
+  return STATE_COPY[state.kind];
 }

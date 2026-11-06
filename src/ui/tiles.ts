@@ -6,7 +6,7 @@
  */
 import {pageCount, pageOf} from '../search/pages';
 import {webRetryUri} from '../search/thumbs';
-import type {SearchResult} from '../sources/types';
+import type {SearchResult} from '../search-core';
 
 export type Tile =
   /** The thumbnail is being downloaded to its file; nothing renders yet. */

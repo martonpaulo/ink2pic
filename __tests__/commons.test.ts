@@ -11,9 +11,13 @@ import {
   resizeThumb,
   searchCommons,
   searchUrl,
-} from '../src/sources/commons';
-import {PAGE_SIZE} from '../src/search/pages';
-import {fullUrl} from '../src/sources/registry';
+} from '../src/search-core/adapters/commons';
+import {PAGE_SIZE} from '../src/search-core/pages';
+import {fullUrl} from '../src/search-core/registry';
+import {USER_AGENT} from '../src/config';
+import {createContext, FetchLike} from '../src/search-core/fetcher';
+
+const ctx = (fetch: FetchLike) => createContext({fetch, userAgent: USER_AGENT});
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -91,7 +95,7 @@ describe('searchCommons', () => {
       status: 200,
       text: () => Promise.resolve(fixture('commons-none.json')),
     });
-    await searchCommons('soup', {fetch});
+    await searchCommons('soup', ctx(fetch));
     const headers = fetch.mock.calls[0][1].headers;
     expect(headers['User-Agent']).toMatch(
       /^Ink2Pic\/.+github\.com\/martonpaulo\/ink2pic/,
@@ -103,7 +107,7 @@ describe('searchCommons', () => {
     const fetch = jest
       .fn()
       .mockResolvedValue({ok: false, status: 429, text: jest.fn()});
-    expect(await searchCommons('soup', {fetch})).toEqual({
+    expect(await searchCommons('soup', ctx(fetch))).toEqual({
       ok: false,
       kind: 'throttled',
       message: 'HTTP 429',
@@ -230,7 +234,7 @@ describe('drawings and canonical files (#43)', () => {
 
   it('makes one request when the drawings fill a page', async () => {
     const fetch = jest.fn().mockResolvedValue(ok(pages(PAGE_SIZE)));
-    const outcome = await searchCommons('apple', {fetch});
+    const outcome = await searchCommons('apple', ctx(fetch));
     expect(outcome.ok && outcome.results).toHaveLength(PAGE_SIZE);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][0]).toContain('filetype%3Adrawing');
@@ -241,7 +245,7 @@ describe('drawings and canonical files (#43)', () => {
       .fn()
       .mockResolvedValueOnce(ok(pages(1)))
       .mockResolvedValueOnce(ok(pages(3)));
-    const outcome = await searchCommons('okra soup', {fetch});
+    const outcome = await searchCommons('okra soup', ctx(fetch));
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[1][0]).not.toContain('filetype');
     // The drawing comes first; the file both searches found is shown once.
@@ -257,7 +261,7 @@ describe('drawings and canonical files (#43)', () => {
       .fn()
       .mockResolvedValueOnce(ok(pages(1)))
       .mockResolvedValueOnce({ok: false, status: 429, text: jest.fn()});
-    const outcome = await searchCommons('okra soup', {fetch});
+    const outcome = await searchCommons('okra soup', ctx(fetch));
     expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
       'commons:100',
     ]);
@@ -285,7 +289,7 @@ describe('drawings and canonical files (#43)', () => {
       `titles=${encodeURIComponent('File:A b.jpg|File:C.svg')}`,
     );
     const fetch = jest.fn();
-    expect(await commonsFiles([], {fetch})).toEqual({ok: true, results: []});
+    expect(await commonsFiles([], ctx(fetch))).toEqual({ok: true, results: []});
     expect(fetch).not.toHaveBeenCalled();
   });
 });

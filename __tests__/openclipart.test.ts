@@ -5,8 +5,12 @@ import {
   parseSearchPage,
   searchOpenclipart,
   searchUrl,
-} from '../src/sources/openclipart';
-import {fullUrl} from '../src/sources/registry';
+} from '../src/search-core/adapters/openclipart';
+import {fullUrl} from '../src/search-core/registry';
+import {USER_AGENT} from '../src/config';
+import {createContext, FetchLike} from '../src/search-core/fetcher';
+
+const ctx = (fetch: FetchLike) => createContext({fetch, userAgent: USER_AGENT});
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -81,7 +85,7 @@ describe('searchOpenclipart', () => {
       status: 200,
       text: () => Promise.resolve(fixture('openclipart-soup.html')),
     });
-    const outcome = await searchOpenclipart('soup', {fetch});
+    const outcome = await searchOpenclipart('soup', ctx(fetch));
     expect(outcome.ok && outcome.results.length).toBe(32);
     expect(fetch.mock.calls[0][0]).toBe(
       'https://openclipart.org/search/?query=soup',
@@ -93,7 +97,7 @@ describe('searchOpenclipart', () => {
     const fetch = jest
       .fn()
       .mockResolvedValue({ok: false, status: 503, text: jest.fn()});
-    expect(await searchOpenclipart('soup', {fetch})).toEqual({
+    expect(await searchOpenclipart('soup', ctx(fetch))).toEqual({
       ok: false,
       kind: 'http',
       message: 'HTTP 503',

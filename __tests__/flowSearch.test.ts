@@ -3,7 +3,7 @@ import {getLibrary, recordSearch} from '../src/library/device';
 import {emptyLibrary} from '../src/library/library';
 import {logLines, startLog} from '../src/log/memory';
 import {searchCached} from '../src/search/device';
-import type {SearchOutcome} from '../src/search/search';
+import type {SearchOutcome} from '../src/search-core/search';
 import {prepareThumbs} from '../src/search/thumbs';
 import {hasPermission} from '../src/sdk/plugin';
 import {copy} from '../src/ui/copy';

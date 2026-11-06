@@ -1,4 +1,4 @@
-import type {SourceName} from '../sources/types';
+import type {SourceName} from '../search-core';
 
 /** One inserted picture with what is needed to reuse and credit it (brief section 8.6). */
 export type LibraryItem = {

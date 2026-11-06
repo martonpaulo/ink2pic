@@ -1,4 +1,4 @@
-import {fetchText} from '../src/sources/http';
+import {createFetcher, FetchLike} from '../src/search-core/fetcher';
 
 const reply = (status: number, body = '') =>
   jest.fn().mockResolvedValue({
@@ -6,20 +6,19 @@ const reply = (status: number, body = '') =>
     status,
     text: () => Promise.resolve(body),
   });
+const fetcher = (fetch: FetchLike, timeoutMs?: number) =>
+  createFetcher({fetch, userAgent: 'Ink2Pic/test', timeoutMs});
 
-describe('fetchText', () => {
+describe('createFetcher', () => {
   it('returns the body', async () => {
-    expect(
-      await fetchText('https://x.test/', {fetch: reply(200, 'hi')}),
-    ).toEqual({
+    expect(await fetcher(reply(200, 'hi'))('https://x.test/')).toEqual({
       ok: true,
       text: 'hi',
     });
   });
 
   it.each([403, 429])('maps HTTP %i to throttled', async status => {
-    const outcome = await fetchText('https://x.test/', {fetch: reply(status)});
-    expect(outcome).toEqual({
+    expect(await fetcher(reply(status))('https://x.test/')).toEqual({
       ok: false,
       kind: 'throttled',
       message: `HTTP ${status}`,
@@ -27,10 +26,10 @@ describe('fetchText', () => {
   });
 
   it('maps another error status to http', async () => {
-    expect(await fetchText('https://x.test/', {fetch: reply(500)})).toEqual({
+    expect(await fetcher(reply(404))('https://x.test/')).toEqual({
       ok: false,
       kind: 'http',
-      message: 'HTTP 500',
+      message: 'HTTP 404',
     });
   });
 
@@ -38,7 +37,7 @@ describe('fetchText', () => {
     const fetch = jest
       .fn()
       .mockRejectedValue(new TypeError('Network request failed'));
-    expect(await fetchText('https://x.test/', {fetch})).toEqual({
+    expect(await fetcher(fetch)('https://x.test/')).toEqual({
       ok: false,
       kind: 'network',
       message: 'Network request failed',
@@ -54,7 +53,7 @@ describe('fetchText', () => {
           );
         }),
     );
-    expect(await fetchText('https://x.test/', {fetch, timeoutMs: 10})).toEqual({
+    expect(await fetcher(fetch, 10)('https://x.test/')).toEqual({
       ok: false,
       kind: 'timeout',
       message: 'no answer in 10 ms',
@@ -63,10 +62,10 @@ describe('fetchText', () => {
 
   it('merges extra headers with the User-Agent', async () => {
     const fetch = reply(200);
-    await fetchText('https://x.test/', {fetch}, {'Api-User-Agent': 'a'});
-    expect(Object.keys(fetch.mock.calls[0][1].headers)).toEqual([
-      'User-Agent',
-      'Api-User-Agent',
-    ]);
+    await fetcher(fetch)('https://x.test/', {'Api-User-Agent': 'a'});
+    expect(fetch.mock.calls[0][1].headers).toEqual({
+      'User-Agent': 'Ink2Pic/test',
+      'Api-User-Agent': 'a',
+    });
   });
 });

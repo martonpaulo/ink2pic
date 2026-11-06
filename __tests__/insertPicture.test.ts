@@ -5,7 +5,7 @@ import {resetSessionForTests} from '../src/storage/session';
 import {resetLibraryForTests} from '../src/library/device';
 import {closeLogFileForTests} from '../src/storage/logFile';
 import {PluginManager} from 'sn-plugin-lib';
-import type {SearchResult} from '../src/sources/types';
+import type {SearchResult} from '../src/search-core/types';
 
 const result: SearchResult = {
   id: 'openclipart:340609',

@@ -12,7 +12,7 @@ import {
   thumbPath,
   thumbUri,
 } from '../src/search/thumbs';
-import type {SearchResult} from '../src/sources/types';
+import type {SearchResult} from '../src/search-core/types';
 import {ResultsGrid} from '../src/ui/ResultsGrid';
 
 const DIR = '/data/plugin';

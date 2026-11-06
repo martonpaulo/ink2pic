@@ -6,14 +6,15 @@ import React from 'react';
 import {NativeModules, Text} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {PluginManager} from 'sn-plugin-lib';
-import {failureText, isOffline, Step} from '../src/flow/failure';
+import {failureText, Step} from '../src/flow/failure';
+import {searchState} from '../src/search-core/state';
 import {EMPTY_LASSO_CODE, MODULE_CODE, TIMEOUT_CODE} from '../src/sdk/result';
-import type {Source} from '../src/search/search';
-import type {SourceOutcome} from '../src/sources/types';
+import type {SourceAdapter} from '../src/search-core';
+import type {SourceOutcome} from '../src/search-core/types';
 import {copy} from '../src/ui/copy';
 import {SearchScreen} from '../src/ui/SearchScreen';
 
-const source = (name: string, outcome: SourceOutcome): Source => ({
+const source = (name: string, outcome: SourceOutcome): SourceAdapter => ({
   name,
   search: () => Promise.resolve(outcome),
 });
@@ -24,7 +25,10 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-async function render(sources: Source[], props: {lassoFailed?: boolean} = {}) {
+async function render(
+  sources: SourceAdapter[],
+  props: {lassoFailed?: boolean} = {},
+) {
   let tree!: ReactTestRenderer;
   await act(async () => {
     tree = renderer.create(
@@ -97,8 +101,8 @@ describe('visible failures (#19)', () => {
       a: {state: 'failed' as const, kind: 'http' as const, message: 'HTTP 500'},
     };
     expect(
-      isOffline({results: [], statuses, sourceDown: false, allFailed: true}),
-    ).toBe(false);
+      searchState({results: [], statuses, sourceDown: false, allFailed: true}),
+    ).toEqual({kind: 'failed'});
   });
 
   it('both sources down: says so, not that nothing was found', async () => {

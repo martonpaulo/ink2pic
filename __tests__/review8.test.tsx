@@ -21,8 +21,8 @@ import {
   startSession,
 } from '../src/storage/logFile';
 import type {Done} from '../src/flow/failure';
-import type {Source} from '../src/search/search';
-import type {SearchResult} from '../src/sources/types';
+import type {SourceAdapter} from '../src/search-core';
+import type {SearchResult} from '../src/search-core/types';
 import {SearchScreen} from '../src/ui/SearchScreen';
 
 const files: Record<string, string> = {};
@@ -146,7 +146,7 @@ describe('SearchScreen', () => {
         ok: true,
         results: [{...result, id: 'openclipart:2', title: 'Wine'}],
       });
-    const sources: Source[] = [{name: 'openclipart', search}];
+    const sources: SourceAdapter[] = [{name: 'openclipart', search}];
     const onPick = jest.fn((): Promise<Done<unknown>> => new Promise(() => {}));
     let tree!: renderer.ReactTestRenderer;
     await act(async () => {

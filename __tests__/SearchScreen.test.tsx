@@ -1,8 +1,8 @@
 import React from 'react';
 import {Keyboard, Pressable, StyleSheet, Text, TextInput} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
-import type {Source} from '../src/search/search';
-import type {SearchResult} from '../src/sources/types';
+import type {SourceAdapter} from '../src/search-core';
+import type {SearchResult} from '../src/search-core/types';
 import {copy} from '../src/ui/copy';
 import {metrics} from '../src/ui/metrics';
 import {SearchScreen} from '../src/ui/SearchScreen';
@@ -17,7 +17,7 @@ const result: SearchResult = {
 };
 
 let search: jest.Mock;
-const sources = (): Source[] => [{name: 'fake', search}];
+const sources = (): SourceAdapter[] => [{name: 'fake', search}];
 
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -57,7 +57,7 @@ describe('SearchScreen (#13)', () => {
   it('submits the recognized word once and shows the results', async () => {
     const tree = await render();
     expect(search).toHaveBeenCalledTimes(1);
-    expect(search).toHaveBeenCalledWith('soup');
+    expect(search).toHaveBeenCalledWith('soup', expect.anything());
     expect(tree.root.findByType(TextInput).props.value).toBe('soup');
     expect(tree.root.findByProps({testID: 'tile-openclipart:1'})).toBeTruthy();
     act(() => tree.unmount());
@@ -137,7 +137,7 @@ describe('SearchScreen (#13)', () => {
   });
 
   it('puts the source note in the status line, not above the tiles (#50)', async () => {
-    const down: Source = {
+    const down: SourceAdapter = {
       name: 'down',
       search: () => Promise.resolve({ok: false, kind: 'http', message: 'x'}),
     };
@@ -184,7 +184,7 @@ describe('SearchScreen (#13)', () => {
     await act(async () =>
       tree.root.findByType(TextInput).props.onSubmitEditing(),
     );
-    expect(search).toHaveBeenLastCalledWith('wine');
+    expect(search).toHaveBeenLastCalledWith('wine', expect.anything());
     expect(dismiss).toHaveBeenCalled();
     act(() => tree.unmount());
   });

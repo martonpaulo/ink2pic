@@ -8,7 +8,7 @@ import {log, logged} from '../log/memory';
 import {deleteFile, downloadThumbToFile, listDir} from '../storage/files';
 import {safeFileName} from '../storage/paths';
 import {pluginFolder} from '../storage/session';
-import type {SearchResult} from '../sources/types';
+import type {SearchResult} from '../search-core';
 
 /** Most thumbnail files kept; the oldest is removed first. DEFAULT: about 100 KB each, 30 MB. */
 export const THUMB_LIMIT = 300;

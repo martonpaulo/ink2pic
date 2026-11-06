@@ -9,17 +9,21 @@ import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
 import {getLibrary} from '../library/device';
 import type {Library} from '../library/types';
-import {Done, failureText, searchNotice, StepFailure} from '../flow/failure';
+import {Done, failureText, StepFailure} from '../flow/failure';
 import {
   insertsContour,
   measureFirstPages,
   MeasuredPages,
   unmeasured,
 } from '../flow/measure';
-import {afterSearch, runSearch} from '../flow/search';
+import {afterSearch, runSearch, stateCopy} from '../flow/search';
 import {log} from '../log/memory';
-import type {SearchOutcome, Source} from '../search/search';
-import type {SearchResult} from '../sources/types';
+import {
+  SearchOutcome,
+  SearchResult,
+  searchState,
+  SourceAdapter,
+} from '../search-core';
 import {Button} from './Button';
 import {copy} from './copy';
 import {LogView} from './LogView';
@@ -46,7 +50,7 @@ export type SearchScreenProps = {
     contour?: boolean,
   ) => Promise<Done<unknown>>;
   onClose: () => void;
-  sources?: Source[];
+  sources?: SourceAdapter[];
 };
 
 export function SearchScreen({
@@ -166,19 +170,22 @@ export function SearchScreen({
 
   const toggle = (next: View_) => setView(view === next ? 'results' : next);
 
-  // The one status line: a set message first, then what the results view lacks (#50).
+  // The one status line: a set message first, then what the results view lacks (#50). With no
+  // results, the grid itself says the state's sentence.
+  const state = outcome && searchState(outcome);
+  const stateKey = state && stateCopy(state);
   const noSearch = view === 'results' && !searching && !outcome;
-  const sourceDownNote =
+  const resultsNote =
     view === 'results' &&
     !searching &&
-    outcome?.sourceDown === true &&
-    outcome.results.length > 0;
+    stateKey !== null &&
+    (outcome?.results.length ?? 0) > 0;
   const line =
     status ??
     (noSearch
       ? copy['search.needWord']
-      : sourceDownNote
-      ? copy['error.sourceDown']
+      : resultsNote && stateKey
+      ? copy[stateKey]
       : '');
 
   return (
@@ -243,7 +250,7 @@ export function SearchScreen({
           results={outcome?.results ?? []}
           searching={searching}
           sourceDown={outcome?.sourceDown ?? false}
-          emptyText={copy[(outcome && searchNotice(outcome)) ?? 'search.empty']}
+          emptyText={copy[stateKey ?? 'search.empty']}
           onPick={pick}
           thumbDir={thumbDir}
           contourThumbs={measured.contourThumbs}

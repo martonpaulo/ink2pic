@@ -2,8 +2,8 @@
  * Openclipart through its server-rendered search page; it has no usable public JSON API
  * (brief section 5.1). Every rule about the page's markup lives in this file.
  */
-import {fetchText, HttpDeps} from './http';
-import {SearchResult, SourceOutcome, sourceFailure} from './types';
+import type {PictureHost, SourceAdapter, SourceContext} from '../adapter';
+import {SearchResult, SourceOutcome, sourceFailure, sourceId} from '../types';
 
 const ORIGIN = 'https://openclipart.org';
 /** Grid thumbnails sized for the tile (brief section 8.5). */
@@ -75,10 +75,20 @@ export function parseSearchPage(html: string): SourceOutcome {
 
 export async function searchOpenclipart(
   query: string,
-  deps: HttpDeps,
+  ctx: SourceContext,
 ): Promise<SourceOutcome> {
-  const page = await fetchText(searchUrl(query), deps);
+  const page = await ctx.fetch(searchUrl(query));
   return page.ok
     ? parseSearchPage(page.text)
     : sourceFailure(page.kind, page.message);
 }
+
+export const openclipartPictures: PictureHost = {
+  url: (result, width) => imageUrl(sourceId(result.id), width),
+  insertWidth: OPENCLIPART_FULL_WIDTH,
+};
+
+export const openclipartAdapter: SourceAdapter = {
+  name: 'openclipart',
+  search: searchOpenclipart,
+};

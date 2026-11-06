@@ -6,10 +6,10 @@
  * Built from the documented wbgetentities response shape: www.wikidata.org is refused from the
  * cloud session, so the device run is the first live one [TO TEST].
  */
+import type {SourceAdapter, SourceContext} from '../adapter';
+import {apiFailure} from '../fetcher';
+import {Failure, SourceOutcome, sourceFailure} from '../types';
 import {commonsFiles} from './commons';
-import {apiFailure, fetchText, HttpDeps} from './http';
-import {SourceFailure, SourceOutcome, sourceFailure} from './types';
-import {USER_AGENT} from '../config';
 
 const API = 'https://www.wikidata.org/w/api.php';
 /** Flag first, then logo or symbol, then image: the order they are shown in. */
@@ -57,7 +57,7 @@ function fileOf(statements: Statement[] = []): string | undefined {
   return chosen?.mainsnak?.datavalue?.value as string | undefined;
 }
 
-export type FilesOutcome = {ok: true; files: string[]} | SourceFailure;
+export type FilesOutcome = {ok: true; files: string[]} | Failure;
 
 /** The Commons file names of the item's pictures; a word with no item has none. */
 export function parseEntityResponse(text: string): FilesOutcome {
@@ -93,10 +93,10 @@ export function parseEntityResponse(text: string): FilesOutcome {
 
 export async function searchWikidata(
   query: string,
-  deps: HttpDeps,
+  ctx: SourceContext,
 ): Promise<SourceOutcome> {
-  const response = await fetchText(entityUrl(query), deps, {
-    'Api-User-Agent': USER_AGENT,
+  const response = await ctx.fetch(entityUrl(query), {
+    'Api-User-Agent': ctx.userAgent,
   });
   if (!response.ok) {
     return sourceFailure(response.kind, response.message);
@@ -105,7 +105,7 @@ export async function searchWikidata(
   if (!entity.ok) {
     return entity;
   }
-  const pictures = await commonsFiles(entity.files, deps);
+  const pictures = await commonsFiles(entity.files, ctx);
   return pictures.ok
     ? {
         ok: true,
@@ -116,3 +116,11 @@ export async function searchWikidata(
       }
     : pictures;
 }
+
+/** The item, then its files from Commons; it only adds pictures to the other sources. */
+export const wikidataAdapter: SourceAdapter = {
+  name: 'wikidata',
+  search: searchWikidata,
+  requests: 2,
+  supplement: true,
+};

@@ -6,7 +6,6 @@
 import {logged} from '../log/memory';
 import {hasPermission, PERMISSION_INTERNET} from '../sdk/plugin';
 import {EMPTY_LASSO_CODE, Failure, TIMEOUT_CODE} from '../sdk/result';
-import type {SearchOutcome} from '../search/search';
 import type {FilesErrorCode} from '../storage/files';
 import {copy, CopyKey} from '../ui/copy';
 
@@ -103,18 +102,6 @@ export function failureText(failure: StepFailure): string {
     .join(' ');
 }
 
-/** Failure kinds that mean the device has no network, not that one source is down. */
-const OFFLINE_KINDS = new Set(['network', 'timeout']);
-
-export function isOffline(outcome: SearchOutcome): boolean {
-  return (
-    outcome.allFailed &&
-    Object.values(outcome.statuses).every(
-      status => status.state === 'failed' && OFFLINE_KINDS.has(status.kind),
-    )
-  );
-}
-
 /**
  * The sentence for a search that found no network: a missing INTERNET permission fails the same
  * way as no network, so the host is asked which one it is (review before build 0.1.0 (11)).
@@ -126,19 +113,4 @@ export async function offlineText(): Promise<string> {
   const keys: readonly CopyKey[] =
     allowed.ok && !allowed.value ? MISSING_INTERNET : ['error.offline'];
   return keys.map(key => copy[key]).join(' ');
-}
-
-/** What a finished search says, or null when its results speak for themselves. */
-export function searchNotice(outcome: SearchOutcome): CopyKey | null {
-  if (isOffline(outcome)) {
-    return 'error.offline';
-  }
-  if (outcome.allFailed) {
-    return 'error.sourcesDown';
-  }
-  if (outcome.results.length > 0) {
-    return null;
-  }
-  // ResultsGrid itself says when one source is down.
-  return 'search.empty';
 }

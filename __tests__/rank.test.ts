@@ -1,5 +1,5 @@
-import {einkScore, rankForEink} from '../src/search/rank';
-import type {SearchResult, SourceName} from '../src/sources/types';
+import {einkScore, rankForEink} from '../src/search-core/rank';
+import type {SearchResult, SourceName} from '../src/search-core/types';
 
 const r = (
   source: SourceName,

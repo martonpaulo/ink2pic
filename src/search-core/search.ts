@@ -2,24 +2,11 @@
  * Searches every source in parallel; a slow or failing source never blocks the other
  * (brief section 8.5).
  */
-import {SOURCE_TIMEOUT_MS} from '../sources/http';
-import type {FailureKind, SearchResult, SourceOutcome} from '../sources/types';
+import type {SourceAdapter, SourceContext} from './adapter';
+import {Clock, noLog, systemClock} from './clock';
+import {SOURCE_TIMEOUT_MS} from './fetcher';
 import {rankForEink} from './rank';
-
-export type Source = {
-  name: string;
-  search: (query: string) => Promise<SourceOutcome>;
-  /**
-   * Requests the source makes in a row, 1 by default: each gets the whole timeout, so a slow
-   * second request never drops what the first one found (#43).
-   */
-  requests?: number;
-  /**
-   * Adds pictures to the other sources (Wikidata, #43): its failure is no «source down» note and
-   * does not keep the search out of the cache.
-   */
-  supplement?: true;
-};
+import type {FailureKind, SearchResult, SourceOutcome} from './types';
 
 export type SourceStatus =
   | {state: 'ok'; count: number}
@@ -35,31 +22,49 @@ export type SearchOutcome = {
   allFailed: boolean;
 };
 
+export type SearchOptions = {
+  ctx?: SourceContext;
+  clock?: Clock;
+  /** Per request; a source of `requests` requests gets that many times this. */
+  timeoutMs?: number;
+};
+
+/** A context with no network: every request fails, so a missing fetcher is never an empty answer. */
+const NO_NETWORK: SourceContext = {
+  fetch: async () => ({
+    ok: false,
+    kind: 'network',
+    message: 'no fetcher in the search context',
+  }),
+  userAgent: '',
+  log: noLog,
+};
+
 function withTimeout(
-  source: Source,
+  source: SourceAdapter,
   query: string,
+  ctx: SourceContext,
+  clock: Clock,
   timeoutMs: number,
 ): Promise<SourceOutcome> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let cancel = () => {};
   const expired = new Promise<SourceOutcome>(resolve => {
-    timer = setTimeout(
-      () =>
-        resolve({
-          ok: false,
-          kind: 'timeout',
-          message: `no answer in ${timeoutMs} ms`,
-        }),
-      timeoutMs,
+    cancel = clock.after(timeoutMs, () =>
+      resolve({
+        ok: false,
+        kind: 'timeout',
+        message: `no answer in ${timeoutMs} ms`,
+      }),
     );
   });
-  const answered = source.search(query).catch(
+  const answered = source.search(query, ctx).catch(
     (error: unknown): SourceOutcome => ({
       ok: false,
       kind: 'network',
       message: error instanceof Error ? error.message : String(error),
     }),
   );
-  return Promise.race([answered, expired]).finally(() => clearTimeout(timer));
+  return Promise.race([answered, expired]).finally(cancel);
 }
 
 function status(outcome: SourceOutcome): SourceStatus {
@@ -73,12 +78,22 @@ function status(outcome: SourceOutcome): SourceStatus {
 
 export async function searchAll(
   query: string,
-  sources: readonly Source[],
-  {timeoutMs = SOURCE_TIMEOUT_MS} = {},
+  sources: readonly SourceAdapter[],
+  {
+    ctx = NO_NETWORK,
+    clock = systemClock,
+    timeoutMs = SOURCE_TIMEOUT_MS,
+  }: SearchOptions = {},
 ): Promise<SearchOutcome> {
   const outcomes = await Promise.all(
     sources.map(source =>
-      withTimeout(source, query, timeoutMs * (source.requests ?? 1)),
+      withTimeout(
+        source,
+        query,
+        ctx,
+        clock,
+        timeoutMs * (source.requests ?? 1),
+      ),
     ),
   );
   const statuses: Record<string, SourceStatus> = {};

@@ -20,7 +20,7 @@ import {
   reorderByMeasures,
 } from '../search/measures';
 import {thumbUri} from '../search/thumbs';
-import type {SearchResult} from '../sources/types';
+import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';
 
 /**

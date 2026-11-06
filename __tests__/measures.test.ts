@@ -13,7 +13,7 @@ import {
   pixelScorer,
   reorderByMeasures,
 } from '../src/search/measures';
-import type {SearchResult} from '../src/sources/types';
+import type {SearchResult} from '../src/search-core/types';
 
 /** A white page; each picture below changes what it needs. */
 const paper: Measures = {

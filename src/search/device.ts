@@ -1,31 +1,45 @@
 /**
- * Search through the on-disk cache (#16, brief section 8.5): a repeated search opens at once and
- * works offline. The cache lives in the private plugin folder; a cache problem is logged and the
- * search goes on, without waiting for the cache write.
+ * The search core bound to the device (#16, brief section 8.5): the platform's fetch with the
+ * plugin's User-Agent, the run log, and the on-disk cache in the private plugin folder, so a
+ * repeated search opens at once and works offline. A cache problem is logged and the search goes
+ * on, without waiting for the cache write.
  */
+import {USER_AGENT} from '../config';
 import {log} from '../log/memory';
+import {
+  cachedSearch,
+  createContext,
+  DEFAULT_ADAPTERS,
+  FetchLike,
+  SearchOutcome,
+  searchAll,
+  SourceAdapter,
+  SourceContext,
+} from '../search-core';
 import {pluginFolder} from '../storage/session';
 import {deviceStorage} from '../storage/text';
-import {cachedSearch} from './cache';
-import {SearchOutcome, searchAll, Source} from './search';
+
+export function deviceContext(
+  fetch: FetchLike = globalThis.fetch,
+): SourceContext {
+  return createContext({fetch, userAgent: USER_AGENT, log});
+}
 
 export async function searchCached(
   query: string,
-  sources: readonly Source[],
+  sources: readonly SourceAdapter[] = DEFAULT_ADAPTERS,
+  ctx: SourceContext = deviceContext(),
 ): Promise<SearchOutcome> {
-  const run = (q: string) => searchAll(q, sources);
+  const run = (q: string) => searchAll(q, sources, {ctx});
   const dir = await pluginFolder();
   if (!dir.ok) {
     log(`search cache: no plugin folder: ${dir.message}`);
     return run(query);
   }
-  const cached = await cachedSearch(
-    query,
-    run,
-    deviceStorage,
-    `${dir.value}/search-cache.json`,
-    Date.now(),
-  );
+  const cached = await cachedSearch(query, run, {
+    storage: deviceStorage,
+    path: `${dir.value}/search-cache.json`,
+  });
   if (cached.problem) {
     log(`search cache: ${cached.problem}`);
   }

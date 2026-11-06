@@ -4,7 +4,11 @@ import {
   entityUrl,
   parseEntityResponse,
   searchWikidata,
-} from '../src/sources/wikidata';
+} from '../src/search-core/adapters/wikidata';
+import {USER_AGENT} from '../src/config';
+import {createContext, FetchLike} from '../src/search-core/fetcher';
+
+const ctx = (fetch: FetchLike) => createContext({fetch, userAgent: USER_AGENT});
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -62,7 +66,7 @@ describe('searchWikidata', () => {
       .fn()
       .mockResolvedValueOnce(ok(fixture('wikidata-entity.json')))
       .mockResolvedValueOnce(ok(fixture('commons-files.json')));
-    const outcome = await searchWikidata('napoleon', {fetch});
+    const outcome = await searchWikidata('napoleon', ctx(fetch));
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[1][0]).toContain(
       encodeURIComponent('File:Example flag.svg|File:Example portrait.jpg'),
@@ -83,7 +87,7 @@ describe('searchWikidata', () => {
     const fetch = jest
       .fn()
       .mockResolvedValue(ok(fixture('wikidata-missing.json')));
-    expect(await searchWikidata('qzxv', {fetch})).toEqual({
+    expect(await searchWikidata('qzxv', ctx(fetch))).toEqual({
       ok: true,
       results: [],
     });
@@ -92,7 +96,7 @@ describe('searchWikidata', () => {
 
   it('reports a refused host as a failure, not as no pictures', async () => {
     const fetch = jest.fn().mockRejectedValue(new Error('fetch failed'));
-    expect(await searchWikidata('apple', {fetch})).toEqual({
+    expect(await searchWikidata('apple', ctx(fetch))).toEqual({
       ok: false,
       kind: 'network',
       message: 'fetch failed',

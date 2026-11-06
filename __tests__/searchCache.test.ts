@@ -4,14 +4,17 @@ import {
   CACHE_VERSION,
   cachedSearch,
   cacheKey,
-} from '../src/search/cache';
-import type {SearchOutcome} from '../src/search/search';
-import type {SearchResult} from '../src/sources/types';
+} from '../src/search-core/cache';
+import type {SearchOutcome} from '../src/search-core/search';
+import type {SearchResult} from '../src/search-core/types';
+import {systemClock} from '../src/search-core/clock';
+import {fullUrl} from '../src/search-core/registry';
 import type {TextStorage} from '../src/storage/text';
-import {fullUrl} from '../src/sources/registry';
 
 const PATH = '/plugin/search-cache.json';
 const NOW = Date.UTC(2026, 10, 6, 12);
+/** A clock stopped at `now`. */
+const at = (now: number) => ({...systemClock, now: () => now});
 const THUMB =
   'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Soup.png/330px-Soup.png';
 
@@ -63,9 +66,17 @@ describe('cachedSearch', () => {
   it('runs on a miss and serves a repeat from the cache', async () => {
     const {storage} = memoryStorage();
     const run = runner();
-    const first = await cachedSearch(' Soup ', run, storage, PATH, NOW);
+    const first = await cachedSearch(' Soup ', run, {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(first.fromCache).toBe(false);
-    const again = await cachedSearch('soup', run, storage, PATH, NOW + 1);
+    const again = await cachedSearch('soup', run, {
+      storage,
+      path: PATH,
+      clock: at(NOW + 1),
+    });
     expect(again.fromCache).toBe(true);
     expect(again.problem).toBeUndefined();
     expect(run).toHaveBeenCalledTimes(1);
@@ -77,14 +88,12 @@ describe('cachedSearch', () => {
 
   it('gives a cached result the URL of each source', async () => {
     const {storage} = memoryStorage();
-    await cachedSearch('soup', runner(), storage, PATH, NOW);
-    const {outcome: cached} = await cachedSearch(
-      'soup',
-      runner(),
+    await cachedSearch('soup', runner(), {storage, path: PATH, clock: at(NOW)});
+    const {outcome: cached} = await cachedSearch('soup', runner(), {
       storage,
-      PATH,
-      NOW,
-    );
+      path: PATH,
+      clock: at(NOW),
+    });
     const [clip, photo] = cached.results;
     expect(fullUrl(clip, 1000)).toBe('https://openclipart.org/image/1000px/42');
     expect(fullUrl(photo, 1000)).toBe(THUMB.replace('/330px-', '/1280px-'));
@@ -97,22 +106,18 @@ describe('cachedSearch', () => {
     };
     const narrow: SearchResult = {...commons, mime: 'image/png', original};
     const {storage, files} = memoryStorage();
-    const fresh = await cachedSearch(
-      'soup',
-      runner(outcome([narrow])),
+    const fresh = await cachedSearch('soup', runner(outcome([narrow])), {
       storage,
-      PATH,
-      NOW,
-    );
+      path: PATH,
+      clock: at(NOW),
+    });
     await fresh.saved;
     // A new storage over the same files: the entry is read back from the file.
-    const {outcome: cached, fromCache} = await cachedSearch(
-      'soup',
-      runner(),
-      memoryStorage(files).storage,
-      PATH,
-      NOW,
-    );
+    const {outcome: cached, fromCache} = await cachedSearch('soup', runner(), {
+      storage: memoryStorage(files).storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(fromCache).toBe(true);
     expect(fullUrl(cached.results[0], 960)).toBe(original.url);
     expect(fullUrl(cached.results[0], 960)).toBe(fullUrl(narrow, 960));
@@ -121,14 +126,12 @@ describe('cachedSearch', () => {
   it('searches again once an entry expires', async () => {
     const {storage} = memoryStorage();
     const run = runner();
-    await cachedSearch('soup', run, storage, PATH, NOW);
-    const late = await cachedSearch(
-      'soup',
-      run,
+    await cachedSearch('soup', run, {storage, path: PATH, clock: at(NOW)});
+    const late = await cachedSearch('soup', run, {
       storage,
-      PATH,
-      NOW + CACHE_MAX_AGE_MS,
-    );
+      path: PATH,
+      clock: at(NOW + CACHE_MAX_AGE_MS),
+    });
     expect(late.fromCache).toBe(false);
     expect(run).toHaveBeenCalledTimes(2);
   });
@@ -136,7 +139,11 @@ describe('cachedSearch', () => {
   it('evicts the oldest entry past the cap', async () => {
     const {storage, files} = memoryStorage();
     for (let i = 0; i <= CACHE_LIMIT; i++) {
-      await cachedSearch(`q${i}`, runner(), storage, PATH, NOW + i);
+      await cachedSearch(`q${i}`, runner(), {
+        storage,
+        path: PATH,
+        clock: at(NOW + i),
+      });
     }
     const entries = JSON.parse(files[PATH]).entries as {query: string}[];
     expect(entries).toHaveLength(CACHE_LIMIT);
@@ -161,7 +168,11 @@ describe('cachedSearch', () => {
   ])('reports a file with %s, then rebuilds it', async (_name, text, why) => {
     const {storage, files} = memoryStorage({[PATH]: text});
     const run = runner();
-    const result = await cachedSearch('soup', run, storage, PATH, NOW);
+    const result = await cachedSearch('soup', run, {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(run).toHaveBeenCalledTimes(1);
     expect(result.fromCache).toBe(false);
     expect(result.outcome.results).toHaveLength(2);
@@ -177,8 +188,12 @@ describe('cachedSearch', () => {
   ])('does not keep an outcome where %s', async (_name, answer) => {
     const {storage, files} = memoryStorage();
     const run = runner(answer);
-    await cachedSearch('soup', run, storage, PATH, NOW);
-    const again = await cachedSearch('soup', run, storage, PATH, NOW);
+    await cachedSearch('soup', run, {storage, path: PATH, clock: at(NOW)});
+    const again = await cachedSearch('soup', run, {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(again.fromCache).toBe(false);
     expect(run).toHaveBeenCalledTimes(2);
     expect(files[PATH]).toBeUndefined();
@@ -191,7 +206,11 @@ describe('cachedSearch', () => {
         throw new Error('disk full');
       },
     };
-    const result = await cachedSearch('soup', runner(), storage, PATH, NOW);
+    const result = await cachedSearch('soup', runner(), {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(result.outcome.results).toHaveLength(2);
     expect(result.problem).toBeUndefined();
     expect(await result.saved).toContain('disk full');
@@ -201,9 +220,13 @@ describe('cachedSearch', () => {
     const {storage} = memoryStorage();
     const readText = jest.spyOn(storage, 'readText');
     const run = runner();
-    await cachedSearch('soup', run, storage, PATH, NOW);
-    await cachedSearch('bread', run, storage, PATH, NOW);
-    const again = await cachedSearch('soup', run, storage, PATH, NOW);
+    await cachedSearch('soup', run, {storage, path: PATH, clock: at(NOW)});
+    await cachedSearch('bread', run, {storage, path: PATH, clock: at(NOW)});
+    const again = await cachedSearch('soup', run, {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(readText).toHaveBeenCalledTimes(1);
     expect(again.fromCache).toBe(true);
     expect(run).toHaveBeenCalledTimes(2);
@@ -215,7 +238,11 @@ describe('cachedSearch', () => {
       readText: async () => null,
       writeText: () => new Promise<void>(resolve => (finish = resolve)),
     };
-    const result = await cachedSearch('soup', runner(), storage, PATH, NOW);
+    const result = await cachedSearch('soup', runner(), {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
     expect(result.outcome.results).toHaveLength(2);
     let saved: string | null | undefined;
     result.saved?.then(problem => (saved = problem));

@@ -1,10 +1,11 @@
 import {readFileSync} from 'fs';
 import {join} from 'path';
-import {cachedSearch} from '../src/search/cache';
-import {searchAll, Source} from '../src/search/search';
-import {defaultSources} from '../src/search/sources';
-import type {FetchLike} from '../src/sources/http';
-import type {SearchResult, SourceOutcome} from '../src/sources/types';
+import {cachedSearch} from '../src/search-core/cache';
+import type {SourceAdapter} from '../src/search-core/adapter';
+import {searchAll} from '../src/search-core/search';
+import {createContext, FetchLike} from '../src/search-core/fetcher';
+import {DEFAULT_ADAPTERS} from '../src/search-core/registry';
+import type {SearchResult, SourceOutcome} from '../src/search-core/types';
 
 const result = (id: string): SearchResult => ({
   id,
@@ -14,11 +15,11 @@ const result = (id: string): SearchResult => ({
   license: 'CC0 1.0',
   attribution: 'x',
 });
-const answering = (name: string, outcome: SourceOutcome): Source => ({
+const answering = (name: string, outcome: SourceOutcome): SourceAdapter => ({
   name,
   search: () => Promise.resolve(outcome),
 });
-const never = (name: string): Source => ({
+const never = (name: string): SourceAdapter => ({
   name,
   search: () => new Promise(() => {}),
 });
@@ -81,12 +82,16 @@ describe('searchAll', () => {
   });
 });
 
-describe('defaultSources', () => {
+const withFetch = (fetch: FetchLike) => ({
+  ctx: createContext({fetch, userAgent: 'Ink2Pic/test'}),
+});
+
+describe('the default adapters', () => {
   it('queries Openclipart, Commons and Wikidata with the given fetch', async () => {
     const fetch = jest
       .fn()
       .mockResolvedValue({ok: false, status: 503, text: jest.fn()});
-    const outcome = await searchAll('soup', defaultSources(fetch));
+    const outcome = await searchAll('soup', DEFAULT_ADAPTERS, withFetch(fetch));
     expect(Object.keys(outcome.statuses)).toEqual([
       'openclipart',
       'commons',
@@ -154,7 +159,11 @@ describe('sources of two requests and the supplement (#43)', () => {
 
   it('keeps the drawings Commons had when its second request runs out', async () => {
     jest.useFakeTimers();
-    const pending = searchAll('soup', defaultSources(slowSecondFetch()));
+    const pending = searchAll(
+      'soup',
+      DEFAULT_ADAPTERS,
+      withFetch(slowSecondFetch()),
+    );
     // 4 s for the drawings, then the plain search's own 5 s limit.
     await jest.advanceTimersByTimeAsync(9500);
     const outcome = await pending;
@@ -164,7 +173,7 @@ describe('sources of two requests and the supplement (#43)', () => {
 
   it('gives each request of a source its own budget', async () => {
     jest.useFakeTimers();
-    const twoRequests: Source = {
+    const twoRequests: SourceAdapter = {
       name: 'b',
       requests: 2,
       search: () =>
@@ -178,7 +187,7 @@ describe('sources of two requests and the supplement (#43)', () => {
   });
 
   it('a supplement failing is no source down, and the search is still cached', async () => {
-    const sources: Source[] = [
+    const sources: SourceAdapter[] = [
       answering('a', {ok: true, results: [result('a1')]}),
       {
         ...answering('w', {ok: false, kind: 'network', message: 'refused'}),
@@ -193,20 +202,21 @@ describe('sources of two requests and the supplement (#43)', () => {
       'soup',
       query => searchAll(query, sources),
       {
-        readText: async path => files[path] ?? null,
-        writeText: async (path, text) => {
-          files[path] = text;
+        storage: {
+          readText: async path => files[path] ?? null,
+          writeText: async (path, text) => {
+            files[path] = text;
+          },
         },
+        path: '/plugin/search-cache.json',
       },
-      '/plugin/search-cache.json',
-      Date.UTC(2026, 10, 6),
     );
     expect(await cached.saved).toBeNull();
   });
 
   it('Commons and Wikidata make two requests; Wikidata only adds pictures', () => {
     const byName = Object.fromEntries(
-      defaultSources(jest.fn()).map(source => [source.name, source]),
+      DEFAULT_ADAPTERS.map(source => [source.name, source]),
     );
     expect(byName.commons.requests).toBe(2);
     expect(byName.wikidata.requests).toBe(2);

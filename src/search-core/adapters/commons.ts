@@ -2,10 +2,9 @@
  * Wikimedia Commons through the MediaWiki Action API (brief section 5.2): a search for drawings,
  * and the files Wikidata names for a word (#43). Fixtures are cut from real responses.
  */
-import {apiFailure, fetchText, HttpDeps} from './http';
-import {SearchResult, SourceOutcome, sourceFailure} from './types';
-import {USER_AGENT} from '../config';
-import {PAGE_SIZE} from './types';
+import type {PictureHost, SourceAdapter, SourceContext} from '../adapter';
+import {apiFailure} from '../fetcher';
+import {PAGE_SIZE, SearchResult, SourceOutcome, sourceFailure} from '../types';
 
 const API = 'https://commons.wikimedia.org/w/api.php';
 const INFO_PARAMS = [
@@ -216,10 +215,10 @@ function parseQuery(
 
 async function ask(
   url: string,
-  deps: HttpDeps,
+  ctx: SourceContext,
   parse: (text: string) => SourceOutcome,
 ): Promise<SourceOutcome> {
-  const response = await fetchText(url, deps, {'Api-User-Agent': USER_AGENT});
+  const response = await ctx.fetch(url, {'Api-User-Agent': ctx.userAgent});
   return response.ok
     ? parse(response.text)
     : sourceFailure(response.kind, response.message);
@@ -231,17 +230,17 @@ async function ask(
  */
 export async function searchCommons(
   query: string,
-  deps: HttpDeps,
+  ctx: SourceContext,
 ): Promise<SourceOutcome> {
   const drawings = await ask(
     searchUrl(query, {drawings: true}),
-    deps,
+    ctx,
     parseSearchResponse,
   );
   if (!drawings.ok || drawings.results.length >= PAGE_SIZE) {
     return drawings;
   }
-  const plain = await ask(searchUrl(query), deps, parseSearchResponse);
+  const plain = await ask(searchUrl(query), ctx, parseSearchResponse);
   if (!plain.ok) {
     return drawings;
   }
@@ -258,10 +257,37 @@ export async function searchCommons(
 /** The named Commons files as results, in the order given; no request for an empty list. */
 export async function commonsFiles(
   names: readonly string[],
-  deps: HttpDeps,
+  ctx: SourceContext,
 ): Promise<SourceOutcome> {
   if (names.length === 0) {
     return {ok: true, results: []};
   }
-  return ask(filesUrl(names), deps, text => parseFilesResponse(text, names));
+  return ask(filesUrl(names), ctx, text => parseFilesResponse(text, names));
 }
+
+function pictureUrl(result: SearchResult, width: number): string {
+  return fullImageUrl(result.thumbUrl, width, {
+    ...result.original,
+    mime: result.mime,
+  });
+}
+
+export const commonsPictures: PictureHost = {
+  url: pictureUrl,
+  insertWidth: COMMONS_FULL_WIDTH,
+  // The original only when an insert takes it as it is (#55), with the insert width as its
+  // width, an upper bound; otherwise the thumbnail is rebuilt from `thumbUrl`.
+  storedOriginal: result => {
+    const url = pictureUrl(result, COMMONS_FULL_WIDTH);
+    return url === resizeThumb(result.thumbUrl, COMMONS_FULL_WIDTH)
+      ? undefined
+      : {url, width: COMMONS_FULL_WIDTH};
+  },
+};
+
+/** Drawings, then a plain search when they fill less than a page. */
+export const commonsAdapter: SourceAdapter = {
+  name: 'commons',
+  search: searchCommons,
+  requests: 2,
+};
