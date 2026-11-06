@@ -1,0 +1,293 @@
+import {measureFirstPages, MeasureDeps} from '../src/flow/measure';
+import {logLines, startLog} from '../src/log/memory';
+import {ok, fail, MODULE_CODE} from '../src/sdk/result';
+import {
+  lineArt,
+  Measures,
+  pixelKind,
+  pixelScorer,
+  reorderByMeasures,
+} from '../src/search/measures';
+import type {SearchResult} from '../src/sources/types';
+
+/** A white page; each picture below changes what it needs. */
+const paper: Measures = {
+  width: 400,
+  height: 400,
+  mean: 255,
+  dark: 0,
+  white: 1,
+  mid: 0,
+  border: 1,
+  borderMedian: 255,
+  ink: 0,
+  inkLeft: 0,
+  inkTop: 0,
+  inkWidth: 0,
+  inkHeight: 0,
+  bands: 0,
+  lineAspect: 0,
+  thickness: 0,
+  edge: 0,
+  edgeBox: 0,
+  colours: 1,
+  objectShare: 0,
+  ms: 2,
+};
+
+/** Values in the range the research measured on real thumbnails (sections 4 and D 3). */
+const outline: Measures = {
+  ...paper,
+  mean: 227,
+  dark: 0.1,
+  white: 0.85,
+  mid: 0.05,
+  border: 0.91,
+  ink: 0.11,
+  inkWidth: 300,
+  inkHeight: 320,
+  bands: 1,
+  lineAspect: 0.9,
+  thickness: 2.5,
+  edge: 0.23,
+  edgeBox: 0.6,
+  colours: 12,
+  objectShare: 0.12,
+};
+const darkPainting: Measures = {
+  ...paper,
+  mean: 35,
+  dark: 0.79,
+  white: 0,
+  // Mid grays are 41 to 214: a dark painting has many between 41 and 80.
+  mid: 0.55,
+  border: 0,
+  borderMedian: 30,
+  ink: 0,
+  edge: 0.12,
+  edgeBox: 0.95,
+  colours: 900,
+  objectShare: 0.6,
+};
+const photo: Measures = {
+  ...darkPainting,
+  mean: 104,
+  dark: 0.38,
+  mid: 0.62,
+  borderMedian: 110,
+  ink: 0.3,
+  thickness: 9,
+};
+const signature: Measures = {
+  ...outline,
+  mean: 235,
+  white: 0.89,
+  border: 0.96,
+  ink: 0.08,
+  inkWidth: 380,
+  inkHeight: 55,
+  lineAspect: 6.9,
+};
+const faint: Measures = {
+  ...outline,
+  mean: 251,
+  dark: 0,
+  white: 0.94,
+  border: 0.96,
+  ink: 0,
+  objectShare: 0.05,
+};
+const glossy: Measures = {
+  ...outline,
+  mean: 141,
+  dark: 0.46,
+  white: 0.33,
+  mid: 0.21,
+  border: 0.81,
+  ink: 0.54,
+  thickness: 20,
+  colours: 400,
+};
+const blank: Measures = {...paper, objectShare: 0.001};
+
+const result = (id: string, title = id, canonical = false): SearchResult => ({
+  id,
+  source: 'openclipart',
+  title,
+  thumbUrl: `https://example.test/${id}`,
+  license: 'CC0 1.0',
+  attribution: 'x',
+  ...(canonical ? {canonical} : {}),
+});
+
+describe('pixelKind (#66)', () => {
+  it('names each kind the research separates', () => {
+    expect(pixelKind(outline)).toBe('outline');
+    expect(pixelKind(darkPainting)).toBe('dark');
+    expect(pixelKind(photo)).toBe('photo');
+    expect(pixelKind(signature)).toBe('text');
+    expect(pixelKind(faint)).toBe('faint');
+    expect(pixelKind(blank)).toBe('blank');
+    expect(pixelKind({...glossy, border: 0.86, white: 0.4})).toBe('clean');
+    expect(pixelKind(glossy)).toBe('plain');
+  });
+});
+
+describe('lineArt (#66)', () => {
+  it('scores clean outlines above glossy clip art, photos and dark paintings', () => {
+    expect(lineArt(outline)).toBeGreaterThan(lineArt(glossy));
+    expect(lineArt(glossy)).toBeGreaterThan(lineArt(photo));
+    expect(lineArt(outline)).toBeGreaterThan(lineArt(darkPainting));
+  });
+
+  it('takes points from a solid fill and from faint lines', () => {
+    expect(lineArt({...glossy, thickness: 10})).toBeGreaterThan(
+      lineArt(glossy),
+    );
+    expect(lineArt(faint)).toBeLessThan(lineArt({...faint, white: 0.89}));
+  });
+});
+
+describe('pixelScorer (#66)', () => {
+  it('scales line art from 0 to 3 within the set and gives a canonical picture 0', () => {
+    const measures = new Map([
+      ['a', outline],
+      ['b', darkPainting],
+      ['c', glossy],
+    ]);
+    const score = pixelScorer(measures);
+    expect(score(result('a'))).toBe(3);
+    expect(score(result('b'))).toBe(0);
+    expect(score(result('c'))).toBeGreaterThan(0);
+    expect(score(result('c'))).toBeLessThan(3);
+    expect(score(result('a', 'a', true))).toBe(0);
+    expect(score(result('unmeasured'))).toBe(1.5);
+  });
+});
+
+describe('reorderByMeasures (#66)', () => {
+  const ids = (list: SearchResult[]) => list.map(item => item.id);
+
+  it('moves an outline above a dark painting of the same title score', () => {
+    const list = [result('dark'), result('line')];
+    const measures = new Map([
+      ['dark', darkPainting],
+      ['line', outline],
+    ]);
+    expect(ids(reorderByMeasures(list, measures))).toEqual(['line', 'dark']);
+  });
+
+  it('keeps the title score: three points of line art do not beat a better title by more', () => {
+    const list = [result('cat', 'Cat'), result('other', 'Cat on a roof at night')];
+    const measures = new Map([
+      ['cat', darkPainting],
+      ['other', outline],
+    ]);
+    // Plain subject +3 against mention +1: the outline's +3 wins by one.
+    expect(ids(reorderByMeasures(list, measures, 'cat'))).toEqual([
+      'other',
+      'cat',
+    ]);
+    expect(
+      ids(reorderByMeasures(list, new Map([['cat', darkPainting]]), 'cat')),
+    ).toEqual(['cat', 'other']);
+  });
+
+  it('keeps a canonical picture at its index, also when it is dark', () => {
+    const list = [
+      result('best'),
+      result('wikidata', 'wikidata', true),
+      result('dark'),
+      result('line'),
+    ];
+    const measures = new Map([
+      ['best', darkPainting],
+      ['wikidata', darkPainting],
+      ['dark', darkPainting],
+      ['line', outline],
+    ]);
+    expect(ids(reorderByMeasures(list, measures))).toEqual([
+      'line',
+      'wikidata',
+      'best',
+      'dark',
+    ]);
+  });
+
+  it('leaves page 3 and later in their order and sends a blank thumbnail to the end', () => {
+    const list = Array.from({length: 15}, (_, i) => result(`r${i}`));
+    const measures = new Map<string, Measures>([
+      ['r0', blank],
+      ['r1', darkPainting],
+      ['r11', outline],
+    ]);
+    const ordered = ids(reorderByMeasures(list, measures));
+    expect(ordered[0]).toBe('r11');
+    // Unmeasured thumbnails score the middle: above the dark one, below the outline.
+    expect(ordered[10]).toBe('r1');
+    // r12 is on page 3: not re-sorted, it moves up one place to fill the blank's slot.
+    expect(ordered.slice(11)).toEqual(['r12', 'r13', 'r14', 'r0']);
+    expect(new Set(ordered).size).toBe(15);
+  });
+
+  it('changes nothing without measures', () => {
+    const list = [result('b', 'Photo of b'), result('a')];
+    expect(ids(reorderByMeasures(list, new Map()))).toEqual(['b', 'a']);
+  });
+});
+
+describe('measureFirstPages (#66)', () => {
+  const list = [result('dark'), result('web'), result('line'), result('bad')];
+  const byPath: Record<string, Measures> = {
+    '/p/thumbs/dark': darkPainting,
+    '/p/thumbs/line': outline,
+  };
+  const deps = (limitMs = 1000): MeasureDeps => ({
+    analyzer: {
+      measure: async path =>
+        byPath[path]
+          ? ok(byPath[path])
+          : fail(MODULE_CODE, 'NOT_IMAGE: cannot decode', 'NOT_IMAGE'),
+    },
+    thumb: async item =>
+      item.id === 'web' ? item.thumbUrl : `file:///p/thumbs/${item.id}`,
+    limitMs,
+  });
+
+  beforeEach(() => startLog());
+
+  it('re-sorts by the measured files and logs each kind', async () => {
+    const measured = await measureFirstPages(list, '/p', 'x', deps());
+    expect(measured.results.map(item => item.id)).toEqual([
+      'line',
+      'web',
+      'bad',
+      'dark',
+    ]);
+    expect([...measured.measures.keys()].sort()).toEqual(['dark', 'line']);
+    const text = logLines().join('\n');
+    expect(text).toMatch(/pixels line: outline lineArt \d\.\d\d in 2 ms/);
+    expect(text).toContain('pixels dark: dark');
+    expect(text).toContain('pixels web: not on the device, not measured');
+    expect(text).toContain('pixels bad: NOT_IMAGE: cannot decode');
+    expect(text).toContain('pixels: 2 of 4 measured');
+  });
+
+  it('changes nothing without a thumbnail folder', async () => {
+    const measured = await measureFirstPages(list, null, 'x', deps());
+    expect(measured.results).toBe(list);
+  });
+
+  it('shows the page at the limit with what was measured by then', async () => {
+    const slow: MeasureDeps = {
+      ...deps(5),
+      thumb: item =>
+        item.id === 'line'
+          ? Promise.resolve('file:///p/thumbs/line')
+          : new Promise(() => {}),
+    };
+    const measured = await measureFirstPages(list, '/p', 'x', slow);
+    expect([...measured.measures.keys()]).toEqual(['line']);
+    expect(logLines().join('\n')).toContain('limit reached');
+  });
+});

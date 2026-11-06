@@ -10,6 +10,7 @@ import {libraryResults} from '../library/asResults';
 import {getLibrary} from '../library/device';
 import type {Library} from '../library/types';
 import {Done, failureText, searchNotice, StepFailure} from '../flow/failure';
+import {measureFirstPages} from '../flow/measure';
 import {afterSearch, runSearch} from '../flow/search';
 import {log} from '../log/memory';
 import type {SearchOutcome, Source} from '../search/search';
@@ -114,7 +115,16 @@ export function SearchScreen({
       if (!run.outcome) {
         return;
       }
-      setOutcome(run.outcome);
+      // Pages 1 and 2 re-sorted by their pixels before page 1 shows (#66).
+      const measured = await measureFirstPages(
+        run.outcome.results,
+        run.thumbDir,
+        word,
+      );
+      if (ticket !== latestSearch.current) {
+        return;
+      }
+      setOutcome({...run.outcome, results: measured.results});
       setSearching(false);
       const next = await afterSearch(word, run.outcome);
       if (next && 'offline' in next) {
