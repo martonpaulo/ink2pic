@@ -1,11 +1,15 @@
 name: Prerelease
 
 # Each device test build becomes a GitHub prerelease with Ink2Pic.snplg (#22).
-# A cloud session cannot create releases (HTTP 403), but it can push a tag.
+# A cloud session can neither create a release nor push a tag (HTTP 403), so a push to main
+# that changes PluginConfig.json publishes too, when its v<versionName>-dev.<versionCode> tag
+# does not exist yet (owner decision D2 A, 2026-11-06). A tag pushed from a Mac still works.
 
 on:
   push:
     tags: ['v*-dev.*']
+    branches: [main]
+    paths: [PluginConfig.json]
 
 permissions:
   contents: read
@@ -18,46 +22,61 @@ jobs:
     permissions:
       contents: write
     env:
-      TAG: ${{ github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Check out the tagged commit
+      - name: Check out the pushed commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check the tag against PluginConfig.json
+      - name: Resolve the tag from PluginConfig.json
+        id: tag
         run: |
           expected="$(node -p "const c = require('./PluginConfig.json'); 'v' + c.versionName + '-dev.' + c.versionCode")"
-          if [ "$TAG" != "$expected" ]; then
-            echo "::error::Tag $TAG does not match PluginConfig.json ($expected)."
-            exit 1
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match PluginConfig.json ($expected)."
+              exit 1
+            fi
+          elif gh release view "$expected" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::$expected is already published; nothing to do."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          if [ ! -f "docs/releases/$TAG.md" ]; then
-            echo "::error::Missing release notes docs/releases/$TAG.md."
+          echo "TAG=$expected" >> "$GITHUB_ENV"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          if [ ! -f "docs/releases/$expected.md" ]; then
+            echo "::error::Missing release notes docs/releases/$expected.md."
             exit 1
           fi
 
       - name: Set up Node.js
+        if: steps.tag.outputs.publish == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
 
       - name: Install dependencies
+        if: steps.tag.outputs.publish == 'true'
         run: npm ci
 
       - name: Run the gate
+        if: steps.tag.outputs.publish == 'true'
         run: npm run validate
 
       - name: Build the plugin package
+        if: steps.tag.outputs.publish == 'true'
         run: bash buildPlugin.sh
 
       - name: Create the prerelease
+        if: steps.tag.outputs.publish == 'true'
         run: |
+          # On a branch push, --target creates the tag on the pushed commit.
           gh release create "$TAG" build/outputs/Ink2Pic.snplg \
-            --prerelease --verify-tag --title "$TAG" \
+            --prerelease --target "$GITHUB_SHA" --title "$TAG" \
             --notes-file "docs/releases/$TAG.md"
 
       - name: Read the asset back
+        if: steps.tag.outputs.publish == 'true'
         run: |
           names="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
           echo "$names"
