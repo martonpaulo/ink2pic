@@ -413,7 +413,7 @@ Search-side quality: prefer results that render well in gray (line art, engravin
 
 Target: **3 taps, no keyboard.**
 
-Recognition language: `recognizeElements` has no language parameter. The device recognition language applies. If the owner's device is set to another language, English words may be misrecognized [TO TEST]. The editable field and recent-search buttons are the mitigation. Setting is under `Settings > Display & Input > Language` [INFERENCE on exact menu path].
+Recognition language: `recognizeElements` has no language parameter. The device recognition language applies. With the owner's settings, five English test words were recognized exactly (build 0.1.0 (3)) [CONFIRMED]; another recognition language may still misread English words [TO TEST]. The editable field and recent-search buttons are the mitigation. Setting is under `Settings > Display & Input > Language` [INFERENCE on exact menu path].
 
 ### 8.3 Placement after insert
 
@@ -527,7 +527,7 @@ Results so far ([device-tests](device-tests.md)):
 
 - S1 passed on build 0.1.0 (1) [CONFIRMED].
 - S0 answered on build 0.1.0 (2): `Object.keys(NativeModules)` returns no keys in PluginHost, but each module is found by name. The host has no module that writes bytes to a file or downloads to a file: `RTNFileUtils` only copies, renames, lists and deletes, and no RNFS-like module is loaded [CONFIRMED]. So the plugin needs the small Java module (section 6.2, option 2a), [#11](https://github.com/martonpaulo/ink2pic/issues/11).
-- S3 failed with `117` because build 0.1.0 (1) passed the lasso size. Build 0.1.0 (2) could not read the page size: `getPageSize` needs `plugin.permission.FILE:READ` declared and granted, else it fails with `1503` [CONFIRMED]. Build 0.1.0 (3) requests the file permissions first.
+- S3 passed on build 0.1.0 (3): with `size` set to the page size from `getPageSize` (1920 x 2560), `recognizeElements` returned "soup", "wine", "beer", "tree" and "Napoleon" exactly, in 0.55 to 0.97 s, with the owner's recognition language [CONFIRMED]. Builds 1 and 2 failed first: the lasso size gives `117`, and `getPageSize` needs `plugin.permission.FILE:READ` declared and granted, else `1503` [CONFIRMED].
 
 Decision tree after the spikes:
 
