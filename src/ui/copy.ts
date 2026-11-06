@@ -7,10 +7,11 @@ export const copy = {
   'button.sidebar': 'Ink2Pic',
   'tab.search': 'Search',
   'tab.library': 'Library',
-  'search.placeholder': 'Type or fix the word',
+  'search.placeholder': 'Type a word',
   'search.running': 'Searching…',
   'search.empty': 'No pictures found. Try a simpler English word.',
   'search.recent': 'Recent',
+  'search.needWord': 'Type a word first.',
   // Outside the brief's table: a page waits for its thumbnails after the search ended (#35).
   'page.loading': 'Loading pictures…',
   'nav.previous': '◀',
@@ -29,7 +30,7 @@ export const copy = {
   'error.recognition': 'Could not read the word. Type it instead.',
   'onboarding.1': 'Write a word in your note.',
   'onboarding.2': 'Circle it with the lasso.',
-  'onboarding.3': 'Tap Find picture and choose one.',
+  'onboarding.3': 'Tap ••• on the lasso toolbar, then Find picture.',
   'onboarding.start': 'Start',
   // Outside the brief's table: the close button of the plugin view (#3).
   'action.close': 'Close',

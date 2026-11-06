@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, Text} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {PluginManager} from 'sn-plugin-lib';
 import {
@@ -8,6 +8,7 @@ import {
   requestMissing,
 } from '../src/onboarding/permissions';
 import {copy} from '../src/ui/copy';
+import {metrics} from '../src/ui/metrics';
 import {Onboarding} from '../src/ui/Onboarding';
 
 const has = PluginManager.hasPermission as jest.Mock;
@@ -118,6 +119,33 @@ describe('Onboarding', () => {
         copy['onboarding.start'],
       ]),
     );
+  });
+
+  it('says where Find picture is: in the ••• menu of the lasso toolbar (#50)', () => {
+    expect(copy['onboarding.3']).toBe(
+      'Tap ••• on the lasso toolbar, then Find picture.',
+    );
+    expect(texts(render())).toContain(copy['onboarding.3']);
+  });
+
+  it('draws the steps as rows with dotted separators and Start as the one black action (#50)', () => {
+    const tree = render();
+    const rows = tree.root
+      .findAllByType(View)
+      .filter(v => v.props.accessible && v.props.accessibilityRole !== 'button')
+      .map(v => StyleSheet.flatten(v.props.style));
+    expect(rows).toHaveLength(3);
+    for (const row of rows) {
+      expect(row.borderStyle).toBe('dotted');
+      expect(row.borderBottomWidth).toBeGreaterThan(0);
+      expect(row.borderWidth).toBeUndefined();
+    }
+    const filled = tree.root
+      .findAllByType(Pressable)
+      .filter(
+        p => StyleSheet.flatten(p.props.style).backgroundColor === metrics.ink,
+      );
+    expect(filled).toEqual([start(tree)]);
   });
 
   it('finishes when every permission is granted', async () => {

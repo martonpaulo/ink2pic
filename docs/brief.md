@@ -428,6 +428,9 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 - No animations, no animated spinners. Static "Searching…" text.
 - Black on white, thick borders, large touch targets.
 - Render the grid once when all visible thumbnails are ready (or once per page), not image by image, to avoid repeated e-ink refreshes.
+- One status line, two lines high, sits under the search bar on every view and is always there; no message is inserted above the tiles, so a message never shrinks or repaints them. The page's «Loading pictures…» lies over the hidden grid ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
+- As in the system interface: black fill marks the one primary action of a screen (Start, Search); a selected toggle (Library, Log) shows a bar under its label ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
+- The results view is never blank: before any search, and after Search with an empty field, it says «Type a word first.»; a failed lasso opens on it with the field focused ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
 - Mixed list from both sources, ranked by e-ink suitability (line art and engravings first) [DEFAULT].
 
 Layout metrics [DEFAULT, calibrate on device]:
@@ -463,7 +466,7 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 
 - One `.snplg`, no keys, no account.
 - Request permissions just in time but grouped on first real use, each with one plain sentence ("Internet to search images", "Files to save your image library"). Reference implementation: SuperTask `src/utils/permissions.js` and `PermissionsIntro.tsx` in `apclark31/supernote-plugin-research` [REPORTED].
-- First open shows 3 short cards: write a word, lasso it, tap the button.
+- First open shows 3 short steps: write a word, lasso it, tap ••• on the lasso toolbar, then Find picture ([#50](https://github.com/martonpaulo/ink2pic/issues/50)). The steps are static rows with dotted separators, as in the system Settings, and Start is the one black-filled primary action.
 - `pluginID` fixed forever so updates keep the library.
 
 ### 8.8 Errors
@@ -487,10 +490,11 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `button.sidebar` | Ink2Pic |
 | `tab.search` | Search |
 | `tab.library` | Library |
-| `search.placeholder` | Type or fix the word |
+| `search.placeholder` | Type a word |
 | `search.running` | Searching… |
 | `search.empty` | No pictures found. Try a simpler English word. |
 | `search.recent` | Recent |
+| `search.needWord` | Type a word first. |
 | `nav.previous` / `nav.next` | ◀ / ▶ |
 | `nav.previousLabel` / `nav.nextLabel` | Previous page / Next page |
 | `insert.running` | Adding to your note… |
@@ -509,7 +513,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `error.unexpected` | Something went wrong. Close Ink2Pic and open it again. |
 | `onboarding.1` | Write a word in your note. |
 | `onboarding.2` | Circle it with the lasso. |
-| `onboarding.3` | Tap Find picture and choose one. |
+| `onboarding.3` | Tap ••• on the lasso toolbar, then Find picture. |
 | `onboarding.start` | Start |
 
 Permission request descriptions (`requestPermission(permission, desc)`) reuse the `error.permission.*` texts.

@@ -2,7 +2,8 @@
  * Search results as pages of six large tiles, for e-ink (brief section 8.4): no scrolling, no
  * animation, and each page shown once, when all its thumbnails have loaded or failed. A thumbnail
  * not yet stored is downloaded to its file first and the tile renders the file: one request each
- * (#46).
+ * (#46). Nothing is inserted above the tiles: the page's loading line lies over the hidden grid,
+ * and the screen's own status line carries the source note, so no tile shrinks or repaints (#50).
  */
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
@@ -23,7 +24,10 @@ const THUMB_HEADERS = {'User-Agent': USER_AGENT};
 export type ResultsGridProps = {
   results: SearchResult[];
   searching: boolean;
-  /** A source failed while another answered; with no result, this note replaces the empty text. */
+  /**
+   * A source failed while another answered: with no result, this note replaces the empty text;
+   * with results, the screen's status line says it (#50).
+   */
   sourceDown: boolean;
   onPick: (result: SearchResult) => void;
   /** Shown when there is no result; the search's own text by default. */
@@ -147,47 +151,50 @@ export function ResultsGrid({
 
   return (
     <View style={styles.screen}>
-      {sourceDown && (
-        <Text style={styles.note}>{copy['error.sourceDown']}</Text>
-      )}
-      {/* The search has ended: only this page's thumbnails are loading (#35). */}
-      {!ready && <Text style={styles.message}>{copy['page.loading']}</Text>}
-      <View
-        testID="grid"
-        style={[styles.grid, !ready && styles.hidden]}
-        pointerEvents={ready ? 'auto' : 'none'}
-        accessibilityElementsHidden={!ready}>
-        {[0, 1, 2].map(row => (
-          <View key={row} style={styles.row}>
-            {visible
-              .slice(row * COLUMNS, row * COLUMNS + COLUMNS)
-              .map(result => (
-                <Pressable
-                  key={result.id}
-                  testID={`tile-${result.id}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={result.title}
-                  style={styles.tile}
-                  onPress={() => onPick(result)}>
-                  {failed.has(result.id) ? (
-                    <Text style={styles.failedTitle}>{result.title}</Text>
-                  ) : uriOf(result) === null ? null : (
-                    <Image
-                      source={{
-                        uri: uriOf(result) as string,
-                        headers: THUMB_HEADERS,
-                      }}
-                      style={styles.image}
-                      resizeMode="contain"
-                      fadeDuration={0}
-                      onLoad={() => settle(result.id)}
-                      onError={() => fail(result.id)}
-                    />
-                  )}
-                </Pressable>
-              ))}
-          </View>
-        ))}
+      <View style={styles.area}>
+        <View
+          testID="grid"
+          style={[styles.grid, !ready && styles.hidden]}
+          pointerEvents={ready ? 'auto' : 'none'}
+          accessibilityElementsHidden={!ready}>
+          {[0, 1, 2].map(row => (
+            <View key={row} style={styles.row}>
+              {visible
+                .slice(row * COLUMNS, row * COLUMNS + COLUMNS)
+                .map(result => (
+                  <Pressable
+                    key={result.id}
+                    testID={`tile-${result.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={result.title}
+                    style={styles.tile}
+                    onPress={() => onPick(result)}>
+                    {failed.has(result.id) ? (
+                      <Text style={styles.failedTitle}>{result.title}</Text>
+                    ) : uriOf(result) === null ? null : (
+                      <Image
+                        source={{
+                          uri: uriOf(result) as string,
+                          headers: THUMB_HEADERS,
+                        }}
+                        style={styles.image}
+                        resizeMode="contain"
+                        fadeDuration={0}
+                        onLoad={() => settle(result.id)}
+                        onError={() => fail(result.id)}
+                      />
+                    )}
+                  </Pressable>
+                ))}
+            </View>
+          ))}
+        </View>
+        {/* The search has ended: only this page's thumbnails are loading (#35). */}
+        {!ready && (
+          <Text style={[styles.message, styles.over]}>
+            {copy['page.loading']}
+          </Text>
+        )}
       </View>
       <View style={styles.nav}>
         <Button
@@ -212,7 +219,9 @@ const styles = StyleSheet.create({
   // The grid takes the height left by the field and the page buttons, so the buttons are
   // always on screen (build 0.1.0 (6): fixed-size tiles pushed them under the Log button).
   screen: {flex: 1, alignSelf: 'stretch', backgroundColor: metrics.paper},
+  area: {flex: 1},
   grid: {flex: 1, gap: metrics.gap},
+  over: {position: 'absolute', top: 0, left: 0, right: 0},
   row: {flex: 1, flexDirection: 'row', gap: metrics.gap},
   hidden: {opacity: 0},
   tile: {
@@ -235,14 +244,6 @@ const styles = StyleSheet.create({
     marginTop: metrics.gap,
   },
   pageNumber: {fontSize: metrics.bodyFont, color: metrics.ink},
-  message: {
-    fontSize: metrics.bodyFont,
-    color: metrics.ink,
-    margin: metrics.gap,
-  },
-  note: {
-    fontSize: metrics.bodyFont,
-    color: metrics.ink,
-    marginBottom: metrics.gap,
-  },
+  // On the screen's left edge, as the status line and the field (#50).
+  message: {fontSize: metrics.bodyFont, color: metrics.ink},
 });

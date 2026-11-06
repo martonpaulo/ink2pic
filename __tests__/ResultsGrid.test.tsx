@@ -1,7 +1,7 @@
 import {readFileSync} from 'fs';
 import {join} from 'path';
 import React from 'react';
-import {Image, Text} from 'react-native';
+import {Image, StyleSheet, Text} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {pageCount, pageOf} from '../src/search/pages';
 import type {SearchResult} from '../src/sources/types';
@@ -96,9 +96,33 @@ describe('ResultsGrid', () => {
   it('shows the running, empty and source-down states', () => {
     expect(texts(render({searching: true}))).toEqual([copy['search.running']]);
     expect(texts(render({results: []}))).toEqual([copy['search.empty']]);
-    expect(texts(render({sourceDown: true}))).toContain(
+    // With results, the screen's status line carries the note: nothing above the tiles (#50).
+    expect(texts(render({sourceDown: true}))).not.toContain(
       copy['error.sourceDown'],
     );
+  });
+
+  it('lays the loading line over the hidden grid, so no tile shrinks (#50)', () => {
+    const tree = render();
+    const loading = tree.root
+      .findAllByType(Text)
+      .find(t => t.props.children === copy['page.loading'])!;
+    expect(StyleSheet.flatten(loading.props.style)).toMatchObject({
+      position: 'absolute',
+    });
+    // The grid is the first thing in its area, with or without the loading line.
+    const grid = tree.root.findByProps({testID: 'grid'});
+    expect(grid.parent!.children[0]).toBe(grid);
+  });
+
+  it('starts its messages on the screen edge, with no margin of their own (#50)', () => {
+    for (const props of [{searching: true}, {results: []}]) {
+      const style = StyleSheet.flatten(
+        render(props).root.findByType(Text).props.style,
+      );
+      expect(style.margin).toBeUndefined();
+      expect(style.marginLeft).toBeUndefined();
+    }
   });
 
   it('labels each tile with its title and picks it on press', () => {

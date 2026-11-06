@@ -1,5 +1,7 @@
 /**
- * First open: three short cards and one grouped permission step (brief section 8.7).
+ * First open: three short steps and one grouped permission step (brief section 8.7). The steps
+ * are static rows with dotted separators and Start the one black-filled action, as in the
+ * system Settings and dialogs (#50).
  */
 import React, {useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
@@ -14,7 +16,7 @@ import {
 import {copy} from './copy';
 import {metrics} from './metrics';
 
-const CARDS = [
+const STEPS = [
   copy['onboarding.1'],
   copy['onboarding.2'],
   copy['onboarding.3'],
@@ -57,14 +59,14 @@ export function Onboarding({
   return (
     <View style={styles.screen}>
       <ScreenTools onClose={onClose} />
-      {CARDS.map((text, i) => (
-        <View key={text} style={styles.card} accessible>
+      {STEPS.map((text, i) => (
+        <View key={text} style={styles.row} accessible>
           <Text style={styles.number}>{i + 1}</Text>
           <Text style={styles.text}>{text}</Text>
         </View>
       ))}
       {/* Before Start, what is missing (build 0.1.0 (11): a permission turned off later showed
-          only the cards); after a denial, what stayed denied. */}
+          only the steps); after a denial, what stayed denied. */}
       {reasonsFor(denied.length > 0 ? denied : missing).map(reason => (
         <Text key={reason} style={styles.text}>
           {reason}
@@ -73,11 +75,15 @@ export function Onboarding({
       {denied.length > 0 && (
         <Text style={styles.text}>{copy['error.permission.settings']}</Text>
       )}
-      <Button
-        label={copy['onboarding.start']}
-        disabled={busy}
-        onPress={start}
-      />
+      {/* At the trailing edge, as OK in the system dialogs, not a black band across the page. */}
+      <View style={styles.actions}>
+        <Button
+          label={copy['onboarding.start']}
+          primary
+          disabled={busy}
+          onPress={start}
+        />
+      </View>
     </View>
   );
 }
@@ -89,14 +95,16 @@ const styles = StyleSheet.create({
     padding: metrics.gap,
     gap: metrics.gap,
   },
-  card: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: metrics.gap,
-    borderWidth: metrics.border,
+    paddingVertical: metrics.gap,
+    borderBottomWidth: metrics.border,
+    borderStyle: 'dotted',
     borderColor: metrics.ink,
-    padding: metrics.gap,
   },
+  actions: {alignItems: 'flex-end'},
   number: {fontSize: metrics.bodyFont * 2, color: metrics.ink},
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
 });

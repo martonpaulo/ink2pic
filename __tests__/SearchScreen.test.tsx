@@ -1,9 +1,10 @@
 import React from 'react';
-import {Keyboard, Text, TextInput} from 'react-native';
+import {Keyboard, Pressable, StyleSheet, Text, TextInput} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import type {Source} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';
 import {copy} from '../src/ui/copy';
+import {metrics} from '../src/ui/metrics';
 import {SearchScreen} from '../src/ui/SearchScreen';
 
 const result: SearchResult = {
@@ -45,6 +46,13 @@ async function render(
 }
 const texts = (tree: ReactTestRenderer) =>
   tree.root.findAllByType(Text).map(t => t.props.children);
+const status = (tree: ReactTestRenderer) =>
+  tree.root.findAllByType(Text).find(t => t.props.testID === 'status')!;
+const statusText = (tree: ReactTestRenderer) => status(tree).props.children;
+const button = (tree: ReactTestRenderer, label: string) =>
+  tree.root
+    .findAllByType(Pressable)
+    .find(p => p.props.accessibilityLabel === label)!;
 
 describe('SearchScreen (#13)', () => {
   it('submits the recognized word once and shows the results', async () => {
@@ -66,6 +74,92 @@ describe('SearchScreen (#13)', () => {
     expect(input.props.value).toBe('');
     expect(input.props.autoFocus).toBe(true);
     expect(texts(tree)).toContain(copy['error.recognition']);
+    act(() => tree.unmount());
+  });
+
+  it('opens a failed lasso on the empty results, not the Library (#50)', async () => {
+    const tree = await render({
+      initialQuery: '',
+      lassoFailure: {ok: false, code: 117, message: 'bad size', step: 'lasso'},
+    });
+    expect(statusText(tree)).toBe(copy['error.recognition']);
+    expect(texts(tree)).not.toContain(copy['library.empty']);
+    expect(
+      button(tree, copy['tab.library']).props.accessibilityState,
+    ).toMatchObject({selected: false});
+    act(() => tree.unmount());
+  });
+
+  it('never leaves an empty screen when the Library is closed before a search (#50)', async () => {
+    const tree = await render({initialQuery: ''});
+    expect(texts(tree)).toContain(copy['library.empty']);
+    act(() => button(tree, copy['tab.library']).props.onPress());
+    expect(statusText(tree)).toBe(copy['search.needWord']);
+    act(() => tree.unmount());
+  });
+
+  it('says to type a word when Search runs on an empty field (#50)', async () => {
+    const tree = await render({initialQuery: ''});
+    act(() => tree.root.findByType(TextInput).props.onChangeText('  '));
+    await act(async () => button(tree, copy['action.search']).props.onPress());
+    expect(search).not.toHaveBeenCalled();
+    expect(statusText(tree)).toBe(copy['search.needWord']);
+    act(() => tree.unmount());
+  });
+
+  it('asks for a word in the field, not a fix (#50)', async () => {
+    const tree = await render({initialQuery: ''});
+    expect(tree.root.findByType(TextInput).props.placeholder).toBe(
+      'Type a word',
+    );
+    act(() => tree.unmount());
+  });
+
+  it('keeps one status line under the bar in every state, so the tiles never move (#50)', async () => {
+    let answer!: (value: unknown) => void;
+    search.mockReturnValue(new Promise(resolve => (answer = resolve)));
+    const tree = await render();
+    const place = () => {
+      const line = status(tree);
+      const siblings = line.parent!.children;
+      return siblings.indexOf(line);
+    };
+    expect(place()).toBe(1);
+    expect(statusText(tree)).toBe('');
+    await act(async () =>
+      answer({ok: false, kind: 'http', message: 'HTTP 500'}),
+    );
+    expect(place()).toBe(1);
+    act(() => button(tree, copy['action.log']).props.onPress());
+    expect(place()).toBe(1);
+    const style = StyleSheet.flatten(status(tree).props.style);
+    expect(style.minHeight).toBe(2 * style.lineHeight);
+    act(() => tree.unmount());
+  });
+
+  it('puts the source note in the status line, not above the tiles (#50)', async () => {
+    const down: Source = {
+      name: 'down',
+      search: () => Promise.resolve({ok: false, kind: 'http', message: 'x'}),
+    };
+    const tree = await render({sources: [{name: 'fake', search}, down]});
+    expect(statusText(tree)).toBe(copy['error.sourceDown']);
+    expect(
+      texts(tree).filter(t => t === copy['error.sourceDown']),
+    ).toHaveLength(1);
+    act(() => tree.unmount());
+  });
+
+  it('fills Search black as the primary action and marks the open Library with a bar (#50)', async () => {
+    const tree = await render({initialQuery: ''});
+    const fill = (label: string) =>
+      StyleSheet.flatten(button(tree, label).props.style).backgroundColor;
+    expect(fill(copy['action.search'])).toBe(metrics.ink);
+    expect(fill(copy['tab.library'])).toBe(metrics.paper);
+    expect(
+      button(tree, copy['tab.library']).findAllByProps({testID: 'selected-bar'})
+        .length,
+    ).toBeGreaterThan(0);
     act(() => tree.unmount());
   });
 

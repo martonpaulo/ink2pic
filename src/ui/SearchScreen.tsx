@@ -1,7 +1,8 @@
 /**
  * Search and Library (brief sections 8.2, 8.6, 8.8): the recognized word in an editable field,
  * already submitted; the results grid; the Library tab with saved pictures and recent searches,
- * which also opens by itself when there is no network; and the live log.
+ * which also opens by itself when there is no network; and the live log. One status line under
+ * the bar is always there, so a message never moves or shrinks the tiles on e-ink (#50).
  */
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
@@ -30,6 +31,8 @@ import {ResultsGrid} from './ResultsGrid';
 
 type View_ = 'results' | 'library' | 'log';
 
+const STATUS_LINE_HEIGHT = Math.round(metrics.bodyFont * 1.3);
+
 export type SearchScreenProps = {
   /** The recognized word; empty when the sidebar opened the plugin. */
   initialQuery: string;
@@ -51,7 +54,10 @@ export function SearchScreen({
   const [query, setQuery] = useState(initialQuery);
   const [searching, setSearching] = useState(false);
   const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
-  const [view, setView] = useState<View_>(initialQuery ? 'results' : 'library');
+  // A failed lasso opens on the empty results, not on the Library with its own instruction (#50).
+  const [view, setView] = useState<View_>(
+    initialQuery || lassoFailure ? 'results' : 'library',
+  );
   const [status, setStatus] = useState<string | null>(
     lassoFailure ? failureText(lassoFailure) : null,
   );
@@ -97,6 +103,7 @@ export function SearchScreen({
     async (text: string) => {
       const word = text.trim();
       if (!word) {
+        setStatus(copy['search.needWord']);
         return;
       }
       setQuery(word);
@@ -145,6 +152,21 @@ export function SearchScreen({
 
   const toggle = (next: View_) => setView(view === next ? 'results' : next);
 
+  // The one status line: a set message first, then what the results view lacks (#50).
+  const noSearch = view === 'results' && !searching && !outcome;
+  const sourceDownNote =
+    view === 'results' &&
+    !searching &&
+    outcome?.sourceDown === true &&
+    outcome.results.length > 0;
+  const line =
+    status ??
+    (noSearch
+      ? copy['search.needWord']
+      : sourceDownNote
+      ? copy['error.sourceDown']
+      : '');
+
   return (
     <View style={styles.screen}>
       <View style={styles.bar}>
@@ -159,7 +181,11 @@ export function SearchScreen({
           autoFocus={lassoFailure !== null}
           returnKeyType="search"
         />
-        <Button label={copy['action.search']} onPress={() => search(query)} />
+        <Button
+          label={copy['action.search']}
+          primary
+          onPress={() => search(query)}
+        />
         <Button
           label={copy['tab.library']}
           selected={view === 'library'}
@@ -172,7 +198,12 @@ export function SearchScreen({
         />
         <Button label={copy['action.close']} onPress={onClose} />
       </View>
-      {status && <Text style={styles.text}>{status}</Text>}
+      <Text
+        testID="status"
+        style={styles.status}
+        accessibilityLiveRegion="polite">
+        {line}
+      </Text>
       {view === 'log' && <LogView />}
       {view === 'library' && (
         <View style={styles.fill}>
@@ -225,6 +256,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: metrics.gap,
   },
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
+  // Two lines reserved: the longest failure sentences wrap once on the Manta.
+  status: {
+    fontSize: metrics.bodyFont,
+    lineHeight: STATUS_LINE_HEIGHT,
+    minHeight: STATUS_LINE_HEIGHT * 2,
+    color: metrics.ink,
+  },
   fill: {flex: 1, gap: metrics.gap},
   recent: {
     flexDirection: 'row',
