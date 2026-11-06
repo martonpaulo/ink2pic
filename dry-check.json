@@ -24,7 +24,8 @@
    "**/*.md"
   ],
   "exclude": [
-   "docs/brief.md"
+   "docs/brief.md",
+   "docs/releases/**"
   ],
   "repeated": {}
  }

@@ -1,6 +1,7 @@
 import {
   countDetailLinks,
   countThumbUrls,
+  describeModule,
   formatReport,
 } from '../src/spike/report';
 
@@ -56,6 +57,27 @@ describe('formatReport', () => {
   it('puts each section under its title', () => {
     expect(formatReport('h', [{title: 'S0', lines: ['a', 'b']}])).toBe(
       'h\n\n[S0]\na\nb',
+    );
+  });
+});
+
+describe('describeModule', () => {
+  it('skips a module that is not there', () => {
+    expect(describeModule('RNFSManager', null, undefined)).toBeNull();
+  });
+
+  it('lists the methods of a module, own and inherited', () => {
+    class Base {
+      readFile() {}
+    }
+    class Fs extends Base {
+      writeFile() {}
+    }
+    expect(describeModule('RNFSManager', new Fs(), null)).toBe(
+      'RNFSManager (turbo): readFile, writeFile',
+    );
+    expect(describeModule('BlobModule', null, {})).toBe(
+      'BlobModule (legacy): (no methods listed)',
     );
   });
 });

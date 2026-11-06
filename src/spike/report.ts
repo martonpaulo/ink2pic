@@ -43,9 +43,63 @@ export function countThumbUrls(
   return {count};
 }
 
-/** Module names worth listing method names for in S0. */
-export const INTERESTING_MODULE =
-  /file|fs|storage|download|network|http|blob|image|fetch/i;
+/**
+ * Native modules that could write files or download (brief section 6): file-system libraries
+ * other plugins bundle, React Native's own blob and network modules, and the SDK's own modules.
+ */
+export const CANDIDATE_MODULES = [
+  'RNFSManager',
+  'RNFSFileTypeRegular',
+  'RNFetchBlob',
+  'ReactNativeBlobUtil',
+  'RNCFileSystem',
+  'BlobModule',
+  'FileReaderModule',
+  'Networking',
+  'ImageLoader',
+  'ImageStoreManager',
+  'RTNFileUtils',
+  'FileSelector',
+  'NativePluginAPI',
+  'NativePluginManager',
+  'NativeUIUtils',
+] as const;
+
+function methodNames(module: unknown): string[] {
+  if (module === null || typeof module !== 'object') {
+    return [];
+  }
+  const record = module as Record<string, unknown>;
+  const names = new Set<string>();
+  for (
+    let o: object | null = record;
+    o && o !== Object.prototype;
+    o = Object.getPrototypeOf(o)
+  ) {
+    for (const key of Object.getOwnPropertyNames(o)) {
+      if (key !== 'constructor' && typeof record[key] === 'function') {
+        names.add(key);
+      }
+    }
+  }
+  return [...names].sort();
+}
+
+/** One report line for a module found as a TurboModule or a legacy module; null when absent. */
+export function describeModule(
+  name: string,
+  turbo: unknown,
+  legacy: unknown,
+): string | null {
+  if (!turbo && !legacy) {
+    return null;
+  }
+  const kind = [turbo ? 'turbo' : '', legacy ? 'legacy' : '']
+    .filter(Boolean)
+    .join('+');
+  const methods = methodNames(turbo ?? legacy);
+  return `${name} (${kind}): ${methods.join(', ') || '(no methods listed)'}`;
+}
 
 /** Plain text, one section per spike, so one screenshot carries it. */
 export function formatReport(header: string, sections: Section[]): string {

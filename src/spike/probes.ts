@@ -1,9 +1,15 @@
 /**
  * Device probes for spikes S0, S1 and S3 of brief section 9.1 (issue #3).
  */
-import {Dimensions, NativeModules, PixelRatio} from 'react-native';
+import {
+  Dimensions,
+  NativeModules,
+  PixelRatio,
+  TurboModuleRegistry,
+} from 'react-native';
 import {USER_AGENT} from '../config';
 import {getLassoElements, getLassoRect, recognizeElements} from '../sdk/lasso';
+import {getCurrentFilePath, getCurrentPageNum, getPageSize} from '../sdk/page';
 import {
   getDeviceType,
   PERMISSION_INTERNET,
@@ -13,11 +19,13 @@ import {describe} from '../sdk/result';
 import {
   countDetailLinks,
   countThumbUrls,
-  INTERESTING_MODULE,
+  CANDIDATE_MODULES,
+  describeModule,
   Section,
 } from './report';
 
 const FETCH_TIMEOUT_MS = 10000;
+const S3_TITLE = 'S3 recognition';
 const OPENCLIPART_SEARCH = 'https://openclipart.org/search/?query=soup';
 const OPENCLIPART_IMAGE = 'https://openclipart.org/image/400px/340609';
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
@@ -34,16 +42,31 @@ const COMMONS_QUERY = [
 ].join('&');
 const COMMONS_SEARCH = `${COMMONS_API}?${COMMONS_QUERY}`;
 
-/** S0: host native modules, layout density, window size, device type. */
+/**
+ * S0: host native modules, layout density, window size, device type. Build 1 showed that
+ * `Object.keys(NativeModules)` lists nothing in PluginHost (new architecture), so each candidate
+ * is looked up by name, as a TurboModule and as a legacy module.
+ */
 export async function probeHost(): Promise<Section> {
-  const names = Object.keys(NativeModules).sort();
-  const lines = [`NativeModules (${names.length}): ${names.join(', ')}`];
-  for (const name of names.filter(n => INTERESTING_MODULE.test(n))) {
-    const module = NativeModules[name] as Record<string, unknown> | null;
-    const methods = module
-      ? Object.keys(module).filter(key => typeof module[key] === 'function')
-      : [];
-    lines.push(`${name}: ${methods.join(', ') || '(no methods)'}`);
+  const runtime = globalThis as Record<string, unknown>;
+  const lines = [
+    `NativeModules keys: ${Object.keys(NativeModules).length}`,
+    `__turboModuleProxy: ${typeof runtime.__turboModuleProxy}, RN$Bridgeless: ${String(
+      runtime.RN$Bridgeless,
+    )}`,
+  ];
+  for (const name of CANDIDATE_MODULES) {
+    let turbo: unknown = null;
+    try {
+      turbo = TurboModuleRegistry.get(name);
+    } catch (error) {
+      turbo = null;
+    }
+    const legacy: unknown = NativeModules[name];
+    const line = describeModule(name, turbo, legacy);
+    if (line) {
+      lines.push(line);
+    }
   }
   const window = Dimensions.get('window');
   lines.push(`PixelRatio: ${PixelRatio.get()}`);
@@ -120,28 +143,39 @@ export async function probeNetwork(): Promise<Section> {
   return {title: 'S1 network', lines};
 }
 
-/** S3: recognize the lassoed strokes and print the text verbatim. */
+/**
+ * S3: recognize the lassoed strokes and print the text verbatim. `size` is the note page size:
+ * build 1 passed the lasso rect size and every word failed with 117; ink2task and sn-dictionary
+ * pass the page size from `getPageSize` [REPORTED].
+ */
 export async function probeRecognition(): Promise<Section> {
   const elements = await getLassoElements();
   const rect = await getLassoRect();
+  const path = await getCurrentFilePath();
+  const pageNum = await getCurrentPageNum();
   const lines = [
     `lasso elements: ${describe(elements, e => String(e.length))}`,
     `lasso rect: ${describe(
       rect,
       r => `${r.left},${r.top},${r.right},${r.bottom}`,
     )}`,
+    `page: ${describe(pageNum, String)}`,
   ];
-  if (elements.ok && rect.ok) {
-    const size = {
-      width: rect.value.right - rect.value.left,
-      height: rect.value.bottom - rect.value.top,
-    };
-    const text = await recognizeElements(elements.value, size);
+  if (!elements.ok || !path.ok || !pageNum.ok) {
     lines.push(
-      `recognized: ${describe(text, t => `"${t}" (length ${t.length})`)}`,
+      'recognized: not attempted, the lasso or the page could not be read',
     );
-  } else {
-    lines.push('recognized: not attempted, the lasso could not be read');
+    return {title: S3_TITLE, lines};
   }
-  return {title: 'S3 recognition', lines};
+  const size = await getPageSize(path.value, pageNum.value);
+  lines.push(`page size: ${describe(size, v => `${v.width} x ${v.height}`)}`);
+  if (!size.ok) {
+    lines.push('recognized: not attempted, no page size');
+    return {title: S3_TITLE, lines};
+  }
+  const text = await recognizeElements(elements.value, size.value);
+  lines.push(
+    `recognized: ${describe(text, t => `"${t}" (length ${t.length})`)}`,
+  );
+  return {title: S3_TITLE, lines};
 }
