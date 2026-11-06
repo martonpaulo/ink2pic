@@ -663,6 +663,8 @@ before writing or changing an `sn-plugin-lib` call, and before fixing a device f
 | The view stayed on its waiting text after opening | 0.1.0 (1), (4), (6) | gorlix gotcha 11 and pattern 5: the button event can fire before a listener registered in `App.tsx`; store a pending button id in `index.js`; pattern 9: reset the view on close with `registerPluginLifeListener` |
 | A native module is invisible unless listed | 0.1.0 (4) | gorlix gotcha 33: only `reactPackages` in `PluginConfig.json` loads it |
 | The view closed at once, with no trace | 0.1.0 (9) | `j-raghavan/sn-dictionary` notes: an `RTNFileUtils` call can throw inside the host, past JS, and the host closes the plugin [REPORTED]; Ink2Pic reaches files only through its own module, and a test keeps `FileUtils` out of product code |
+| Permission granted but read as missing | 0.1.0 (10) | sn-plugin-lib 0.2.3 source ([#34](https://github.com/martonpaulo/ink2pic/issues/34)) [CONFIRMED in code]: `requestPermission` settles only when the host answers, with no timeout, so a 20 s call limit failed it while the dialog waited; `hasPermission` may answer 2 (always) as well as 1. Ink2Pic waits for a dialog with no limit and counts 1 and 2 as granted |
+| `getExternalDirPath` can close the plugin | 0.1.0 (9) | sn-plugin-lib 0.2.3 source ([#34](https://github.com/martonpaulo/ink2pic/issues/34)) [CONFIRMED in code]: it reads the current activity with no null check, so its error never reaches JS; `listFiles` returns `{path,type}` objects, `null` for an empty folder |
 | Logs | all | gorlix gotcha 40: `console.log` is not stripped in a real build; `adb logcat -s ReactNativeJS` reads it when a cable is available |
 
 ## 11. Risks

@@ -1,11 +1,9 @@
 import {
-  FileUtils,
   PluginCommAPI,
   PluginFileAPI,
   PluginManager,
   PluginNoteAPI,
 } from 'sn-plugin-lib';
-import * as files from '../src/sdk/files';
 import * as lasso from '../src/sdk/lasso';
 import * as note from '../src/sdk/note';
 import * as page from '../src/sdk/page';
@@ -138,6 +136,14 @@ describe('plain-value calls', () => {
     });
   });
 
+  it('reads the always-allowed answer 2 as granted (#34)', async () => {
+    mocked(PluginManager.hasPermission).mockResolvedValue(2);
+    expect(await plugin.hasPermission(plugin.PERMISSION_INTERNET)).toEqual({
+      ok: true,
+      value: true,
+    });
+  });
+
   it('passes the permission answer through', async () => {
     mocked(PluginManager.requestPermission).mockResolvedValue(2);
     expect(
@@ -167,24 +173,6 @@ describe('plain-value calls', () => {
     expect((await plugin.closePluginView()).ok).toBe(false);
   });
 
-  it('wraps the file utilities', async () => {
-    mocked(FileUtils.exists).mockResolvedValue(true);
-    expect(await files.exists('/a')).toEqual({ok: true, value: true});
-    mocked(FileUtils.makeDir).mockRejectedValue(new Error('1501'));
-    expect(await files.makeDir('/a')).toEqual({
-      ok: false,
-      code: THROWN_CODE,
-      message: '1501',
-    });
-    mocked(FileUtils.listFiles).mockResolvedValue(undefined);
-    expect((await files.listFiles('/a')).ok).toBe(false);
-    mocked(FileUtils.listFiles).mockResolvedValue(['/a/b.png']);
-    expect(await files.listFiles('/a')).toEqual({
-      ok: true,
-      value: ['/a/b.png'],
-    });
-  });
-
   it('stops listening to buttons', () => {
     const remove = jest.fn();
     mocked(PluginManager.registerButtonListener).mockReturnValue({remove});
@@ -206,19 +194,5 @@ describe('numeric answers (#23)', () => {
     expect((await plugin.hasPermission(plugin.PERMISSION_INTERNET)).ok).toBe(
       false,
     );
-  });
-});
-
-describe('getExternalDirPath (#11)', () => {
-  it('returns the roots or fails on nothing', async () => {
-    mocked(FileUtils.getExternalDirPath).mockResolvedValue([
-      '/storage/emulated/0',
-    ]);
-    expect(await files.getExternalDirPath()).toEqual({
-      ok: true,
-      value: ['/storage/emulated/0'],
-    });
-    mocked(FileUtils.getExternalDirPath).mockResolvedValue([]);
-    expect((await files.getExternalDirPath()).ok).toBe(false);
   });
 });

@@ -243,7 +243,7 @@ export async function probeRecognition(): Promise<Section> {
 
 /**
  * S2 write (#11): download one Openclipart picture into MyStyle/Ink2Pic/library through the
- * plugin's Java module, check it with FileUtils.exists, and round-trip a text file in the
+ * plugin's Java module, check it with listDir, and round-trip a text file in the
  * private plugin directory. Insertion is #12.
  */
 export async function probeWrite(): Promise<Section> {

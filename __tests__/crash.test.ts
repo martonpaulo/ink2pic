@@ -21,21 +21,22 @@ describe('listDir (#13)', () => {
 });
 
 /**
- * FileUtils' module can make the host close the plugin on an error (build 0.1.0 (9)): product
- * code reaches files only through the plugin's own module. Only the wrappers and tests may name
- * the FileUtils wrappers.
+ * FileUtils' module can make the host close the plugin on an error (build 0.1.0 (9)): its
+ * `getExternalDirPath` reads the current activity with no null check (sn-plugin-lib 0.2.3, #34).
+ * No code under src/ names FileUtils; files go through the plugin's own module.
  */
-it('keeps product code off the FileUtils wrappers', () => {
+it('keeps every source file off FileUtils', () => {
   const root = join(__dirname, '..', 'src');
   const files = (dir: string): string[] =>
     readdirSync(dir).flatMap(name => {
       const path = join(dir, name);
       return statSync(path).isDirectory() ? files(path) : [path];
     });
-  const offenders = files(root).filter(
-    path =>
-      !relative(root, path).startsWith('sdk/') &&
-      /from '[./]*sdk\/files'/.test(readFileSync(path, 'utf8')),
+  // An import or a call; comments and the module-name list of the spike report may name it.
+  const offenders = files(root).filter(path =>
+    /import[^;]*\bFileUtils\b|\bFileUtils\.\w+\(/.test(
+      readFileSync(path, 'utf8'),
+    ),
   );
   expect(offenders.map(path => relative(root, path))).toEqual([]);
 });

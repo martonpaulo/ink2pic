@@ -86,7 +86,7 @@ async function storeOne(
     return;
   }
   // shortcut: when the limit is reached, new thumbnails are not stored and the old ones stay;
-  // upgrade to oldest-first removal once FileUtils.deleteFile has a src/sdk wrapper.
+  // upgrade to oldest-first removal once the plugin's own file module can delete a file.
   if (known.size >= THUMB_LIMIT) {
     log(
       `thumbs: limit of ${THUMB_LIMIT} files reached, ${result.id} not stored`,
