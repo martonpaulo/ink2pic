@@ -30,7 +30,9 @@ export const STYLE_GROUPS = {
   diagram: wordPattern('diagrams?|charts?|graphs?'),
   photo: wordPattern('photos?|photographs?|picture of'),
   painting: wordPattern('paintings?|portraits?'),
-  drawing: wordPattern('drawings?|sketch(?:es)?|line ?art'),
+  drawing: wordPattern(
+    'drawings?|sketch(?:es)?|line ?art|outlines?|contours?|colou?ring(?: pages?)?',
+  ),
   icon: wordPattern('icons?'),
   // Decorative frames and borders: Openclipart «Apple Runner» is a frame (#65).
   frame: wordPattern('frames?|borders?|runners?|ornaments?|dividers?'),

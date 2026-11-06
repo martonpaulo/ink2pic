@@ -1,12 +1,15 @@
 /**
  * Pixel measures of a thumbnail and what they say about it (#66; research note
- * 2026-11-search-ranking sections 3, 4 and 7, and research D on iconic pictures). Portable core:
- * no React Native, no SDK; the measuring itself sits behind `ImageAnalyzer`, which the device
- * implements in `src/storage/measures.ts` and another project can supply.
+ * 2026-11-search-ranking sections 3, 4 and 7, and research D on iconic pictures). The measuring
+ * itself sits behind `ImageAnalyzer`, which the device implements in `src/storage/measures.ts`
+ * and another project can supply; `pixelScorer` is one more `Scorer` of the ranker.
  */
-import type {Result} from '../sdk/result';
-import {PAGE_SIZE, SearchResult} from '../search-core';
-import {einkScore} from '../search-core/rank';
+import {readIntent} from './query';
+import {DEFAULT_SCORERS, einkScore, Scorer} from './rank';
+import {PAGE_SIZE, SearchResult} from './types';
+
+/** What an analyzer call gives: the value, or why there is none, for the log. */
+export type Measured<T> = {ok: true; value: T} | {ok: false; message: string};
 
 /**
  * The features `ThumbMeasures.java` computes on gray values flattened on white. Shares are 0 to 1,
@@ -51,13 +54,13 @@ export type ConvertedImage = {width: number; height: number; ms: number};
 
 /** Measures and converts picture files; the device's is the plugin's Java module. */
 export type ImageAnalyzer = {
-  measure: (path: string) => Promise<Result<Measures>>;
+  measure: (path: string) => Promise<Measured<Measures>>;
   /** Writes `dest` as a contour drawing of `src`, scaled down to `width` (never up). */
   toContour: (
     src: string,
     dest: string,
     width: number,
-  ) => Promise<Result<ConvertedImage>>;
+  ) => Promise<Measured<ConvertedImage>>;
 };
 
 /**
@@ -116,11 +119,6 @@ export function pixelKind(m: Measures): PixelKind {
   return clean ? 'clean' : 'plain';
 }
 
-/** The person asked for line work: every picture that is not already line work is converted. */
-const OUTLINE_QUERY =
-  /\b(outlines?|drawings?|line ?art|contours?|colou?ring( page)?s?|sketch(es)?)\b/i;
-/** The person asked for the tones themselves: nothing is converted (research section 6, rule 3). */
-const TONES_QUERY = /\b(photos?|photographs?|paintings?)\b/i;
 const CONVERTED: ReadonlySet<PixelKind> = new Set(['dark', 'photo']);
 const ALREADY_LINES: ReadonlySet<PixelKind> = new Set([
   'outline',
@@ -135,13 +133,14 @@ const ALREADY_LINES: ReadonlySet<PixelKind> = new Set([
  * never when the query asks for a photo or a painting.
  */
 export function needsContour(m: Measures, query: string): boolean {
-  if (TONES_QUERY.test(query)) {
+  // The query's style words are read once, by the query pipeline (#65).
+  const {styles} = readIntent(query);
+  if (styles.has('photo') || styles.has('painting')) {
     return false;
   }
   const kind = pixelKind(m);
   return (
-    CONVERTED.has(kind) ||
-    (OUTLINE_QUERY.test(query) && !ALREADY_LINES.has(kind))
+    CONVERTED.has(kind) || (styles.has('drawing') && !ALREADY_LINES.has(kind))
   );
 }
 
@@ -214,9 +213,6 @@ const LINE_ART_WEIGHT = 3;
  */
 const UNMEASURED = 0.5;
 
-/** A ranking signal: a pure function of one result. */
-export type Scorer = (result: SearchResult) => number;
-
 /**
  * The pixel signal over one set of measures: `3 x lineArt`, min-max scaled within the set, so it
  * moves pictures only relative to each other. A canonical picture scores 0: it keeps its place.
@@ -276,7 +272,7 @@ export function reorderByMeasures(
     .map((result, order) => ({
       result,
       order,
-      score: einkScore(result, query) + pixels(result),
+      score: einkScore(result, query, [...DEFAULT_SCORERS, pixels]),
     }))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map(entry => entry.result);

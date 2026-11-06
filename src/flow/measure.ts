@@ -18,7 +18,7 @@ import {
   needsContour,
   pixelKind,
   reorderByMeasures,
-} from '../search/measures';
+} from '../search-core';
 import {thumbUri} from '../search/thumbs';
 import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';

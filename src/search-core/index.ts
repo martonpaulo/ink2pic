@@ -9,6 +9,21 @@ export {noLog, systemClock} from './clock';
 export type {Clock, Log} from './clock';
 export {createContext, createFetcher} from './fetcher';
 export type {Fetcher, FetchLike} from './fetcher';
+export {
+  lineArt,
+  MEASURED_RESULTS,
+  needsContour,
+  pixelKind,
+  pixelScorer,
+  reorderByMeasures,
+} from './measures';
+export type {
+  ConvertedImage,
+  ImageAnalyzer,
+  Measured,
+  Measures,
+  PixelKind,
+} from './measures';
 export {pageCount, pageOf} from './pages';
 export {DEFAULT_SCORERS, rankForEink} from './rank';
 export type {Scorer} from './rank';

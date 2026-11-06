@@ -311,14 +311,14 @@ The most typical picture of a word is often one Wikidata already names ([#43](ht
 
 ### 5.5 Ranking and its measurement
 
-Page 1 shows the most typical picture of the word first ([#43](https://github.com/martonpaulo/ink2pic/issues/43)). `src/search/rank.ts` holds the rule; every signal is one the sources already return, with no request per result:
+Page 1 shows the most typical picture of the word first ([#43](https://github.com/martonpaulo/ink2pic/issues/43)). `src/search-core/rank.ts` holds the rule; every signal is one the sources already return, with no request per result:
 
 1. A title that names the word with at most one other word (`Cat silhouette`, `Esperanto-flago`) scores highest; one that names it in a longer phrase scores less; one that does not name it, least. Plurals count.
 2. Line-work words (drawing, sketch, silhouette, icon, engraving) add a point; so does Openclipart, or a PNG or SVG on Commons; a photo word removes one.
 3. Logos, wordmarks, maps, diagrams, charts, election margins, anatomy and structure drawings, flags, emblems, coats of arms, signatures, posters, patterns, 3D, AI-generated and gradient graphics fall below every plain picture, photos included.
 4. The canonical pictures from Wikidata follow the best-ranked result, so page 1 holds both a simple drawing and, for a person, the real portrait; a photo is never moved last when it is the canonical image.
 5. Ties keep each source's order and alternate the sources; a file two sources return is shown once.
-6. Before page 1 shows, the 12 thumbnails of pages 1 and 2 are measured in plain Java (`ThumbMeasures.java`) and re-sorted by the title score plus 3 times a line-art score, scaled within the 12; a canonical picture keeps its place and a blank thumbnail goes last; the step ends after 8 s with what was measured ([#66](https://github.com/martonpaulo/ink2pic/issues/66), `src/search/measures.ts`) [INFERENCE: weights fitted on 6 queries, to calibrate in the search lab].
+6. Before page 1 shows, the 12 thumbnails of pages 1 and 2 are measured in plain Java (`ThumbMeasures.java`) and re-sorted by the title score plus 3 times a line-art score, scaled within the 12; a canonical picture keeps its place and a blank thumbnail goes last; the step ends after 8 s with what was measured ([#66](https://github.com/martonpaulo/ink2pic/issues/66), `src/search-core/measures.ts`) [INFERENCE: weights fitted on 6 queries, to calibrate in the search lab].
 
 Requests per search: 2 before; 4 after when the word has a Wikidata item with pictures (Openclipart, Commons drawings, Wikidata, Commons files), 3 when it has none, and one more only when Commons has fewer than six drawings (none of the 19 words below).
 

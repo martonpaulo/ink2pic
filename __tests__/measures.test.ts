@@ -12,7 +12,8 @@ import {
   pixelKind,
   pixelScorer,
   reorderByMeasures,
-} from '../src/search/measures';
+} from '../src/search-core/measures';
+import {readIntent} from '../src/search-core/query';
 import type {SearchResult} from '../src/search-core/types';
 
 /** A white page; each picture below changes what it needs. */
@@ -181,7 +182,9 @@ describe('pixelScorer (#66)', () => {
       ['b', darkPainting],
       ['c', glossy],
     ]);
-    const score = pixelScorer(measures);
+    const pixels = pixelScorer(measures);
+    // A scorer of the ranker: it reads no query.
+    const score = (r: SearchResult) => pixels(r, readIntent(''));
     expect(score(result('a'))).toBe(3);
     expect(score(result('b'))).toBe(0);
     expect(score(result('c'))).toBeGreaterThan(0);

@@ -3,7 +3,7 @@
  * thumbnail file (`ThumbMeasures.java`) and writes contour drawings (`Contour.java`) in plain
  * Java, off the React Native thread.
  */
-import type {ImageAnalyzer, Measures} from '../search/measures';
+import type {ImageAnalyzer, Measures} from '../search-core';
 import {callModule} from './files';
 import {prepareForEink} from './image';
 
