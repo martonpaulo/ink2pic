@@ -1,7 +1,12 @@
 import {PluginManager} from 'sn-plugin-lib';
-import {attempt, ok, Result} from './result';
+import {attempt, fail, ok, Result, THROWN_CODE} from './result';
 
 export const PERMISSION_INTERNET = 'plugin.permission.INTERNET';
+export const PERMISSION_FILE_READ = 'plugin.permission.FILE:READ';
+export const PERMISSION_FILE_WRITE = 'plugin.permission.FILE:WRITE';
+
+/** `hasPermission` answer for a granted permission. */
+export const GRANTED = 1;
 
 /** `5` is the Manta (A5X2), per brief section 2. */
 export function getDeviceType(): Promise<Result<number>> {
@@ -19,6 +24,24 @@ export function requestPermission(
   return attempt(
     () => PluginManager.requestPermission(permission, description),
     raw => ok(Number(raw)),
+  );
+}
+
+export function hasPermission(permission: string): Promise<Result<boolean>> {
+  return attempt(
+    () => PluginManager.hasPermission(permission),
+    raw => ok(Number(raw) === GRANTED),
+  );
+}
+
+/** The private plugin directory, which needs no permission (brief section 3.6). */
+export function getPluginDirPath(): Promise<Result<string>> {
+  return attempt(
+    () => PluginManager.getPluginDirPath(),
+    raw =>
+      typeof raw === 'string' && raw
+        ? ok(raw)
+        : fail(THROWN_CODE, 'getPluginDirPath returned nothing'),
   );
 }
 
