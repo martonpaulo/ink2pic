@@ -154,6 +154,12 @@ describe('cachedSearch', () => {
   it.each([
     ['not JSON', '{oops', 'not JSON'],
     ['an unknown version', JSON.stringify({version: 99, entries: []}), '99'],
+    // Version 1 holds results in the order before the drawing ranking (#43, #59).
+    [
+      'the version before the drawing ranking',
+      JSON.stringify({version: 1, entries: []}),
+      'version 1',
+    ],
     [
       'a malformed entry',
       JSON.stringify({version: CACHE_VERSION, entries: [{query: 'soup'}]}),

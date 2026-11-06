@@ -15,7 +15,11 @@ import type {SearchResult, SourceName} from '../sources/types';
 import type {TextStorage} from '../library/types';
 import type {SearchOutcome, SourceStatus} from './search';
 
-export const CACHE_VERSION = 1;
+/**
+ * Raised when cached results would show in an order the current ranking no longer gives: 2 since
+ * the drawing-first ranking of #43, so a search from build 0.1.0 (12) is not reused (#59).
+ */
+export const CACHE_VERSION = 2;
 /** Newest entries kept; the oldest is evicted first. DEFAULT, no device measurement yet. */
 export const CACHE_LIMIT = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;
