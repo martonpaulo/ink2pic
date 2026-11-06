@@ -1,96 +1,98 @@
 /**
- * Spike view for issue #3: runs the probe for the pressed button, shows the report and inserts it
- * into the page as a text box, so one screenshot carries every result.
+ * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
+ * search; the lasso button first turns the lassoed word into the query (#13).
  *
  * @format
  */
 
 import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import pluginConfig from './PluginConfig.json';
+import {StyleSheet, Text, View} from 'react-native';
+import {readLassoQuery} from './src/flow/lassoQuery';
 import {LASSO_BUTTON_ID} from './src/buttons';
-import {insertText} from './src/sdk/note';
+import {log, startLog} from './src/log/memory';
+import {needsOnboarding} from './src/onboarding/permissions';
 import {closePluginView, onButtonPress} from './src/sdk/plugin';
-import {describe} from './src/sdk/result';
-import {log, logged, logLines, startLog} from './src/spike/log';
-import {
-  ensurePermissions,
-  probeHost,
-  probeNetwork,
-  probeRecognition,
-  probeWrite,
-} from './src/spike/probes';
-import {formatReport, Section} from './src/spike/report';
+import type {SearchResult} from './src/sources/types';
 import {copy} from './src/ui/copy';
+import {metrics} from './src/ui/metrics';
+import {Onboarding} from './src/ui/Onboarding';
+import {SearchScreen} from './src/ui/SearchScreen';
 
-/** Where the report lands on a 1920 x 2560 Manta page. */
-const REPORT_RECT = {left: 120, top: 160, right: 1800, bottom: 2400};
-const REPORT_FONT_SIZE = 28;
-
-async function runSpike(buttonId: number): Promise<string> {
-  startLog();
-  log(`button ${buttonId}`);
-  // Permissions first: a file or note call without FILE:READ fails (1503) or closes the plugin.
-  const sections: Section[] = [await ensurePermissions()];
-  if (buttonId === LASSO_BUTTON_ID) {
-    sections.push(await probeRecognition());
-  } else {
-    sections.push(await probeHost(), await probeNetwork(), await probeWrite());
-  }
-  const header = `Ink2Pic spike ${pluginConfig.versionName} (${
-    pluginConfig.versionCode
-  }), ${new Date().toISOString()}`;
-  const report = formatReport(header, [
-    ...sections,
-    {title: 'log', lines: logLines()},
-  ]);
-  const inserted = await logged('insertText', () =>
-    insertText({text: report, rect: REPORT_RECT, fontSize: REPORT_FONT_SIZE}),
-  );
-  return `${report}\n\n[insertText] ${describe(inserted, String)}`;
-}
+type Screen =
+  | {name: 'starting'}
+  | {name: 'onboarding'; buttonId: number}
+  | {name: 'search'; query: string; recognitionFailed: boolean; opened: number};
 
 function App(): React.JSX.Element {
-  const [report, setReport] = useState('…');
+  const [screen, setScreen] = useState<Screen>({name: 'starting'});
+
+  /** Reads the lasso when the lasso button opened the view; permissions are granted by now. */
+  const openSearch = async (buttonId: number) => {
+    if (buttonId !== LASSO_BUTTON_ID) {
+      setScreen({
+        name: 'search',
+        query: '',
+        recognitionFailed: false,
+        opened: Date.now(),
+      });
+      return;
+    }
+    const query = await readLassoQuery();
+    if (!query.ok) {
+      log(`recognition failed: ${query.code} ${query.message}`);
+    }
+    setScreen({
+      name: 'search',
+      query: query.ok ? query.value : '',
+      recognitionFailed: !query.ok,
+      opened: Date.now(),
+    });
+  };
 
   useEffect(() => {
-    return onButtonPress(({id}) => {
-      setReport('…');
-      runSpike(id).then(setReport, error =>
-        setReport(`spike failed: ${String(error)}`),
-      );
+    return onButtonPress(async ({id}) => {
+      startLog();
+      log(`button ${id}`);
+      setScreen({name: 'starting'});
+      if (await needsOnboarding()) {
+        setScreen({name: 'onboarding', buttonId: id});
+        return;
+      }
+      await openSearch(id);
     });
+    // The listener is registered once; openSearch only sets state.
   }, []);
 
-  return (
-    <View style={styles.container}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={copy['action.close']}
-        style={styles.closeButton}
-        onPress={() => closePluginView()}>
-        <Text style={styles.closeText}>{copy['action.close']}</Text>
-      </Pressable>
-      <ScrollView>
-        <Text style={styles.report}>{report}</Text>
-      </ScrollView>
-    </View>
-  );
+  const pick = (result: SearchResult) => {
+    // Inserting the picture is #14; until then the choice is only logged.
+    log(`picked ${result.id}`);
+  };
+
+  switch (screen.name) {
+    case 'onboarding':
+      return <Onboarding onDone={() => openSearch(screen.buttonId)} />;
+    case 'search':
+      return (
+        <SearchScreen
+          key={screen.opened}
+          initialQuery={screen.query}
+          recognitionFailed={screen.recognitionFailed}
+          onPick={pick}
+          onClose={() => closePluginView()}
+        />
+      );
+    default:
+      return (
+        <View style={styles.screen}>
+          <Text style={styles.text}>{copy['search.running']}</Text>
+        </View>
+      );
+  }
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1, padding: 24, backgroundColor: '#ffffff'},
-  closeButton: {
-    alignSelf: 'flex-end',
-    minHeight: 120,
-    minWidth: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#000000',
-  },
-  closeText: {fontSize: 40, color: '#000000'},
-  report: {fontSize: 28, color: '#000000'},
+  screen: {flex: 1, backgroundColor: metrics.paper, padding: metrics.gap},
+  text: {fontSize: metrics.bodyFont, color: metrics.ink},
 });
 
 export default App;

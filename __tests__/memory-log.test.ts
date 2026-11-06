@@ -1,4 +1,4 @@
-import {brief, log, logged, logLines, startLog} from '../src/spike/log';
+import {brief, log, logged, logLines, startLog} from '../src/log/memory';
 
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});

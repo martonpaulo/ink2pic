@@ -26,7 +26,7 @@ import {
   describeModule,
   Section,
 } from './report';
-import {brief, log, logged} from './log';
+import {brief, log, logged} from '../log/memory';
 import {exists, getExternalDirPath} from '../sdk/files';
 import {getPluginDirPath} from '../sdk/plugin';
 import {downloadToFile, readText, writeText} from '../storage/files';

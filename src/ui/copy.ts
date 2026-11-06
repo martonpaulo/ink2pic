@@ -31,6 +31,9 @@ export const copy = {
   'onboarding.start': 'Start',
   // Outside the brief's table: the close button of the plugin view (#3).
   'action.close': 'Close',
+  // Outside the brief's table: the search button and the call log (owner's logging rule, #13).
+  'action.search': 'Search',
+  'action.log': 'Log',
 } as const;
 
 export type CopyKey = keyof typeof copy;

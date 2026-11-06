@@ -1,7 +1,7 @@
 /**
- * The spike's run log: every SDK call and network request with its raw answer and duration,
- * printed in the report so one screenshot carries it (owner request, 2026-11-06). Also sent to
- * console.log for a device log reader. A file log waits for a file writer (#11, #21).
+ * The run log: every SDK call and network request with its answer and duration, shown to the
+ * owner in the plugin (owner rule, 2026-11-06, AGENTS.md). Also sent to console.log for a device
+ * log reader. The session log file is #21.
  */
 import type {Result} from '../sdk/result';
 
