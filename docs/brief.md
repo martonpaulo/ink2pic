@@ -856,6 +856,10 @@ Community code read during research (shallow clones, 2026-11-06):
 - `wolfsolver/supernote-image-insert-plugin`: broken on 3.31.45, [issue 16](https://github.com/wolfsolver/supernote-image-insert-plugin/issues/16)
 - `jpmoo/embedimage`, `Sparkinman/web-lookup-supernote-plugin`, `Taoist22-Supernote/sn-frameclip`, `Ziv-Ink/supernote-plugin-template`, `j-raghavan/supernote-stickers`
 
+Search quality research, 2026-11-06 (notes in `docs/research/`):
+
+- [Ranking for e-ink, pixel measures and contour conversion](research/2026-11-search-ranking.md): Openverse's ranking (`WordPress/openverse`, read), XDoG (Winnemöller et al. 2012), graphics-versus-photo features (Athitsos et al. 1997), Stroke Width Transform (Epshtein et al. 2010).
+
 Research method: primary sources first, source code over descriptions, cross-checks, and explicit separation of confirmed facts, reports, inferences and open items, following the owner's `skd-external-research` skill.
 
 ---
