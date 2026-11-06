@@ -671,7 +671,7 @@ These were open questions. Defaults let work start. The owner may override any o
 | Name | `Ink2Pic` [DEFAULT] | `Word2Pic`, `SuperPic`, `sn-picture` (section 12.1) |
 | Handwritten word after insert | Kept. Deletion toggle only after S5 succeeds | Delete always, ask once |
 | Devices | Manta (A5 X2) only | Nomad later (same firmware line, different page size) |
-| Distribution | Public source repository, personal use of the plugin | Submit to Ratta's plugin listing later, subject to the review rules (section 3.6) |
+| Distribution | Public: after the MVP, Ratta's review for InkHub, the `fharper/awesome-supernote` list and posts on r/Supernote_dev and r/Supernote (owner decision D3 A, 2026-11-06; [research](research/2026-11-distribution-channels.md), [#28](https://github.com/martonpaulo/ink2pic/issues/28), [#29](https://github.com/martonpaulo/ink2pic/issues/29), [#30](https://github.com/martonpaulo/ink2pic/issues/30)) | GitHub only; personal use |
 | License | MIT (required in practice now that the repository is public) | None. A public repository without a license gives no reuse rights |
 | User-Agent contact | Repository URL | Owner's e-mail if Wikimedia throttles |
 | UI language | English only (requirement, not a default) | None |
