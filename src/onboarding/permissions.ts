@@ -7,7 +7,7 @@ import {
   requestPermission,
 } from '../sdk/plugin';
 import {copy} from '../ui/copy';
-import {logged} from '../log/memory';
+import {logged, WAITS_FOR_PERSON} from '../log/memory';
 
 /** `requestPermission` answers that grant: allowed this time (1) or always (2). */
 const GRANTING_ANSWERS = new Set([1, 2]);
@@ -64,8 +64,10 @@ export async function requestMissing(): Promise<{
   const granted: PermissionNeed[] = [];
   const denied: Denied[] = [];
   for (const need of await missingPermissions()) {
-    const answer = await logged(`requestPermission(${need.permission})`, () =>
-      requestPermission(need.permission, need.reason),
+    const answer = await logged(
+      `requestPermission(${need.permission})`,
+      () => requestPermission(need.permission, need.reason),
+      WAITS_FOR_PERSON,
     );
     if (
       (answer.ok && GRANTING_ANSWERS.has(answer.value)) ||

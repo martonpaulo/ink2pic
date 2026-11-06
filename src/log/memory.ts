@@ -17,6 +17,11 @@ export function setAfterCall(hook: () => void): void {
 
 /** A call that never answers ends here, so the screen never stays stuck (build 0.1.0 (4), #11). */
 export const CALL_TIMEOUT_MS = 20000;
+/**
+ * No time limit: build 0.1.0 (10) timed out a permission dialog while the owner read it, and
+ * reported the permission as missing (#13).
+ */
+export const WAITS_FOR_PERSON = null;
 /** The code of a call that hit CALL_TIMEOUT_MS; SDK codes are positive, module codes -2. */
 export const TIMEOUT_CODE = -3;
 
@@ -59,28 +64,35 @@ export function brief(value: unknown, max = BRIEF_MAX): string {
 
 /**
  * Runs one SDK or module call and logs its label, answer and duration. The start is logged too,
- * so a call that hangs shows where; after `timeoutMs` it fails with TIMEOUT_CODE.
+ * so a call that hangs shows where; after `timeoutMs` it fails with TIMEOUT_CODE. A call that
+ * waits for the person, such as a permission dialog, passes WAITS_FOR_PERSON and has no limit.
  */
 export async function logged<T>(
   label: string,
   call: () => Promise<Result<T>>,
-  timeoutMs = CALL_TIMEOUT_MS,
+  timeoutMs: number | typeof WAITS_FOR_PERSON = CALL_TIMEOUT_MS,
 ): Promise<Result<T>> {
   const at = Date.now();
   log(`${label} …`);
   // On disk before the call too: a call that makes the host close the plugin leaves its name (#13).
   afterCall();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const expired = new Promise<Result<T>>(resolve => {
-    timer = setTimeout(
-      () =>
-        resolve(fail(TIMEOUT_CODE, `TIMEOUT: no answer in ${timeoutMs} ms`)),
-      timeoutMs,
-    );
-  });
-  const result = await Promise.race([call(), expired]).finally(() =>
-    clearTimeout(timer),
-  );
+  const limit = timeoutMs;
+  const result =
+    limit === WAITS_FOR_PERSON
+      ? await call()
+      : await Promise.race([
+          call(),
+          new Promise<Result<T>>(resolve => {
+            timer = setTimeout(
+              () =>
+                resolve(
+                  fail(TIMEOUT_CODE, `TIMEOUT: no answer in ${limit} ms`),
+                ),
+              limit,
+            );
+          }),
+        ]).finally(() => clearTimeout(timer));
   const took = Date.now() - at;
   log(
     result.ok

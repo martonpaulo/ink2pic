@@ -67,3 +67,15 @@ Prerelease [`v0.1.0-dev.9`](https://github.com/martonpaulo/ink2pic/releases/tag/
 | 3-8 | | Not run | Blocked by step 2 |
 
 Cause, inferred: after deciding the flow, the view's first file call was `FileUtils.getExternalDirPath`; `RTNFileUtils` calls can throw inside the host, where JS cannot catch them, and the host closes the plugin (`j-raghavan/sn-dictionary`, device-verified [REPORTED]). Build 0.1.0 (10) no longer calls `FileUtils` in the product, writes the log file around every call from the start, and writes any JS error into the page and `crash.log` ([#13](https://github.com/martonpaulo/ink2pic/issues/13)).
+
+## Build 0.1.0 (10), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.10`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.10), commit `eee50aa`. Seen on the owner's screen mirror.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| Open from the side bar | Onboarding, then search | Pass, with a defect | `requestPermission(INTERNET)` hit the 20 s call limit while the dialog waited for the owner, so the view said network access was missing; Settings showed it allowed. Fixed: no limit on a dialog, and a check after each request ([#13](https://github.com/martonpaulo/ink2pic/issues/13)) |
+| 2 Lasso, Find picture | Six pictures | Pass | `recognizeElements` gave "SOUP" in 1337 ms; Openclipart 32 and Commons 18 results; thumbnails stored |
+| 3 Tap a picture | Picture at the word | Pass | A gray ladle placed at the lassoed word; the plugin closed |
+| Page 2 of 9 | Pictures | Unclear | One screenshot shows «Searching…» with the pager at 2 / 9 and no pictures |
+| 4-8 | | Not reported | |

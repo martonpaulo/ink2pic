@@ -6,6 +6,7 @@ import {
   onLog,
   startLog,
   TIMEOUT_CODE,
+  WAITS_FOR_PERSON,
 } from '../src/log/memory';
 
 beforeEach(() => {
@@ -71,6 +72,24 @@ describe('live log and timeouts (#11)', () => {
         message: 'TIMEOUT: no answer in 1000 ms',
       });
       expect(logLines()[1]).toMatch(/downloadToFile -> error -3: TIMEOUT/);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('waits as long as the person needs for a dialog (build 0.1.0 (10))', async () => {
+    jest.useFakeTimers();
+    try {
+      let answer!: (value: {ok: true; value: number}) => void;
+      const pending = logged(
+        'requestPermission',
+        () =>
+          new Promise<{ok: true; value: number}>(resolve => (answer = resolve)),
+        WAITS_FOR_PERSON,
+      );
+      await jest.advanceTimersByTimeAsync(60000);
+      answer({ok: true, value: 2});
+      expect(await pending).toEqual({ok: true, value: 2});
     } finally {
       jest.useRealTimers();
     }
