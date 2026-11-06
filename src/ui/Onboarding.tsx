@@ -4,6 +4,7 @@
 import React, {useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Button} from './Button';
+import {ScreenTools} from './ScreenTools';
 import {Denied, requestMissing} from '../onboarding/permissions';
 import {copy} from './copy';
 import {metrics} from './metrics';
@@ -14,9 +15,12 @@ const CARDS = [
   copy['onboarding.3'],
 ] as const;
 
-export type OnboardingProps = {onDone: () => void};
+export type OnboardingProps = {onDone: () => void; onClose: () => void};
 
-export function Onboarding({onDone}: OnboardingProps): React.JSX.Element {
+export function Onboarding({
+  onDone,
+  onClose,
+}: OnboardingProps): React.JSX.Element {
   const [busy, setBusy] = useState(false);
   const [denied, setDenied] = useState<Denied[]>([]);
 
@@ -32,6 +36,7 @@ export function Onboarding({onDone}: OnboardingProps): React.JSX.Element {
 
   return (
     <View style={styles.screen}>
+      <ScreenTools onClose={onClose} />
       {CARDS.map((text, i) => (
         <View key={text} style={styles.card} accessible>
           <Text style={styles.number}>{i + 1}</Text>

@@ -27,10 +27,12 @@ import {closePluginView} from './src/sdk/plugin';
 import type {SearchResult} from './src/sources/types';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
-import {StartingScreen} from './src/ui/StartingScreen';
+import {StatusScreen} from './src/ui/StatusScreen';
+import {copy} from './src/ui/copy';
 
 type Screen =
   | {name: 'starting'}
+  | {name: 'failed'}
   | {name: 'onboarding'; buttonId: number}
   | {
       name: 'search';
@@ -87,7 +89,8 @@ function App(): React.JSX.Element {
     } catch (error) {
       // A rejected promise is not an uncaught error: report it the same way (#13).
       log(`start failed: ${String(error)}`);
-      setScreen({name: 'starting'});
+      // Never «Starting…» for good: one sentence and Close (review before build 0.1.0 (11)).
+      setScreen({name: 'failed'});
     } finally {
       running.current = false;
     }
@@ -186,7 +189,12 @@ function App(): React.JSX.Element {
 
   switch (screen.name) {
     case 'onboarding':
-      return <Onboarding onDone={() => openSearch(screen.buttonId)} />;
+      return (
+        <Onboarding
+          onDone={() => openSearch(screen.buttonId)}
+          onClose={() => closePluginView()}
+        />
+      );
     case 'search':
       return (
         <SearchScreen
@@ -197,8 +205,20 @@ function App(): React.JSX.Element {
           onClose={() => closePluginView()}
         />
       );
+    case 'failed':
+      return (
+        <StatusScreen
+          text={copy['error.unexpected']}
+          onClose={() => closePluginView()}
+        />
+      );
     default:
-      return <StartingScreen />;
+      return (
+        <StatusScreen
+          text={copy['app.starting']}
+          onClose={() => closePluginView()}
+        />
+      );
   }
 }
 

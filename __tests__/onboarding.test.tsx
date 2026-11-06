@@ -80,10 +80,21 @@ describe('Onboarding', () => {
   const render = (onDone = jest.fn()) => {
     let tree!: ReactTestRenderer;
     act(() => {
-      tree = renderer.create(<Onboarding onDone={onDone} />);
+      tree = renderer.create(
+        <Onboarding onDone={onDone} onClose={jest.fn()} />,
+      );
     });
     return tree;
   };
+  // The Start button, beside the Log and Close buttons every screen carries.
+  const start = (tree: ReactTestRenderer) =>
+    tree.root
+      .findAllByType(Pressable)
+      .find(p =>
+        p
+          .findAllByType(Text)
+          .some(t => t.props.children === copy['onboarding.start']),
+      )!;
   const texts = (tree: ReactTestRenderer) =>
     tree.root.findAllByType(Text).map(t => t.props.children);
 
@@ -104,7 +115,7 @@ describe('Onboarding', () => {
     request.mockResolvedValue(2);
     const onDone = jest.fn();
     const tree = render(onDone);
-    await act(() => tree.root.findByType(Pressable).props.onPress());
+    await act(() => start(tree).props.onPress());
     expect(onDone).toHaveBeenCalled();
   });
 
@@ -113,7 +124,7 @@ describe('Onboarding', () => {
     request.mockResolvedValue(0);
     const onDone = jest.fn();
     const tree = render(onDone);
-    await act(() => tree.root.findByType(Pressable).props.onPress());
+    await act(() => start(tree).props.onPress());
     expect(onDone).not.toHaveBeenCalled();
     expect(texts(tree)).toEqual(
       expect.arrayContaining([

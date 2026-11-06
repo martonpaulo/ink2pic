@@ -11,6 +11,8 @@ import {SHARED_ROOT} from './session';
 /** The last log lines carried in the report. */
 const CRASH_LOG_LINES = 30;
 const STACK_CHARS = 600;
+/** How long a fatal error waits for crash.log before the previous handler ends the process. */
+const CRASH_WRITE_MS = 2000;
 
 type Handler = (error: unknown, isFatal?: boolean) => void;
 type ErrorUtilsLike = {
@@ -46,8 +48,14 @@ export function catchCrashes(): void {
   utils.setGlobalHandler((error, isFatal) => {
     const text = crashReport(error, isFatal, logLines());
     log(text.split('\n')[0]);
-    writeText(`${logsDir(SHARED_ROOT)}/crash.log`, text);
-    previous(error, isFatal);
+    const written = writeText(`${logsDir(SHARED_ROOT)}/crash.log`, text);
+    if (!isFatal) {
+      previous(error, isFatal);
+      return;
+    }
+    // A fatal error ends the process: crash.log, the only trace, gets a moment to land first.
+    const moment = new Promise(resolve => setTimeout(resolve, CRASH_WRITE_MS));
+    Promise.race([written, moment]).then(() => previous(error, isFatal));
   });
   log('crash handler: ok');
 }

@@ -1,7 +1,8 @@
 import {readdirSync, readFileSync, statSync} from 'fs';
 import {join, relative} from 'path';
 import {NativeModules} from 'react-native';
-import {crashReport} from '../src/flow/crash';
+import {PluginNoteAPI} from 'sn-plugin-lib';
+import {catchCrashes, crashReport} from '../src/flow/crash';
 import {listDir} from '../src/storage/files';
 
 describe('crash report (#13)', () => {
@@ -41,12 +42,32 @@ it('keeps every source file off FileUtils', () => {
   expect(offenders.map(path => relative(root, path))).toEqual([]);
 });
 
-describe('the clean screen (#36)', () => {
-  it('never writes an error into the note', () => {
-    const source = readFileSync(
-      join(__dirname, '..', 'src', 'flow', 'crash.ts'),
-      'utf8',
+describe('the crash handler (#36)', () => {
+  type Handler = (error: unknown, isFatal?: boolean) => void;
+  let handler: Handler;
+  const previous = jest.fn();
+  beforeEach(() => {
+    previous.mockReset();
+    (globalThis as {ErrorUtils?: unknown}).ErrorUtils = {
+      getGlobalHandler: () => previous,
+      setGlobalHandler: (next: Handler) => (handler = next),
+    };
+    NativeModules.Ink2PicFiles = {writeText: jest.fn().mockResolvedValue(null)};
+    catchCrashes();
+  });
+  afterEach(() => {
+    delete (globalThis as {ErrorUtils?: unknown}).ErrorUtils;
+  });
+
+  it('writes crash.log, never the note, and then hands over', async () => {
+    handler(new Error('boom'), true);
+    expect(previous).not.toHaveBeenCalled();
+    await new Promise(resolve => setImmediate(resolve));
+    expect(NativeModules.Ink2PicFiles.writeText).toHaveBeenCalledWith(
+      expect.stringMatching(/logs\/crash\.log$/),
+      expect.stringContaining('boom'),
     );
-    expect(source).not.toMatch(/insertText|sdk\/note/);
+    expect(PluginNoteAPI.insertText).not.toHaveBeenCalled();
+    expect(previous).toHaveBeenCalled();
   });
 });
