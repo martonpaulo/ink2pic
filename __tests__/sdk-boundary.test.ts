@@ -10,8 +10,8 @@ const SKIP = new Set([
   '.scratch',
   '__mocks__',
 ]);
-/** The only files allowed to import the SDK: the wrappers, the entry point and the wrappers test. */
-const ALLOWED = [/^src\/sdk\//, /^index\.js$/, /^__tests__\/sdk\.test\.ts$/];
+/** The only files allowed to import the SDK: the wrappers, the entry point and tests, which drive its mock. */
+const ALLOWED = [/^src\/sdk\//, /^index\.js$/, /^__tests__\//];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap(name => {
