@@ -9,14 +9,21 @@ import {
   step,
 } from '../src/flow/opening';
 
-/** Runs the events in order; returns the final state and every action that is not a log. */
+/**
+ * Runs the events in order; returns the final state and every action that is not a log or a
+ * session start, which the session tests below cover.
+ */
 function run(events: OpeningEvent[], from: OpeningState = initialOpening) {
   let state = from;
   const actions: OpeningAction[] = [];
   for (const event of events) {
     const next = step(state, event);
     state = next.state;
-    actions.push(...next.actions.filter(a => a.type !== 'log'));
+    actions.push(
+      ...next.actions.filter(
+        a => a.type !== 'log' && a.type !== 'startSession',
+      ),
+    );
   }
   return {state, actions};
 }
@@ -112,4 +119,51 @@ it('a stop drops a waiting press', () => {
     {type: 'reset'},
   ]);
   expect(state.running).toBeNull();
+});
+
+describe('the session log of an opening (#58)', () => {
+  /** Every action, logs included, so the order of startSession and the first line shows. */
+  function all(events: OpeningEvent[], from: OpeningState = initialOpening) {
+    let state = from;
+    const actions: OpeningAction[] = [];
+    for (const event of events) {
+      const next = step(state, event);
+      state = next.state;
+      actions.push(...next.actions);
+    }
+    return {state, actions};
+  }
+  const sessions = (actions: OpeningAction[]) =>
+    actions.filter(a => a.type === 'startSession').length;
+
+  it('starts the session before the first line of a press', () => {
+    const {actions} = all([press(200, 0)]);
+    expect(actions[0]).toEqual({type: 'startSession'});
+    expect(actions[1]).toEqual({type: 'log', text: 'button 200 (live)'});
+  });
+
+  it('starts the session before the lifecycle line of an opening decided on show', () => {
+    const {actions} = all([
+      show,
+      {type: 'decided', id: 100, lasso: undefined, now: 0},
+    ]);
+    expect(actions[0]).toEqual({type: 'startSession'});
+    expect(actions[1]).toEqual({type: 'log', text: 'lifecycle 2'});
+    expect(sessions(actions)).toBe(1);
+  });
+
+  it('starts one session for a press and its lifecycle 2', () => {
+    expect(sessions(all([press(100, 0), show]).actions)).toBe(1);
+  });
+
+  it('starts no session for a replay', () => {
+    const {actions} = all([press(200, 0), press(200, REPLAY_WINDOW_MS - 1)]);
+    expect(sessions(actions)).toBe(1);
+  });
+
+  it('starts a new session at a press after a silent hide and after a close', () => {
+    const first = all([press(200, 0), {type: 'finished', flow: 1}]);
+    expect(sessions(all([press(200, 60_000)], first.state).actions)).toBe(1);
+    expect(sessions(all([stop, show], first.state).actions)).toBe(1);
+  });
 });

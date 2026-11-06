@@ -111,9 +111,8 @@ function App(): React.JSX.Element {
     lasso: OpenedLasso,
   ) => {
     show(flow, {name: 'starting'});
-    // Paths and the session log file first (#21); a failure is logged and the view goes on.
+    // Paths first (#21); a failure is logged and the view goes on.
     await sessionPaths();
-    await startSession();
     if (!isCurrent(opening.current, flow)) {
       return;
     }
@@ -174,6 +173,9 @@ function App(): React.JSX.Element {
           break;
         case 'reset':
           setScreen({name: 'starting'});
+          break;
+        case 'startSession':
+          startSession();
           break;
       }
     }

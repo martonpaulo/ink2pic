@@ -11,6 +11,9 @@
  * older flow stale, and a stale flow never sets a screen or closes the view. One flow runs at a
  * time, so host calls never interleave: a press during a start waits, and only the latest
  * waiting press runs once the start ends.
+ *
+ * Each opening starts its own session log first (#58), so session.log holds one whole opening:
+ * its lifecycle line, the lasso decision and the press.
  */
 import {LifeState} from '../sdk/buttons';
 
@@ -29,6 +32,8 @@ export type OpeningState = {
   running: number | null;
   /** The latest press that waits for the running flow to end. */
   queued: {id: number; lasso: OpenedLasso} | null;
+  /** Whether this opening started its session log; a lifecycle 2 can start it before a press. */
+  session: boolean;
 };
 
 export type OpeningEvent =
@@ -43,13 +48,16 @@ export type OpeningAction =
   /** Read the lasso to decide which button opened the view, then send `decided`. */
   | {type: 'decide'}
   /** Show the starting screen: the view closed. */
-  | {type: 'reset'};
+  | {type: 'reset'}
+  /** Start the session log of a new opening, before its first line (#58). */
+  | {type: 'startSession'};
 
 export const initialOpening: OpeningState = {
   chosen: null,
   flow: 0,
   running: null,
   queued: null,
+  session: false,
 };
 
 export type Step = {state: OpeningState; actions: OpeningAction[]};
@@ -84,19 +92,23 @@ function open(
   }
   const flow = state.flow + 1;
   const chosen = {id, at: now};
+  // A press after a chosen one is a new opening; otherwise a lifecycle 2 may have started it.
+  const opened: OpeningAction[] =
+    state.chosen !== null || !state.session ? [{type: 'startSession'}] : [];
   const pressed: OpeningAction = {type: 'log', text: `button ${id} (${how})`};
   if (state.running !== null) {
     return {
-      state: {...state, chosen, flow, queued: {id, lasso}},
+      state: {...state, chosen, flow, queued: {id, lasso}, session: true},
       actions: [
+        ...opened,
         pressed,
         {type: 'log', text: `button ${id} waits for the start that runs`},
       ],
     };
   }
   return {
-    state: {...state, chosen, flow, running: flow},
-    actions: [pressed, {type: 'start', id, flow, lasso}],
+    state: {...state, chosen, flow, running: flow, session: true},
+    actions: [...opened, pressed, {type: 'start', id, flow, lasso}],
   };
 }
 
@@ -117,12 +129,24 @@ export function step(state: OpeningState, event: OpeningEvent): Step {
       if (event.state === LifeState.stop) {
         // Closed: the next opening starts fresh (gorlix pattern 9); every flow is stale.
         return {
-          state: {...state, chosen: null, flow: state.flow + 1, queued: null},
+          state: {
+            ...state,
+            chosen: null,
+            flow: state.flow + 1,
+            queued: null,
+            session: false,
+          },
           actions: [logLine, {type: 'reset'}],
         };
       }
       if (event.state === LifeState.start && undecided(state)) {
-        return {state, actions: [logLine, {type: 'decide'}]};
+        const opened: OpeningAction[] = state.session
+          ? []
+          : [{type: 'startSession'}];
+        return {
+          state: {...state, session: true},
+          actions: [...opened, logLine, {type: 'decide'}],
+        };
       }
       return {state, actions: [logLine]};
     }

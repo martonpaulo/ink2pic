@@ -32,18 +32,11 @@ function enqueue(step: () => Promise<unknown>): Promise<unknown> {
 }
 
 /**
- * The line App.tsx logs for the press that starts an opening, such as `button 200 (live)`.
- * shortcut: the opening is cut at this line because startSession runs after the press; once
- * the opening code calls startSession at the press itself, drop it and keep nothing.
- */
-const PRESS_LINE = /^\+\d+ms button \d+ \([^)]*\)$/;
-
-/**
  * Starts the log of a new opening (#45): the last opening's lines become session.prev.log and
- * the log keeps only this opening's lines, from its press on, so session.log holds this opening
- * only. Called at each opening, because the JS runtime outlives the view (review of build 0.1.0
- * (8), #33). The first opening of a runtime keeps the registration lines and keeps the file a
- * previous runtime left.
+ * the log starts empty. The opening controller asks for it before the opening's first line (#58),
+ * so session.log holds one whole opening. Called at each opening, because the JS runtime outlives
+ * the view (review of build 0.1.0 (8), #33). The first opening of a runtime keeps the
+ * registration lines and keeps the file a previous runtime left.
  */
 export async function startSession(): Promise<void> {
   const first = !opened;
@@ -51,13 +44,8 @@ export async function startSession(): Promise<void> {
   let previous: string | null = null;
   if (!first) {
     const all = logLines();
-    let press = all.length;
-    while (press > 0 && !PRESS_LINE.test(all[press - 1])) {
-      press -= 1;
-    }
-    const cut = press > 0 ? press - 1 : all.length;
-    previous = cut > 0 ? all.slice(0, cut).join('\n') + '\n' : '';
-    startLog(all.slice(cut));
+    previous = all.length > 0 ? all.join('\n') + '\n' : '';
+    startLog([]);
   }
   if (!target) {
     return;

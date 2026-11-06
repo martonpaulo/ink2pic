@@ -122,15 +122,14 @@ describe('openings', () => {
     expect(files[LOG]).toMatch(/second opening/);
   });
 
-  it('keeps the press that started the opening in its own log', async () => {
+  it('moves every line before a later opening to the last one, a press too (#58)', async () => {
     await startSession();
     log('first opening');
     log('button 200 (live)');
     await startSession();
     await settle();
-    expect(files[PREV]).not.toMatch(/button 200/);
-    expect(logLines()).toEqual([expect.stringMatching(/button 200 \(live\)$/)]);
-    expect(files[LOG]).toMatch(/button 200 \(live\)/);
+    expect(files[PREV]).toMatch(/first opening\n.*button 200 \(live\)\n$/);
+    expect(logLines()).toEqual([]);
   });
 
   it('writes about the same at the tenth opening as at the first', async () => {
