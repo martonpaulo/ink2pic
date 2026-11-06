@@ -149,7 +149,8 @@ describe('insertPicture (#12)', () => {
     expect(elements[0]).toMatchObject({
       type: 200,
       pageNum: 3,
-      picture: {rect: {left: 100, top: 200, right: 740, bottom: 793}},
+      // Below the word, never over it (#39).
+      picture: {rect: {left: 100, top: 284, right: 740, bottom: 877}},
     });
     expect(PluginNoteAPI.insertImage).not.toHaveBeenCalled();
 

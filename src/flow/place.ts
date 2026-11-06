@@ -1,6 +1,6 @@
 /**
- * Placement at the lassoed word (brief section 8.3, #20; spike S5): a Picture element with the
- * lasso's top-left corner, inserted with insertPageElements. When anything fails, the caller
+ * Placement at the lassoed word (brief section 8.3, #20; spike S5): a Picture element just below
+ * the word, never over it (#39), inserted with insertPageElements. When anything fails, the caller
  * falls back to insertImage and the host's placement. The handwritten word is kept [DEFAULT].
  */
 import {logged} from '../log/memory';
@@ -16,7 +16,13 @@ import {fail, ok, Result} from '../sdk/result';
 /** Where the lasso was when the view opened; lasso context does not survive navigation. */
 export type LassoPlace = {rect: Rect; page: number; pageSize: Size};
 
-/** The picture's rect: the lasso's top-left corner, the picture's size, kept on the page. */
+/** Space between the word and the picture, in page pixels. */
+export const PLACE_GAP = 24;
+
+/**
+ * The picture's rect, left-aligned with the word: just below it, else just above it, so it never
+ * covers the handwriting (#39); when neither fits, kept on the page as near as possible.
+ */
 export function placeRect(
   lasso: Rect,
   picture: {width: number; height: number},
@@ -25,7 +31,14 @@ export function placeRect(
   const width = Math.min(picture.width, page.width);
   const height = Math.min(picture.height, page.height);
   const left = Math.max(0, Math.min(lasso.left, page.width - width));
-  const top = Math.max(0, Math.min(lasso.top, page.height - height));
+  const below = lasso.bottom + PLACE_GAP;
+  const above = lasso.top - PLACE_GAP - height;
+  const top =
+    below + height <= page.height
+      ? below
+      : above >= 0
+      ? above
+      : Math.max(0, page.height - height);
   return {left, top, right: left + width, bottom: top + height};
 }
 
