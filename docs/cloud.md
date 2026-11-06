@@ -5,14 +5,20 @@ shape follows Skill Deck's `skd-project-standards` `references/cloud-rules.md`.
 
 ## The cloud machine
 
-Not yet measured in a real Ink2Pic cloud session. Replace this section with the first session's
-measurements and their date.
+Measured in the first Ink2Pic cloud backlog run, on 2026-11-06:
 
-Expected, from the research session of 2026-11-06 ([brief section 16.1](brief.md#161-where-each-part-runs)):
-
-- Ubuntu with Node, Java (`openjdk-17-jdk-headless` from `.github/cloud.json`) and `zip`.
-- Network: npm, GitHub, Openclipart, `dl.google.com` and Maven Central were reachable. Wikimedia
-  Commons throttled the shared cloud IP on the first call.
+- Ubuntu 24.04, 4 vCPUs, 15 GB of memory.
+- Node `v22.23.4`, npm `10.9.9`; `npm ci` installs the lockfile.
+- Java: OpenJDK `21.0.12.1` (`java` and `javac`). `zip` and `unzip` are installed. Gradle 8.14.3
+  and Maven 3.9.11 are in `/opt`; there is no Android SDK (`ANDROID_HOME` is unset).
+- Network, by HTTP status of the site root: `openclipart.org` 200, `commons.wikimedia.org` 301
+  (the redirect to the main page), `dl.google.com` 302, `repo1.maven.org` 429 at the root and 200
+  for `/maven2/`.
+- The Commons Action API (`/w/api.php`, a file search) answered **429** on the first call: the
+  shared cloud IP is throttled. The Commons client is built from documented fixtures, and the live
+  capture is left to a device run.
+- The gate user `ink2pic-gates` exists; run the gate as
+  `sudo -u ink2pic-gates -H bash -c 'cd /home/user/ink2pic && npm run validate'`.
 - No Supernote. Every device behavior stays a test the owner runs.
 - No Android SDK build tools (`aapt2`, `d8`) until `scripts/cloud-setup.sh` installs them with a
   pinned checksum, which the native build issue adds when native code is needed.
