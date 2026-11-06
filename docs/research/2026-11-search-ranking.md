@@ -229,6 +229,14 @@ place regardless of pixels (brief section 5.5, rule 4).
 
 ## 9. Open points and limits of this research
 
+- Implementation ([#66](https://github.com/martonpaulo/ink2pic/issues/66)), desktop HotSpot on the
+  same Xeon, warm JIT, 6 real Openclipart thumbnails and Mona Lisa [CONFIRMED desktop]: every
+  measure of `ThumbMeasures` 1.9 to 3.3 ms per 400 px thumbnail, 5.8 ms at 400 x 596; `Contour`
+  7 to 13 ms per thumbnail, 25 ms at 400 x 596, 67 ms at 640 x 954 with about 10 MB of buffers
+  (four float arrays and one byte array). The device log prints each time [TO TEST on the Manta].
+- The thumbnail contour uses the same sigma as the 640 px insert, so it looks busier than the
+  insert scaled down [TO TEST whether a sigma scaled by width matches better].
+
 - Sample: 28 thumbnails, labelled by one person (the agent) from a contact sheet. Thresholds are
   fitted to them; treat them as starting values.
 - Timings are desktop HotSpot; ART on a Cortex-A55 is not measured [TO TEST: log the time of

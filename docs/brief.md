@@ -318,6 +318,7 @@ Page 1 shows the most typical picture of the word first ([#43](https://github.co
 3. Logos, wordmarks, maps, diagrams, charts, election margins, anatomy and structure drawings, flags, emblems, coats of arms, signatures, posters, patterns, 3D, AI-generated and gradient graphics fall below every plain picture, photos included.
 4. The canonical pictures from Wikidata follow the best-ranked result, so page 1 holds both a simple drawing and, for a person, the real portrait; a photo is never moved last when it is the canonical image.
 5. Ties keep each source's order and alternate the sources; a file two sources return is shown once.
+6. Before page 1 shows, the 12 thumbnails of pages 1 and 2 are measured in plain Java (`ThumbMeasures.java`) and re-sorted by the title score plus 3 times a line-art score, scaled within the 12; a canonical picture keeps its place and a blank thumbnail goes last; the step ends after 8 s with what was measured ([#66](https://github.com/martonpaulo/ink2pic/issues/66), `src/search/measures.ts`) [INFERENCE: weights fitted on 6 queries, to calibrate in the search lab].
 
 Requests per search: 2 before; 4 after when the word has a Wikidata item with pictures (Openclipart, Commons drawings, Wikidata, Commons files), 3 when it has none, and one more only when Commons has fewer than six drawings (none of the 19 words below).
 
@@ -433,9 +434,10 @@ Pipeline, per selected image, performed in native code while saving:
 1. Download at the target size (do not download huge originals), never more pixels than the original, into one temporary file in shared storage, `MyStyle/Ink2Pic/insert-download.<png|jpg>`, overwritten by each insert, never recorded in the library and never deleted by the plugin: a failed preparation inserts it as it is, and the note app may not read the private folder (section 6.6); the library keeps only the prepared file, and a picture already in the library is inserted from disk ([#48](https://github.com/martonpaulo/ink2pic/issues/48)). Openclipart: `/image/800px/`, since `/image/640px/` answers a 302 to it [CONFIRMED 2026-11-06, curl]. Commons: the closest predefined width, 960, or the PNG or JPEG original when it is no wider.
 2. Decode with bounds first (`inJustDecodeBounds`), then power-of-two `inSampleSize`, with a memory cap. Pic2Note does this with caps of 4 MP for previews, 16 MP for exports, 8192 px per edge [REPORTED, `docs/image-loading.md`].
 3. Flatten transparency onto **white** (avoid dark or jagged edges from alpha) [TO TEST visually].
-4. Convert to grayscale with a contrast curve suited to e-ink.
-5. Optionally quantize to 16 gray levels [TO TEST whether it improves rendering or file size].
-6. Encode PNG for line art. JPG may be smaller for engravings and photos [TO TEST].
+4. A picture whose thumbnail measures dark or photo-like, or any picture not already line work when the query asks for an outline, becomes a contour drawing at the output size: 1 %/99 % contrast stretch, XDoG, ink specks under 8 px removed (`Contour.java`); its grid thumbnail shows the same conversion, so what the person sees is what goes in (owner decision D5 A, [#66](https://github.com/martonpaulo/ink2pic/issues/66)). A photo or painting query converts nothing. Desktop JVM: 67 ms for 640 x 954 px, about 17 bytes per pixel of buffers [CONFIRMED desktop; TO TEST on the Manta, whose log shows each time].
+5. Convert to grayscale with a contrast curve suited to e-ink.
+6. Optionally quantize to 16 gray levels [TO TEST whether it improves rendering or file size].
+7. Encode PNG for line art. JPG may be smaller for engravings and photos [TO TEST].
 
 Targets [INFERENCE, to calibrate on device]:
 
