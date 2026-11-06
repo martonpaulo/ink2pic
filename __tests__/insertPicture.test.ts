@@ -59,13 +59,14 @@ describe('insertPicture (#12)', () => {
       value: path,
     });
     // 800 px is what Openclipart serves: 640 px answers a redirect to it (#48).
-    // The download goes to one private temporary file; the library keeps only the .png (#48).
+    // The download goes to one temporary file in shared storage, which the note app can read
+    // (brief section 6.6); the library keeps only the .png (#48).
     expect(native.downloadToFile.mock.calls[0].slice(0, 2)).toEqual([
       'https://openclipart.org/image/800px/340609',
-      '/data/plugin/insert-download.png',
+      '/storage/emulated/0/MyStyle/Ink2Pic/insert-download.png',
     ]);
     expect(image.prepareForEink.mock.calls[0].slice(0, 3)).toEqual([
-      '/data/plugin/insert-download.png',
+      '/storage/emulated/0/MyStyle/Ink2Pic/insert-download.png',
       path,
       640,
     ]);
@@ -127,7 +128,10 @@ describe('insertPicture (#12)', () => {
       Object.assign(new Error('bad'), {code: 'NOT_IMAGE'}),
     );
     const done = await insertPicture(result, 'soup');
-    expect(done).toEqual({ok: true, value: '/data/plugin/insert-download.png'});
+    expect(done).toEqual({
+      ok: true,
+      value: '/storage/emulated/0/MyStyle/Ink2Pic/insert-download.png',
+    });
     // The temporary file is overwritten by the next insert: it is never a library picture (#48).
     const saved = native.writeText.mock.calls.find(call =>
       String(call[0]).endsWith('/library.json'),

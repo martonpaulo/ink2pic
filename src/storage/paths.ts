@@ -8,7 +8,7 @@ export const SHARED_FOLDER = 'MyStyle/Ink2Pic';
  */
 export const SHARED_ROOT = '/storage/emulated/0';
 
-/** `<root>/MyStyle/Ink2Pic/<folder>`. */
+/** `<root>/MyStyle/Ink2Pic/<name>`, a folder or a file. */
 function sharedDir(externalRoot: string, folder: string): string {
   return `${externalRoot.replace(/\/+$/, '')}/${SHARED_FOLDER}/${folder}`;
 }
@@ -16,6 +16,18 @@ function sharedDir(externalRoot: string, folder: string): string {
 /** `<root>/MyStyle/Ink2Pic/library`, where inserted pictures and library.json live. */
 export function libraryDir(externalRoot = SHARED_ROOT): string {
   return sharedDir(externalRoot, 'library');
+}
+
+/**
+ * `<root>/MyStyle/Ink2Pic/insert-download.<extension>`: the raw download of an insert, in shared
+ * storage because the note app may not read the private folder (brief section 6.6, #48). One
+ * fixed name, overwritten by each insert, never recorded in the library and never deleted.
+ */
+export function insertDownloadPath(
+  extension: string,
+  externalRoot = SHARED_ROOT,
+): string {
+  return sharedDir(externalRoot, `insert-download.${extension}`);
 }
 
 /** A file name safe on the device: letters, digits, dot, dash and underscore only. */

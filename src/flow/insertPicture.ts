@@ -14,16 +14,12 @@ import {insertUrl} from '../sources/registry';
 import {SearchResult, sourceId} from '../sources/types';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
-import {libraryDir, safeFileName} from '../storage/paths';
-import {pluginFolder} from '../storage/session';
+import {insertDownloadPath, libraryDir, safeFileName} from '../storage/paths';
 import {atStep, Done} from './failure';
 import {LassoPlace, placeAtLasso} from './place';
 
 /** About one third of the 1920 px page (brief section 7): the prepared picture's width. */
 export const INSERT_WIDTH = 640;
-
-/** The raw download, in the private folder, overwritten by each insert (#48). */
-const DOWNLOAD_NAME = 'insert-download';
 
 /** The file extension insertImage accepts (png, jpg, jpeg), from the image URL. */
 export function imageExtension(url: string): string {
@@ -44,13 +40,9 @@ type Saved = {
  * next insert overwrites it, and the failure is in the log.
  */
 async function download(result: SearchResult): Promise<Result<Saved>> {
-  const dir = await pluginFolder();
-  if (!dir.ok) {
-    return dir;
-  }
   const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
-  const raw = `${dir.value}/${DOWNLOAD_NAME}.${imageExtension(url)}`;
+  const raw = insertDownloadPath(imageExtension(url));
   const bytes = await logged(`downloadToFile(${url} -> ${raw})`, () =>
     downloadToFile(url, raw),
   );
