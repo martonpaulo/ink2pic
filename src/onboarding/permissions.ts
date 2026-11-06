@@ -28,16 +28,18 @@ export type Denied = PermissionNeed & {detail: string};
  * (build 0.1.0 (6) stayed on its starting screen); the real call then shows its own error.
  */
 export async function missingPermissions(): Promise<PermissionNeed[]> {
-  const missing: PermissionNeed[] = [];
-  for (const need of PERMISSIONS) {
-    const check = await logged(`hasPermission(${need.permission})`, () =>
-      hasPermission(need.permission),
-    );
-    if (check.ok && !check.value) {
-      missing.push(need);
-    }
-  }
-  return missing;
+  // At the same time, not one after another: they are on the path to recognition (#44).
+  const checks = await Promise.all(
+    PERMISSIONS.map(need =>
+      logged(`hasPermission(${need.permission})`, () =>
+        hasPermission(need.permission),
+      ),
+    ),
+  );
+  return PERMISSIONS.filter((_, i) => {
+    const check = checks[i];
+    return check.ok && !check.value;
+  });
 }
 
 /** The reasons to show for these needs, each once (two file permissions share one). */

@@ -15,8 +15,13 @@ export type LassoQuery = {query: string; place: LassoPlace | null};
  * The recognized word, trimmed, and where the lasso was (#20); an empty recognition is a
  * failure, never an empty query. A missing rect only loses the placement.
  */
-export async function readLassoQuery(): Promise<Result<LassoQuery>> {
-  const elements = await logged('getLassoElements', getLassoElements);
+export async function readLassoQuery(
+  /** The elements the opening already read (#44): not read again. */
+  known?: object[],
+): Promise<Result<LassoQuery>> {
+  const elements = known
+    ? ok(known)
+    : await logged('getLassoElements', getLassoElements);
   if (!elements.ok) {
     return elements;
   }

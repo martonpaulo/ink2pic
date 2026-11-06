@@ -54,6 +54,16 @@ describe('permissions', () => {
     );
   });
 
+  it('checks the permissions at the same time (#44)', async () => {
+    let answer!: (value: number) => void;
+    has.mockReturnValue(new Promise(resolve => (answer = resolve)));
+    const missing = missingPermissions();
+    await Promise.resolve();
+    expect(has).toHaveBeenCalledTimes(PERMISSIONS.length);
+    answer(1);
+    expect(await missing).toEqual([]);
+  });
+
   it('trusts the host check after a request with an unknown answer (build 0.1.0 (10))', async () => {
     has.mockResolvedValueOnce(0).mockResolvedValue(1);
     request.mockResolvedValue(undefined);
@@ -117,6 +127,19 @@ describe('Onboarding', () => {
     const tree = render(onDone);
     await act(() => start(tree).props.onPress());
     expect(onDone).toHaveBeenCalled();
+  });
+
+  it('runs Start once for two taps in one frame (#44)', async () => {
+    has.mockResolvedValue(0);
+    request.mockResolvedValue(2);
+    const onDone = jest.fn();
+    const tree = render(onDone);
+    const button = start(tree);
+    await act(async () => {
+      await Promise.all([button.props.onPress(), button.props.onPress()]);
+    });
+    expect(request).toHaveBeenCalledTimes(PERMISSIONS.length);
+    expect(onDone).toHaveBeenCalledTimes(1);
   });
 
   it('explains a denial and points to the settings', async () => {

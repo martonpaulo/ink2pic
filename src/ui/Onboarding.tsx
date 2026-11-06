@@ -1,7 +1,7 @@
 /**
  * First open: three short cards and one grouped permission step (brief section 8.7).
  */
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Button} from './Button';
 import {ScreenTools} from './ScreenTools';
@@ -35,9 +35,18 @@ export function Onboarding({
   const [busy, setBusy] = useState(false);
   const [denied, setDenied] = useState<Denied[]>([]);
 
+  // `busy` disables the button only after a render; two taps in one frame both pass it (#44).
+  const requesting = useRef(false);
+
   const start = async () => {
+    if (requesting.current) {
+      return;
+    }
+    requesting.current = true;
     setBusy(true);
-    const outcome = await requestMissing();
+    const outcome = await requestMissing().finally(() => {
+      requesting.current = false;
+    });
     setBusy(false);
     setDenied(outcome.denied);
     if (outcome.denied.length === 0) {
