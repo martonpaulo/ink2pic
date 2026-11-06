@@ -44,7 +44,8 @@ EXIT_FINDING, EXIT_USAGE = 1, 2
 
 SUFFIXES = {
     ".go": "go", ".py": "python", ".sh": "shell", ".bash": "shell",
-    ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".ts": "javascript", ".swift": "swift",
+    ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript", ".ts": "javascript",
+    ".jsx": "javascript", ".tsx": "javascript", ".swift": "swift",
 }
 SHEBANG = (("python", "python"), ("bash", "shell"), ("/sh", "shell"), ("env sh", "shell"), ("node", "javascript"))
 # Tests write their own values; third-party and generated code is not ours to name.

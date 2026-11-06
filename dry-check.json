@@ -17,7 +17,9 @@
    "buildPlugin.ps1",
    "scripts/**"
   ],
-  "counts": {}
+  "counts": {
+   "__tests__": 5
+  }
  },
  "documents": {
   "files": [
