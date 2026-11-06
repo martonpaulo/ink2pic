@@ -21,6 +21,12 @@ type NativeFiles = {
     destPath: string,
     headers: Record<string, string>,
   ) => Promise<number>;
+  downloadThumbToFile: (
+    url: string,
+    destPath: string,
+    headers: Record<string, string>,
+  ) => Promise<number>;
+  deleteFile: (path: string) => Promise<boolean>;
   writeText: (path: string, text: string) => Promise<null>;
   readText: (path: string) => Promise<string | null>;
   listDir: (path: string) => Promise<string[] | null>;
@@ -67,6 +73,24 @@ export function downloadToFile(
   );
 }
 
+/**
+ * A grid thumbnail, in the background: the module starts it only when no `downloadToFile` runs,
+ * so the person's insert never waits behind thumbnails (#46).
+ */
+export function downloadThumbToFile(
+  url: string,
+  destPath: string,
+): Promise<Result<number>> {
+  return call(files =>
+    files.downloadThumbToFile(url, destPath, {'User-Agent': USER_AGENT}),
+  );
+}
+
+/** True when the file is gone afterwards, also when it never existed. */
+export function deleteFile(path: string): Promise<Result<boolean>> {
+  return call(files => files.deleteFile(path));
+}
+
 export function writeText(path: string, text: string): Promise<Result<null>> {
   return call(files => files.writeText(path, text));
 }
@@ -76,7 +100,10 @@ export function readText(path: string): Promise<Result<string | null>> {
   return call(files => files.readText(path));
 }
 
-/** The names in a folder, or null when it does not exist; through the plugin's own module (#13). */
+/**
+ * The names in a folder, oldest modified first, or null when it does not exist; through the
+ * plugin's own module (#13).
+ */
 export function listDir(path: string): Promise<Result<string[] | null>> {
   return call(files => files.listDir(path));
 }

@@ -152,7 +152,7 @@ function packagePlugin() {
 function testNative() {
   // A temporary folder: the gate may run as another user than the one that owns build/.
   const classes = fs.mkdtempSync(path.join(os.tmpdir(), 'ink2pic-native-tests-'));
-  const pure = ['SafePaths', 'EinkPixels'].map(name =>
+  const pure = ['SafePaths', 'EinkPixels', 'ThumbGate'].map(name =>
     path.join(root, `native/src/com/ink2pic/files/${name}.java`),
   );
   run('javac', [
@@ -160,7 +160,7 @@ function testNative() {
     ...pure, ...javaSources(path.join(root, 'native/tests')),
   ]);
   try {
-    for (const test of ['SafePathsTest', 'EinkPixelsTest']) {
+    for (const test of ['SafePathsTest', 'EinkPixelsTest', 'ThumbGateTest']) {
       run('java', ['-cp', classes, `com.ink2pic.files.${test}`]);
     }
   } finally {

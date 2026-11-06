@@ -8,9 +8,9 @@ import {
   cachedThumbUri,
   prepareThumbs,
   resetThumbsForTests,
-  storeThumbs,
   THUMB_LIMIT,
   thumbPath,
+  thumbUri,
 } from '../src/search/thumbs';
 import type {SearchResult} from '../src/sources/types';
 import {ResultsGrid} from '../src/ui/ResultsGrid';
@@ -32,6 +32,8 @@ function result(n: number): SearchResult {
 
 const native = {
   downloadToFile: jest.fn(),
+  downloadThumbToFile: jest.fn(),
+  deleteFile: jest.fn(),
   writeText: jest.fn(),
   readText: jest.fn(),
   listDir: jest.fn(),
@@ -48,10 +50,16 @@ beforeEach(() => {
   native.readText.mockResolvedValue(null);
   native.writeText.mockResolvedValue(null);
   native.downloadToFile.mockResolvedValue(42000);
+  native.downloadThumbToFile.mockResolvedValue(42000);
+  native.deleteFile.mockResolvedValue(true);
   native.listDir.mockResolvedValue([]);
 });
 
-describe('thumbnail files (#16)', () => {
+const fileUri = (n: number) => `file://${THUMBS}/openclipart-${n}`;
+const downloaded = () =>
+  native.downloadThumbToFile.mock.calls.map(call => call[1]);
+
+describe('thumbnail files (#16, #46)', () => {
   it('names a safe file under the thumbs folder', () => {
     expect(thumbPath(DIR, result(7))).toBe(`${THUMBS}/openclipart-7`);
   });
@@ -59,31 +67,23 @@ describe('thumbnail files (#16)', () => {
   it('reads the file when it is stored, else the web URL', () => {
     const stored = new Set([`${THUMBS}/openclipart-7`]);
     const has = (path: string) => stored.has(path);
-    expect(cachedThumbUri(result(7), DIR, has)).toBe(
-      `file://${THUMBS}/openclipart-7`,
-    );
+    expect(cachedThumbUri(result(7), DIR, has)).toBe(fileUri(7));
     expect(cachedThumbUri(result(8), DIR, has)).toBe(result(8).thumbUrl);
   });
 
-  it('stores a shown page one after another, then reads it from the device', async () => {
-    expect(await prepareThumbs()).toBe(DIR);
-    expect(cachedThumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
-    let running = 0;
-    native.downloadToFile.mockImplementation(async () => {
-      running += 1;
-      expect(running).toBe(1);
-      await Promise.resolve();
-      running -= 1;
-      return 42000;
-    });
-    await storeThumbs([result(1), result(2)], DIR);
-    expect(native.downloadToFile.mock.calls.map(call => call[1])).toEqual([
-      `${THUMBS}/openclipart-1`,
-      `${THUMBS}/openclipart-2`,
+  it('downloads a missing thumbnail once, as a background download, and renders the file', async () => {
+    await prepareThumbs();
+    const [first, second] = await Promise.all([
+      thumbUri(result(1), DIR),
+      thumbUri(result(1), DIR),
     ]);
-    expect(cachedThumbUri(result(1), DIR)).toBe(
-      `file://${THUMBS}/openclipart-1`,
-    );
+    expect(first).toBe(fileUri(1));
+    expect(second).toBe(fileUri(1));
+    expect(await thumbUri(result(1), DIR)).toBe(fileUri(1));
+    expect(downloaded()).toEqual([`${THUMBS}/openclipart-1`]);
+    // The insert's own download is never used for a thumbnail.
+    expect(native.downloadToFile).not.toHaveBeenCalled();
+    expect(cachedThumbUri(result(1), DIR)).toBe(fileUri(1));
   });
 
   it('skips stored thumbnails, listed by name, and ignores part files', async () => {
@@ -93,61 +93,87 @@ describe('thumbnail files (#16)', () => {
       'openclipart-3.part',
     ]);
     await prepareThumbs();
-    await storeThumbs([result(1), result(2), result(3)], DIR);
-    expect(native.downloadToFile).toHaveBeenCalledTimes(1);
-    expect(native.downloadToFile.mock.calls[0][1]).toBe(
-      `${THUMBS}/openclipart-3`,
-    );
+    for (const n of [1, 2, 3]) {
+      expect(await thumbUri(result(n), DIR)).toBe(fileUri(n));
+    }
+    expect(downloaded()).toEqual([`${THUMBS}/openclipart-3`]);
   });
 
-  it('keeps a failed download off the stored list', async () => {
+  it('falls back to the web URL when the download fails, and keeps it off the list', async () => {
     await prepareThumbs();
-    native.downloadToFile.mockRejectedValue(
+    native.downloadThumbToFile.mockRejectedValue(
       Object.assign(new Error('HTTP 503'), {code: 'HTTP_503'}),
     );
-    await storeThumbs([result(1)], DIR);
+    expect(await thumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
     expect(cachedThumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
   });
 
-  it('stores nothing past the limit', async () => {
+  it('removes the oldest file first at the limit', async () => {
     native.listDir.mockResolvedValue(
       Array.from({length: THUMB_LIMIT}, (_, n) => `old-${n}`),
     );
     await prepareThumbs();
-    await storeThumbs([result(1)], DIR);
-    expect(native.downloadToFile).not.toHaveBeenCalled();
+    expect(await thumbUri(result(1), DIR)).toBe(fileUri(1));
+    expect(native.deleteFile.mock.calls.map(call => call[0])).toEqual([
+      `${THUMBS}/old-0`,
+    ]);
+  });
+
+  it('removes a different old file for each download running at the limit', async () => {
+    native.listDir.mockResolvedValue(
+      Array.from({length: THUMB_LIMIT}, (_, n) => `old-${n}`),
+    );
+    await prepareThumbs();
+    await Promise.all([1, 2, 3].map(n => thumbUri(result(n), DIR)));
+    expect(native.deleteFile.mock.calls.map(call => call[0])).toEqual([
+      `${THUMBS}/old-0`,
+      `${THUMBS}/old-1`,
+      `${THUMBS}/old-2`,
+    ]);
+    expect(downloaded()).toHaveLength(3);
+  });
+
+  it('loads from the web without downloading when an old file cannot be removed', async () => {
+    native.listDir.mockResolvedValue(
+      Array.from({length: THUMB_LIMIT}, (_, n) => `old-${n}`),
+    );
+    native.deleteFile.mockRejectedValue(
+      Object.assign(new Error('denied'), {code: 'IO'}),
+    );
+    await prepareThumbs();
+    expect(await thumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
+    expect(native.downloadThumbToFile).not.toHaveBeenCalled();
+    expect(cachedThumbUri({...result(0), id: 'old-0'}, DIR)).toBe(
+      `file://${THUMBS}/old-0`,
+    );
   });
 
   it('starts empty when the folder does not exist yet', async () => {
     native.listDir.mockResolvedValue(null);
     expect(await prepareThumbs()).toBe(DIR);
-    await storeThumbs([result(1)], DIR);
-    expect(native.downloadToFile).toHaveBeenCalledTimes(1);
+    expect(await thumbUri(result(1), DIR)).toBe(fileUri(1));
   });
 
-  it('turns the cache off when the folder cannot be listed', async () => {
+  it('turns the store off when the folder cannot be listed', async () => {
     native.listDir.mockRejectedValue(
       Object.assign(new Error('denied'), {code: 'IO'}),
     );
     expect(await prepareThumbs()).toBeNull();
-    await storeThumbs([result(1)], DIR);
-    expect(native.downloadToFile).not.toHaveBeenCalled();
+    expect(await thumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
+    expect(native.downloadThumbToFile).not.toHaveBeenCalled();
   });
 
   it('never stores a library file', async () => {
     await prepareThumbs();
     const local = {...result(1), thumbUrl: 'file:///lib/a.png'};
-    await storeThumbs([local], DIR);
-    expect(native.downloadToFile).not.toHaveBeenCalled();
+    expect(await thumbUri(local, DIR)).toBe('file:///lib/a.png');
+    expect(native.downloadThumbToFile).not.toHaveBeenCalled();
     expect(cachedThumbUri(local, DIR)).toBe('file:///lib/a.png');
   });
 });
 
-describe('the grid with stored thumbnails (#16)', () => {
-  it('reads stored files at once and stores the rest only after the page shows', async () => {
-    native.listDir.mockResolvedValue(['openclipart-1']);
-    await prepareThumbs();
-    const results = [result(1), result(2)];
+describe('the grid with stored thumbnails (#16, #46)', () => {
+  function grid(results: SearchResult[]): ReactTestRenderer {
     let tree!: ReactTestRenderer;
     act(() => {
       tree = renderer.create(
@@ -160,16 +186,53 @@ describe('the grid with stored thumbnails (#16)', () => {
         />,
       );
     });
-    const images = tree.root.findAllByType(Image);
-    expect(images.map(img => img.props.source.uri)).toEqual([
-      `file://${THUMBS}/openclipart-1`,
-      result(2).thumbUrl,
-    ]);
-    expect(native.downloadToFile).not.toHaveBeenCalled();
-    await act(async () => images.forEach(img => img.props.onLoad()));
-    expect(native.downloadToFile.mock.calls.map(call => call[1])).toEqual([
-      `${THUMBS}/openclipart-2`,
-    ]);
+    return tree;
+  }
+
+  it('reads stored files at once and downloads the rest before their tiles render', async () => {
+    native.listDir.mockResolvedValue(['openclipart-1']);
+    await prepareThumbs();
+    let finish!: (bytes: number) => void;
+    native.downloadThumbToFile.mockReturnValue(
+      new Promise(resolve => (finish = resolve)),
+    );
+    const tree = grid([result(1), result(2)]);
+    const uris = () =>
+      tree.root.findAllByType(Image).map(img => img.props.source.uri);
+    expect(uris()).toEqual([fileUri(1)]);
+    await act(async () => {});
+    expect(uris()).toEqual([fileUri(1)]);
+    expect(downloaded()).toEqual([`${THUMBS}/openclipart-2`]);
+    await act(async () => finish(42000));
+    expect(uris()).toEqual([fileUri(1), fileUri(2)]);
+    act(() => tree.unmount());
+  });
+
+  it('costs one request per thumbnail on a new page (audit: two)', async () => {
+    await prepareThumbs();
+    const results = Array.from({length: 6}, (_, n) => result(n + 1));
+    let tree!: ReactTestRenderer;
+    await act(async () => {
+      tree = grid(results);
+    });
+    const webUris = new Set<string>();
+    // Every render the page goes through until it shows, so a tile that changes its URI counts.
+    for (let round = 0; round < 3; round++) {
+      const images = tree.root.findAllByType(Image);
+      images
+        .map(img => img.props.source.uri as string)
+        .filter(uri => uri.startsWith('https://'))
+        .forEach(uri => webUris.add(uri));
+      await act(async () => images.forEach(img => img.props.onLoad()));
+    }
+    const requests =
+      webUris.size +
+      native.downloadThumbToFile.mock.calls.length +
+      native.downloadToFile.mock.calls.length;
+    expect(requests).toBe(results.length);
+    expect(
+      tree.root.findByProps({testID: 'grid'}).props.style,
+    ).not.toContainEqual(expect.objectContaining({opacity: 0}));
     act(() => tree.unmount());
   });
 });

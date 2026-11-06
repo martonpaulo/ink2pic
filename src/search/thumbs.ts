@@ -1,26 +1,30 @@
 /**
  * Thumbnails kept as files in the private plugin folder (#16, brief section 8.5), so a page seen
- * before opens from the device. The first visit to a page still loads from the web: the files
- * are written after the page is shown, one after another, and never hold the grid back.
+ * before opens from the device. A new page downloads each missing thumbnail once to its file and
+ * the grid renders the file (#46): before, the grid loaded the web URL and the file was
+ * downloaded again afterwards, two requests per thumbnail.
  */
 import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
-import {listDir} from '../storage/files';
-import {downloadToFile} from '../storage/files';
+import {deleteFile, downloadThumbToFile, listDir} from '../storage/files';
 import {safeFileName} from '../storage/paths';
 import type {SearchResult} from '../sources/types';
 
-/** Most thumbnail files kept. DEFAULT: about 100 KB each, so about 30 MB at most. */
+/** Most thumbnail files kept; the oldest is removed first. DEFAULT: about 100 KB each, 30 MB. */
 export const THUMB_LIMIT = 300;
 const THUMB_DIR = 'thumbs';
 const WEB_PREFIX = 'https://';
+const FILE_PREFIX = 'file://';
 /** The Java module writes `<name>.part` and renames it into place when complete. */
 const PART_SUFFIX = '.part';
 
-/** Full paths of the thumbnail files on the device; null until the folder is listed. */
+/**
+ * Full paths of the thumbnail files on the device, oldest first (the module lists them by age,
+ * and a Set keeps insertion order); null until the folder is listed.
+ */
 let known: Set<string> | null = null;
-/** Downloads run one after another, across pages. */
-let queue: Promise<void> = Promise.resolve();
+/** One download per thumbnail: a second request for the same file joins the first. */
+const pending = new Map<string, Promise<string>>();
 
 function thumbDir(pluginDir: string): string {
   return `${pluginDir}/${THUMB_DIR}`;
@@ -44,7 +48,19 @@ export function cachedThumbUri(
     return result.thumbUrl;
   }
   const path = thumbPath(pluginDir, result);
-  return stored(path) ? `file://${path}` : result.thumbUrl;
+  return stored(path) ? `${FILE_PREFIX}${path}` : result.thumbUrl;
+}
+
+/** True when the grid must call `thumbUri` before it can render this thumbnail. */
+export function needsDownload(
+  result: SearchResult,
+  pluginDir: string,
+): boolean {
+  return (
+    known !== null &&
+    result.thumbUrl.startsWith(WEB_PREFIX) &&
+    !known.has(thumbPath(pluginDir, result))
+  );
 }
 
 /** Lists the stored thumbnails once per session; an unreadable folder turns the cache off. */
@@ -77,47 +93,87 @@ export async function prepareThumbs(): Promise<string | null> {
   return known ? paths.value.pluginDir : null;
 }
 
-async function storeOne(
-  result: SearchResult,
-  pluginDir: string,
-): Promise<void> {
-  const path = thumbPath(pluginDir, result);
-  if (!known || known.has(path) || !result.thumbUrl.startsWith(WEB_PREFIX)) {
-    return;
-  }
-  // shortcut: when the limit is reached, new thumbnails are not stored and the old ones stay;
-  // upgrade to oldest-first removal once the plugin's own file module can delete a file.
-  if (known.size >= THUMB_LIMIT) {
-    log(
-      `thumbs: limit of ${THUMB_LIMIT} files reached, ${result.id} not stored`,
+/** Downloads started and not ended: each holds a place in the store while it runs. */
+let reserved = 0;
+
+/**
+ * Removes the oldest files until the running downloads fit; false when a file cannot be removed.
+ * Each file leaves the list before its delete is awaited, so parallel downloads remove
+ * different files.
+ */
+async function makeRoom(stored: Set<string>): Promise<boolean> {
+  while (stored.size + reserved > THUMB_LIMIT) {
+    const oldest = stored.values().next().value;
+    if (oldest === undefined) {
+      return false;
+    }
+    stored.delete(oldest);
+    const removed = await logged(`delete thumb ${oldest}`, () =>
+      deleteFile(oldest),
     );
-    return;
+    if (!removed.ok || !removed.value) {
+      // Still on the device, so it is counted again, now as the newest.
+      stored.add(oldest);
+      return false;
+    }
   }
-  const saved = await logged(`thumb ${result.id}`, () =>
-    downloadToFile(result.thumbUrl, path),
-  );
-  if (saved.ok) {
-    known.add(path);
+  return true;
+}
+
+async function download(
+  result: SearchResult,
+  path: string,
+  stored: Set<string>,
+): Promise<string> {
+  reserved += 1;
+  try {
+    if (!(await makeRoom(stored))) {
+      log(`thumbs: store full, ${result.id} loads from the web`);
+      return result.thumbUrl;
+    }
+    const saved = await logged(`thumb ${result.id}`, () =>
+      downloadThumbToFile(result.thumbUrl, path),
+    );
+    if (!saved.ok) {
+      // The web URL gets one more try in the grid; the failure is already logged.
+      return result.thumbUrl;
+    }
+    stored.add(path);
+    return `${FILE_PREFIX}${path}`;
+  } finally {
+    reserved -= 1;
   }
 }
 
 /**
- * Stores the thumbnails of a page that has just been shown, one after another, skipping the
- * ones already stored. Resolves when this page's downloads end; the grid does not wait for it.
+ * The URI the grid renders: the stored file, downloaded first when it is missing, once per
+ * thumbnail. The web URL when the store is off, for a library file, or when the download failed.
  */
-export function storeThumbs(
-  results: readonly SearchResult[],
+export function thumbUri(
+  result: SearchResult,
   pluginDir: string,
-): Promise<void> {
-  queue = queue.then(async () => {
-    for (const result of results) {
-      await storeOne(result, pluginDir);
-    }
-  });
-  return queue;
+): Promise<string> {
+  const stored = known;
+  if (!stored || !result.thumbUrl.startsWith(WEB_PREFIX)) {
+    return Promise.resolve(result.thumbUrl);
+  }
+  const path = thumbPath(pluginDir, result);
+  if (stored.has(path)) {
+    return Promise.resolve(`${FILE_PREFIX}${path}`);
+  }
+  const running = pending.get(path);
+  if (running) {
+    return running;
+  }
+  const started = download(result, path, stored).finally(() =>
+    pending.delete(path),
+  );
+  pending.set(path, started);
+  return started;
 }
 
 export function resetThumbsForTests(): void {
   known = null;
-  queue = Promise.resolve();
+  pending.clear();
+  reserved = 0;
 }

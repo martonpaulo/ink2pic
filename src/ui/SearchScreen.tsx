@@ -3,7 +3,7 @@
  * already submitted; the results grid; the Library tab with saved pictures and recent searches,
  * which also opens by itself when there is no network; and the live log.
  */
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
 import {getLibrary, recordSearch} from '../library/device';
@@ -58,6 +58,13 @@ export function SearchScreen({
   );
   const [library, setLibrary] = useState<Library | null>(null);
   const [thumbDir, setThumbDir] = useState<string | null>(null);
+  // One list per set of items: a new array on each render sent a Library page back to page 1
+  // (#46); a new recent search keeps the items, so it keeps the page.
+  const libraryItems = library?.items;
+  const libraryList = useMemo(
+    () => (libraryItems ? libraryResults(libraryItems) : []),
+    [libraryItems],
+  );
   // One insert at a time: a second tap during a slow e-ink refresh would add a second picture.
   const inserting = useRef(false);
   // The newest search wins: an older one that ends later is ignored (#33).
@@ -195,7 +202,7 @@ export function SearchScreen({
             </View>
           )}
           <ResultsGrid
-            results={library ? libraryResults(library.items) : []}
+            results={libraryList}
             searching={!library}
             sourceDown={false}
             emptyText={copy['library.empty']}

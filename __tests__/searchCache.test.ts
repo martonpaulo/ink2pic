@@ -133,6 +133,7 @@ describe('cachedSearch', () => {
     expect(result.fromCache).toBe(false);
     expect(result.outcome.results).toHaveLength(2);
     expect(result.problem).toContain(why);
+    expect(await result.saved).toBeNull();
     expect(JSON.parse(files[PATH]).version).toBe(CACHE_VERSION);
   });
 
@@ -159,7 +160,36 @@ describe('cachedSearch', () => {
     };
     const result = await cachedSearch('soup', runner(), storage, PATH, NOW);
     expect(result.outcome.results).toHaveLength(2);
-    expect(result.problem).toContain('disk full');
+    expect(result.problem).toBeUndefined();
+    expect(await result.saved).toContain('disk full');
+  });
+
+  it('reads the file once per runtime and keeps the parsed entries (#46)', async () => {
+    const {storage} = memoryStorage();
+    const readText = jest.spyOn(storage, 'readText');
+    const run = runner();
+    await cachedSearch('soup', run, storage, PATH, NOW);
+    await cachedSearch('bread', run, storage, PATH, NOW);
+    const again = await cachedSearch('soup', run, storage, PATH, NOW);
+    expect(readText).toHaveBeenCalledTimes(1);
+    expect(again.fromCache).toBe(true);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns the outcome before the cache write ends (#46)', async () => {
+    let finish!: () => void;
+    const storage: TextStorage = {
+      readText: async () => null,
+      writeText: () => new Promise<void>(resolve => (finish = resolve)),
+    };
+    const result = await cachedSearch('soup', runner(), storage, PATH, NOW);
+    expect(result.outcome.results).toHaveLength(2);
+    let saved: string | null | undefined;
+    result.saved?.then(problem => (saved = problem));
+    await Promise.resolve();
+    expect(saved).toBeUndefined();
+    finish();
+    expect(await result.saved).toBeNull();
   });
 
   it('normalizes the key', () => {

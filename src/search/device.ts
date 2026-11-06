@@ -1,7 +1,7 @@
 /**
  * Search through the on-disk cache (#16, brief section 8.5): a repeated search opens at once and
  * works offline. The cache lives in the private plugin folder; a cache problem is logged and the
- * search goes on.
+ * search goes on, without waiting for the cache write.
  */
 import {sessionPaths} from '../flow/session';
 import {deviceStorage} from '../library/device';
@@ -29,6 +29,12 @@ export async function searchCached(
   if (cached.problem) {
     log(`search cache: ${cached.problem}`);
   }
+  // Not awaited: the results show while the file is written (#46).
+  cached.saved?.then(problem => {
+    if (problem) {
+      log(`search cache: ${problem}`);
+    }
+  });
   log(`search cache: ${cached.fromCache ? 'hit' : 'miss'}`);
   return cached.outcome;
 }

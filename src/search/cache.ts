@@ -2,6 +2,8 @@
  * Search outcomes cached in one JSON file, so a repeated search opens at once and works
  * offline (brief section 8.5). The cache is reconstructible, never a source of truth: an
  * unreadable file is reported to the caller and rebuilt, never read as an empty result.
+ * The file is read once per runtime and kept parsed in memory; a write runs after the results
+ * are shown, never before (#46).
  */
 import {resizeThumb} from '../sources/commons';
 import {imageUrl} from '../sources/openclipart';
@@ -24,9 +26,26 @@ type Entry = {query: string; savedAt: number; outcome: StoredOutcome};
 export type CachedSearch = {
   outcome: SearchOutcome;
   fromCache: boolean;
-  /** Why the cache file could not be read or written; the caller logs it. */
+  /** Why the cache file could not be read; the caller logs it. */
   problem?: string;
+  /**
+   * The cache write, started and not awaited: it resolves why the file could not be written,
+   * or null; the caller logs a failure. Absent when nothing is written.
+   */
+  saved?: Promise<string | null>;
 };
+
+/** Parsed entries per storage and path, newest first, kept for the runtime. */
+const memory = new WeakMap<TextStorage, Map<string, Entry[]>>();
+
+function remembered(storage: TextStorage): Map<string, Entry[]> {
+  let byPath = memory.get(storage);
+  if (!byPath) {
+    byPath = new Map();
+    memory.set(storage, byPath);
+  }
+  return byPath;
+}
 
 /** fullUrl rebuilt per source with the same rule the source module uses. */
 const FULL_URL: Record<
@@ -166,9 +185,16 @@ export async function cachedSearch(
   now: number,
 ): Promise<CachedSearch> {
   const key = cacheKey(query);
-  const read = await readEntries(storage, path);
+  const byPath = remembered(storage);
+  const inMemory = byPath.get(path);
+  const read: ParsedCache = inMemory
+    ? {ok: true, entries: inMemory}
+    : await readEntries(storage, path);
   const entries = read.ok ? read.entries : [];
   const problem = read.ok ? undefined : read.message;
+  if (read.ok) {
+    byPath.set(path, entries);
+  }
   const hit = entries.find(entry => entry.query === key);
   if (hit && isFresh(hit, now)) {
     return {
@@ -189,14 +215,13 @@ export async function cachedSearch(
     0,
     CACHE_LIMIT,
   );
-  try {
-    await storage.writeText(path, serialize(kept));
-  } catch (error) {
-    return {
-      outcome,
-      fromCache: false,
-      problem: `cannot write the search cache: ${message(error)}`,
-    };
-  }
-  return {outcome, fromCache: false, problem};
+  // The memory holds what the file will hold: the next search reads it without the file.
+  byPath.set(path, kept);
+  const saved = Promise.resolve()
+    .then(() => storage.writeText(path, serialize(kept)))
+    .then(
+      () => null,
+      error => `cannot write the search cache: ${message(error)}`,
+    );
+  return {outcome, fromCache: false, problem, saved};
 }

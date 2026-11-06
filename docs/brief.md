@@ -448,6 +448,7 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 - Grid thumbnails sized for the tile, not the full image: Openclipart `/image/400px/<id>`, Commons width `330` or `500` [DEFAULT]. `400px` works: HTTP 200, `image/png`, 24,197 bytes for id 340609 [CONFIRMED on the owner's Manta, build 0.1.0 (1)]. Full size only on tap.
 - Query both sources **in parallel**, each with about a 5 s timeout. A slow source never blocks the other.
 - Cache search results and thumbnails on disk. A repeated search opens instantly and works offline.
+- Each thumbnail crosses the network once: a new page downloads its missing thumbnails to files in the background worker, which yields to the person's insert, and the grid renders the files; the store keeps 300 files, oldest removed first; the parsed search cache stays in memory for the runtime and its file is written after the results show; `library.json` is written only when it changed ([#46](https://github.com/martonpaulo/ink2pic/issues/46)) [DEFAULT].
 - Persist all state to files. Never depend on in-memory state between openings.
 - Minimize SDK round trips. Cache note path, page number and page size per session.
 - Keep the bundle small. Plain React Native components, no heavy UI libraries.

@@ -1,14 +1,15 @@
 /**
  * The library on the device (#14, #15): library.json beside the pictures in MyStyle/Ink2Pic/library,
  * so it survives a plugin update, which empties the private plugin folder (#41; brief section 6.6).
- * Read once per session and saved after each change.
+ * Read once per session and saved after each change; a search that changes nothing writes nothing
+ * (#46).
  */
 import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
 import {fail, ok, Result} from '../sdk/result';
 import {readText, writeText} from '../storage/files';
 import {libraryDir} from '../storage/paths';
-import {addItem, addRecentSearch, emptyLibrary} from './library';
+import {addItem, addRecentSearch, emptyLibrary, serialize} from './library';
 import {loadLibrary, saveLibrary} from './store';
 import type {Library, LibraryItem, TextStorage} from './types';
 
@@ -96,6 +97,9 @@ export async function getLibrary(): Promise<Library> {
 }
 
 async function save(next: Library): Promise<void> {
+  if (current && (next === current || serialize(next) === serialize(current))) {
+    return;
+  }
   current = next;
   const path = await libraryPath();
   if (!path.ok || !writable) {

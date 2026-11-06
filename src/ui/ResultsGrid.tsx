@@ -1,12 +1,14 @@
 /**
  * Search results as pages of six large tiles, for e-ink (brief section 8.4): no scrolling, no
- * animation, and each page shown once, when all its thumbnails have loaded or failed.
+ * animation, and each page shown once, when all its thumbnails have loaded or failed. A thumbnail
+ * not yet stored is downloaded to its file first and the tile renders the file: one request each
+ * (#46).
  */
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
 import {pageCount, pageOf} from '../search/pages';
-import {cachedThumbUri, storeThumbs} from '../search/thumbs';
+import {cachedThumbUri, needsDownload, thumbUri} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
 import {Button} from './Button';
 import {copy} from './copy';
@@ -48,18 +50,30 @@ export function ResultsGrid({
   const pages = pageCount(results.length);
   const visible = useMemo(() => pageOf(results, page), [results, page]);
 
-  // Chosen once per results list, so a thumbnail stored while the list is shown does not
-  // reload its tile; the next list with that result reads the file.
+  // Chosen once per results list: the stored file, the web URL when there is no store, or null
+  // while the thumbnail must be downloaded first (#46).
   const thumbUris = useMemo(
     () =>
-      new Map(
+      new Map<string, string | null>(
         results.map(result => [
           result.id,
-          thumbDir ? cachedThumbUri(result, thumbDir) : result.thumbUrl,
+          !thumbDir
+            ? result.thumbUrl
+            : needsDownload(result, thumbDir)
+            ? null
+            : cachedThumbUri(result, thumbDir),
         ]),
       ),
     [results, thumbDir],
   );
+  // The URIs of thumbnails downloaded for this results list, as each download ends.
+  const [fetched, setFetched] = useState<{
+    results: SearchResult[];
+    uris: ReadonlyMap<string, string>;
+  }>({results, uris: new Map()});
+  const fetchedUris = fetched.results === results ? fetched.uris : null;
+  const uriOf = (result: SearchResult): string | null =>
+    fetchedUris?.get(result.id) ?? thumbUris.get(result.id) ?? null;
 
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
@@ -92,12 +106,33 @@ export function ResultsGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, ready]);
 
-  // A shown page stores its thumbnails afterwards: the page never waits for these downloads.
+  // The page's missing thumbnails are downloaded to files, each once, before its tiles render.
   useEffect(() => {
-    if (ready && thumbDir) {
-      storeThumbs(visible, thumbDir);
+    if (!thumbDir) {
+      return;
     }
-  }, [visible, ready, thumbDir]);
+    let live = true;
+    for (const result of visible) {
+      if (thumbUris.get(result.id) !== null) {
+        continue;
+      }
+      thumbUri(result, thumbDir).then(uri => {
+        if (!live) {
+          return;
+        }
+        setFetched(previous => ({
+          results,
+          uris: new Map(previous.results === results ? previous.uris : []).set(
+            result.id,
+            uri,
+          ),
+        }));
+      });
+    }
+    return () => {
+      live = false;
+    };
+  }, [visible, thumbDir, thumbUris, results]);
 
   if (searching) {
     return <Text style={styles.message}>{copy['search.running']}</Text>;
@@ -136,10 +171,10 @@ export function ResultsGrid({
                   onPress={() => onPick(result)}>
                   {failed.has(result.id) ? (
                     <Text style={styles.failedTitle}>{result.title}</Text>
-                  ) : (
+                  ) : uriOf(result) === null ? null : (
                     <Image
                       source={{
-                        uri: thumbUris.get(result.id) ?? result.thumbUrl,
+                        uri: uriOf(result) as string,
                         headers: THUMB_HEADERS,
                       }}
                       style={styles.image}
