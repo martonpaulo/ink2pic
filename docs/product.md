@@ -33,6 +33,7 @@ background that cannot move ([brief section 13](brief.md#13-history-of-options-c
 | Run or depend on a backend, proxy or Worker | The owner rejected any service to maintain | Never, by the owner's choice |
 | Need a companion phone app | Everything happens on the Supernote | Never, by the owner's choice |
 | Use sources that need an API key or account | Install must stay one file with no sign-up | A keyless source stops working and no keyless replacement exists |
+| Ship a heavy component: a machine-learning model or runtime, or a large library, on the device | The owner wants the plugin light: search quality comes from rules, light pixel measures and better sources (owner, 2026-11-06) | Never, by the owner's choice |
 | Translate non-English queries or localize the UI | English is a requirement, not a preference | Never, by the owner's choice |
 | Create native `.snstk` sticker collections | Importing one always needs a manual tap | The SDK gains an import call without a tap |
 | Put settings in the main flow | Defaults must make adjustment unnecessary | A device test shows a default that fails for real use |
