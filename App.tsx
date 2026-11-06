@@ -12,7 +12,13 @@ import {LASSO_BUTTON_ID} from './src/buttons';
 import {insertText} from './src/sdk/note';
 import {closePluginView, onButtonPress} from './src/sdk/plugin';
 import {describe} from './src/sdk/result';
-import {probeHost, probeNetwork, probeRecognition} from './src/spike/probes';
+import {log, logged, logLines, startLog} from './src/spike/log';
+import {
+  ensurePermissions,
+  probeHost,
+  probeNetwork,
+  probeRecognition,
+} from './src/spike/probes';
 import {formatReport, Section} from './src/spike/report';
 import {copy} from './src/ui/copy';
 
@@ -21,19 +27,25 @@ const REPORT_RECT = {left: 120, top: 160, right: 1800, bottom: 2400};
 const REPORT_FONT_SIZE = 28;
 
 async function runSpike(buttonId: number): Promise<string> {
-  const sections: Section[] =
-    buttonId === LASSO_BUTTON_ID
-      ? [await probeRecognition()]
-      : [await probeHost(), await probeNetwork()];
+  startLog();
+  log(`button ${buttonId}`);
+  // Permissions first: a file or note call without FILE:READ fails (1503) or closes the plugin.
+  const sections: Section[] = [await ensurePermissions()];
+  if (buttonId === LASSO_BUTTON_ID) {
+    sections.push(await probeRecognition());
+  } else {
+    sections.push(await probeHost(), await probeNetwork());
+  }
   const header = `Ink2Pic spike ${pluginConfig.versionName} (${
     pluginConfig.versionCode
   }), ${new Date().toISOString()}`;
-  const report = formatReport(header, sections);
-  const inserted = await insertText({
-    text: report,
-    rect: REPORT_RECT,
-    fontSize: REPORT_FONT_SIZE,
-  });
+  const report = formatReport(header, [
+    ...sections,
+    {title: 'log', lines: logLines()},
+  ]);
+  const inserted = await logged('insertText', () =>
+    insertText({text: report, rect: REPORT_RECT, fontSize: REPORT_FONT_SIZE}),
+  );
   return `${report}\n\n[insertText] ${describe(inserted, String)}`;
 }
 

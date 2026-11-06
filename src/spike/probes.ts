@@ -12,6 +12,9 @@ import {getLassoElements, getLassoRect, recognizeElements} from '../sdk/lasso';
 import {getCurrentFilePath, getCurrentPageNum, getPageSize} from '../sdk/page';
 import {
   getDeviceType,
+  hasPermission,
+  PERMISSION_FILE_READ,
+  PERMISSION_FILE_WRITE,
   PERMISSION_INTERNET,
   requestPermission,
 } from '../sdk/plugin';
@@ -23,9 +26,18 @@ import {
   describeModule,
   Section,
 } from './report';
+import {brief, log, logged} from './log';
 
 const FETCH_TIMEOUT_MS = 10000;
 const S3_TITLE = 'S3 recognition';
+/** The Manta page in pixels (brief section 2), tried when getPageSize fails. */
+const MANTA_PAGE = {width: 1920, height: 2560};
+/** Declared in PluginConfig.json `uses-permissions`; FILE:READ gates getPageSize (#3, build 2). */
+const NEEDED_PERMISSIONS = [
+  PERMISSION_FILE_READ,
+  PERMISSION_FILE_WRITE,
+  PERMISSION_INTERNET,
+];
 const OPENCLIPART_SEARCH = 'https://openclipart.org/search/?query=soup';
 const OPENCLIPART_IMAGE = 'https://openclipart.org/image/400px/340609';
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
@@ -77,6 +89,28 @@ export async function probeHost(): Promise<Section> {
   return {title: 'S0 host', lines};
 }
 
+/**
+ * Asks for every permission the probes need before any file or note call: touching a path
+ * without FILE:READ can close the plugin (j-raghavan/sn-dictionary, device-verified [REPORTED]).
+ */
+export async function ensurePermissions(): Promise<Section> {
+  const lines: string[] = [];
+  for (const permission of NEEDED_PERMISSIONS) {
+    const has = await logged(`hasPermission(${permission})`, () =>
+      hasPermission(permission),
+    );
+    if (has.ok && has.value) {
+      lines.push(`${permission}: granted before`);
+      continue;
+    }
+    const answer = await logged(`requestPermission(${permission})`, () =>
+      requestPermission(permission),
+    );
+    lines.push(`${permission}: answer ${describe(answer, String)}`);
+  }
+  return {title: 'permissions', lines};
+}
+
 async function fetchWithTimeout(
   url: string,
   headers: Record<string, string> = {},
@@ -97,25 +131,31 @@ async function probeUrl(
   headers?: Record<string, string>,
 ): Promise<string> {
   const started = Date.now();
+  log(`GET ${url}`);
   try {
     const response = await fetchWithTimeout(url, headers);
     const detail = await read(response);
-    return `${label}: HTTP ${response.status}, ${detail}, ${
+    const line = `${label}: HTTP ${response.status}, ${detail}, ${
       Date.now() - started
     } ms`;
+    log(line);
+    return line;
   } catch (error) {
     const message =
       error instanceof Error
         ? `${error.name}: ${error.message}`
         : String(error);
-    return `${label}: failed after ${Date.now() - started} ms: ${message}`;
+    const line = `${label}: failed after ${
+      Date.now() - started
+    } ms: ${message}`;
+    log(line);
+    return line;
   }
 }
 
-/** S1: HTTPS fetch to both sources, with the INTERNET permission requested first. */
+/** S1: HTTPS fetch to both sources; permissions were asked by ensurePermissions. */
 export async function probeNetwork(): Promise<Section> {
-  const permission = await requestPermission(PERMISSION_INTERNET);
-  const lines = [`INTERNET permission answer: ${describe(permission, String)}`];
+  const lines: string[] = [];
   lines.push(
     await probeUrl('openclipart search', OPENCLIPART_SEARCH, async response => {
       const html = await response.text();
@@ -144,38 +184,55 @@ export async function probeNetwork(): Promise<Section> {
 }
 
 /**
- * S3: recognize the lassoed strokes and print the text verbatim. `size` is the note page size:
- * build 1 passed the lasso rect size and every word failed with 117; ink2task and sn-dictionary
- * pass the page size from `getPageSize` [REPORTED].
+ * S3: recognize the lassoed strokes and print the text verbatim. `size` is the note page size
+ * from getPageSize (ink2task and sn-dictionary do this [REPORTED]); when that fails, the known
+ * Manta page size is tried, and every attempt is logged.
  */
 export async function probeRecognition(): Promise<Section> {
-  const elements = await getLassoElements();
-  const rect = await getLassoRect();
-  const path = await getCurrentFilePath();
-  const pageNum = await getCurrentPageNum();
-  const lines = [
-    `lasso elements: ${describe(elements, e => String(e.length))}`,
+  const lines: string[] = [];
+  const elements = await logged('getLassoElements', getLassoElements);
+  const rect = await logged('getLassoRect', getLassoRect);
+  const path = await logged('getCurrentFilePath', getCurrentFilePath);
+  const pageNum = await logged('getCurrentPageNum', getCurrentPageNum);
+  lines.push(`lasso elements: ${describe(elements, e => String(e.length))}`);
+  lines.push(
     `lasso rect: ${describe(
       rect,
       r => `${r.left},${r.top},${r.right},${r.bottom}`,
     )}`,
-    `page: ${describe(pageNum, String)}`,
-  ];
-  if (!elements.ok || !path.ok || !pageNum.ok) {
-    lines.push(
-      'recognized: not attempted, the lasso or the page could not be read',
-    );
-    return {title: S3_TITLE, lines};
-  }
-  const size = await getPageSize(path.value, pageNum.value);
-  lines.push(`page size: ${describe(size, v => `${v.width} x ${v.height}`)}`);
-  if (!size.ok) {
-    lines.push('recognized: not attempted, no page size');
-    return {title: S3_TITLE, lines};
-  }
-  const text = await recognizeElements(elements.value, size.value);
-  lines.push(
-    `recognized: ${describe(text, t => `"${t}" (length ${t.length})`)}`,
   );
+  if (elements.ok && elements.value.length > 0) {
+    log(`first element keys: ${Object.keys(elements.value[0]).join(',')}`);
+    log(`first element: ${brief(elements.value[0], 300)}`);
+  }
+  if (!elements.ok) {
+    lines.push('recognized: not attempted, the lasso could not be read');
+    return {title: S3_TITLE, lines};
+  }
+  const sizes: {label: string; size: {width: number; height: number}}[] = [];
+  if (path.ok && pageNum.ok) {
+    const pageSize = await logged('getPageSize', () =>
+      getPageSize(path.value, pageNum.value),
+    );
+    if (pageSize.ok) {
+      sizes.push({label: 'page size', size: pageSize.value});
+    }
+  }
+  sizes.push({label: 'Manta page', size: MANTA_PAGE});
+  for (const {label, size} of sizes) {
+    const text = await logged(
+      `recognizeElements(${size.width} x ${size.height}, ${label})`,
+      () => recognizeElements(elements.value, size),
+    );
+    lines.push(
+      `recognized with ${label} ${size.width} x ${size.height}: ${describe(
+        text,
+        t => `"${t}" (length ${t.length})`,
+      )}`,
+    );
+    if (text.ok) {
+      break;
+    }
+  }
   return {title: S3_TITLE, lines};
 }
