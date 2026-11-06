@@ -4,9 +4,12 @@
   Render: bash scripts/social-card.sh -> design/social-card/social-card.jpg
   Rules: Skill Deck skd-project-standards references/public-pages.md section 5
   (https://github.com/martonpaulo/skill-deck/issues/261).
-  screen.png: the plugin's results for a handwritten "soup" on a Supernote Manta, from the owner's
-  screen mirror of a device round, cropped to the device screen and turned to grey.
-  Ground: fountain-pen ink blue, because the plugin turns handwritten ink into a picture.
+  Colours: the e-ink screen's own palette, near-black ink on warm paper with greys, no colour and no
+  gradient, because the plugin lives on a Supernote (owner, 2026-11-06).
+  Visual: a redrawn Supernote-like page in a plain dark bezel (no brand marks): a handwritten
+  "soup" in a lasso, and below it the kind of CC0 engraving the plugin inserts.
+  tureen.svg: Openclipart 185227 "tureen" by johnny_automatic, CC0, from Dorothy Daly's
+  "Italian Cooking" (not in copyright); unchanged. See NOTICE.md.
 -->
 <html lang="en">
 <head>
@@ -16,15 +19,17 @@
   @font-face { font-family: "Gabarito"; font-weight: 700; src: url("fonts/gabarito-latin-700-normal.woff2") format("woff2"); }
   @font-face { font-family: "Figtree"; font-weight: 500; src: url("fonts/figtree-latin-500-normal.woff2") format("woff2"); }
   @font-face { font-family: "Figtree"; font-weight: 700; src: url("fonts/figtree-latin-700-normal.woff2") format("woff2"); }
-  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
-  body {
-    position: relative;
-    font-family: "Figtree", sans-serif;
-    color: #fff;
-    background:
-      radial-gradient(circle at 78% 30%, rgba(96, 165, 250, .45), transparent 55%),
-      linear-gradient(135deg, #0a1f5c 0%, #1e3a9e 48%, #2f5bd8 100%);
+  @font-face { font-family: "Caveat"; font-weight: 600; src: url("fonts/caveat-latin-600-normal.woff2") format("woff2"); }
+  :root {
+    --ink: #1c1c1a;
+    --ink-soft: #4a4945;
+    --paper: #ece8df;
+    --screen: #f8f6f1;
+    --rule: #dcd8cf;
+    --bezel: #262624;
   }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body { position: relative; font-family: "Figtree", sans-serif; color: var(--ink); background: var(--paper); }
   .copy {
     position: absolute; left: 96px; top: 0; bottom: 0; width: 440px;
     display: flex; flex-direction: column; justify-content: center;
@@ -32,19 +37,32 @@
   .eyebrow {
     align-self: flex-start;
     font-size: 19px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    padding: 9px 16px; border-radius: 999px;
-    background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .35);
+    padding: 9px 16px; border-radius: 999px; border: 2px solid var(--ink);
   }
   h1 { font-family: "Gabarito", sans-serif; font-weight: 700; font-size: 88px; line-height: 1; margin: 28px 0 20px; letter-spacing: -.01em; }
   .promise { font-size: 38px; font-weight: 500; line-height: 1.2; margin: 0; }
-  .domain { display: flex; align-items: center; gap: 14px; margin-top: 36px; font-size: 24px; font-weight: 500; }
+  .domain { display: flex; align-items: center; gap: 14px; margin-top: 36px; font-size: 24px; font-weight: 500; color: var(--ink-soft); }
   .domain svg { width: 40px; height: 40px; flex: none; }
-  .window {
-    position: absolute; left: 610px; top: 62px; width: 540px;
-    background: #fff; border-radius: 22px; overflow: hidden;
-    box-shadow: 0 40px 80px rgba(15, 23, 42, .30), 0 8px 20px rgba(15, 23, 42, .12);
+  .device {
+    position: absolute; left: 660px; top: 52px; width: 452px; height: 640px;
+    box-sizing: border-box; padding: 20px 20px 0;
+    background: var(--bezel); border-radius: 30px 30px 0 0;
+    box-shadow: 0 30px 60px rgba(28, 28, 26, .22), 0 6px 16px rgba(28, 28, 26, .14);
   }
-  .window img { display: block; width: 100%; }
+  .screen {
+    position: relative; height: 100%; overflow: hidden;
+    background-color: var(--screen);
+    background-image: repeating-linear-gradient(to bottom, transparent 0 47px, var(--rule) 47px 48px);
+    background-position: 0 30px;
+    border-radius: 10px 10px 0 0;
+  }
+  .word {
+    position: absolute; left: 0; right: 0; top: 42px; text-align: center;
+    font-family: "Caveat", cursive; font-weight: 600; font-size: 104px; line-height: 1;
+    transform: rotate(-3deg);
+  }
+  .lasso { position: absolute; left: 92px; top: 38px; width: 236px; height: 124px; }
+  .picture { position: absolute; left: 44px; top: 200px; width: 312px; padding: 6px; background: var(--screen); }
 </style>
 </head>
 <body>
@@ -53,7 +71,7 @@
     <h1>Ink2Pic</h1>
     <p class="promise">Write a word by hand. Insert a matching picture.</p>
     <div class="domain">
-      <svg viewBox="0 0 48 48" fill="none" stroke="#fff" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none" stroke="#1c1c1a" stroke-width="3.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <g transform="translate(-0.75 4)">
           <path d="M24 10H7a3 3 0 0 0-3 3v22a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3V24"/>
           <circle cx="12.5" cy="17.5" r="3"/>
@@ -65,6 +83,14 @@
       github.com/martonpaulo/ink2pic
     </div>
   </div>
-  <div class="window"><img src="screen.png" alt=""></div>
+  <div class="device">
+    <div class="screen">
+      <div class="word">soup</div>
+      <svg class="lasso" viewBox="0 0 236 124" fill="none" stroke="#4a4945" stroke-width="2.5" stroke-dasharray="9 7" stroke-linecap="round" aria-hidden="true">
+        <path d="M30 22C70 4 170 2 212 20c24 12 22 62 2 82-34 22-150 22-190 2C2 90 0 40 30 22z"/>
+      </svg>
+      <img class="picture" src="tureen.svg" alt="">
+    </div>
+  </div>
 </body>
 </html>
