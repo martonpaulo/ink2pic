@@ -22,10 +22,10 @@
 - Commit subject: a commit made for an issue ends with `(#<issue number>)`, never the pull request's.
 - Delete branches after merge: enabled
 - Release, signing, and secret-storage policy: a release is a GitHub release carrying `Ink2Pic.snplg`: a prerelease for each device test build, a stable release only on the owner's request. No signing and no release secrets: the device installs unsigned plugin packages.
-- Skills baseline revision: `0ee92a125a26bc6b81aec1d8e1dc1536f841d511`
+- Skills baseline revision: `a024f770362823789293592392dc61596185c7fe`
 - Skills baseline applied: `2026-11-06`
-- Skills baseline divergence `package-manager` at `0ee92a125a26bc6b81aec1d8e1dc1536f841d511`: npm, not pnpm, because the Supernote template's `buildPlugin.sh` calls `npx` and scans a flat `node_modules` for native code (owner decision, 2026-11-06).
-- Skills baseline divergence `biome-config` at `0ee92a125a26bc6b81aec1d8e1dc1536f841d511`: ESLint and Prettier from the Supernote React Native template stay, for their React Native rules (owner decision, 2026-11-06).
+- Skills baseline divergence `package-manager` at `a024f770362823789293592392dc61596185c7fe`: npm, not pnpm, because the Supernote template's `buildPlugin.sh` calls `npx` and scans a flat `node_modules` for native code (owner decision, 2026-11-06).
+- Skills baseline divergence `biome-config` at `a024f770362823789293592392dc61596185c7fe`: ESLint and Prettier from the Supernote React Native template stay, for their React Native rules (owner decision, 2026-11-06).
 
 Change an identifier or policy recorded above only through an explicit task describing the migration and its effects.
 
@@ -41,25 +41,12 @@ Before editing under a path, read the file its row names. A module with rules of
 
 ## Ink2Pic rules
 
-- `docs/brief.md` holds the platform facts and the plan. Keep its tags (CONFIRMED, REPORTED,
-  INFERENCE, TO TEST, DEFAULT); never raise an INFERENCE or TO TEST item to fact without running it.
-  Update it in the same commit as the decision or device result that changes it.
-- The agent cannot reach the Supernote. Each build sent to the owner carries a checklist of at most
-  8 steps with expected results, and each report goes into `docs/device-tests.md`
-  ([brief section 18](docs/brief.md#18-device-test-protocol)).
-- One device build per test round, holding everything ready to test, with one check card for all of
-  it; a new build goes out only after the owner answers the open one, never one build per issue
-  (owner, 2026-11-06).
-- Keep React Native 0.79.2, React 19.0.0 and `sn-plugin-lib` 0.2.3 exact: PluginHost fixes them.
-- TypeScript first; Java only for what JavaScript provably cannot do. Every `sn-plugin-lib` call goes
-  through the wrappers in `src/sdk/`.
-- Never change `pluginID` after the first build: the device would lose the plugin's library.
-- Before writing or changing an `sn-plugin-lib` call, and before fixing a device failure, read the
-  recorded gotchas ([brief section 10.5](docs/brief.md#105-known-platform-gotchas-read-them-before-an-sdk-call))
-  and the official docs at `docs.supernote.com` (owner, 2026-11-06).
-- Every device build declares in `uses-permissions`, and requests before its first file or note call, each permission its calls need (`FILE:READ` gates `getPageSize`), and logs every SDK call and network request with its answer where the owner can read it (owner, 2026-11-06; [#3](https://github.com/martonpaulo/ink2pic/issues/3)).
-- The template's `buildPlugin.sh` may run without asking, locally and in a cloud session (owner
-  decision, 2026-11-06; [brief section 16.1](docs/brief.md#161-where-each-part-runs)).
+- `docs/brief.md` holds the platform facts and the plan. Keep its tags (CONFIRMED, REPORTED, INFERENCE, TO TEST, DEFAULT); never raise an INFERENCE or TO TEST item to fact without running it. Update it in the same commit as the decision or device result that changes it.
+- Device rounds (owner, 2026-11-06): the agent cannot reach the Supernote. Before a new build, resolve every issue that can be resolved without the device; send one build per round with everything ready and one check card of at most 8 steps with expected results, only after the owner answered the open one; record each report in `docs/device-tests.md` ([brief section 18](docs/brief.md#18-device-test-protocol)).
+- Every device build declares in `uses-permissions`, and requests before its first file or note call, each permission its calls need, and logs every SDK call and request with its answer where the owner can read it ([#3](https://github.com/martonpaulo/ink2pic/issues/3)).
+- Before writing or changing an `sn-plugin-lib` call, or fixing a device failure, read the recorded gotchas ([brief section 10.5](docs/brief.md#105-known-platform-gotchas-read-them-before-an-sdk-call)) and the official docs at `docs.supernote.com`.
+- Keep React Native 0.79.2, React 19.0.0 and `sn-plugin-lib` 0.2.3 exact: PluginHost fixes them. TypeScript first; Java only for what JavaScript provably cannot do. Every `sn-plugin-lib` call goes through `src/sdk/`. Never change `pluginID` after the first build.
+- The template's `buildPlugin.sh` may run without asking, locally and in a cloud session (owner decision, 2026-11-06; [brief section 16.1](docs/brief.md#161-where-each-part-runs)).
 
 ## Agent skill paths
 
