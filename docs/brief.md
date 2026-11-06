@@ -642,10 +642,27 @@ Implementation notes [INFERENCE]: `HttpURLConnection` (HTTPS is allowed, clearte
 ### 10.4 Tooling notes
 
 - `firestormkirby/sn-plugin-ui-preview` runs a plugin's RN panel in a browser for UI iteration without the device [REPORTED, not evaluated].
-- `gorlix/supernote-plugin-dev` is an agent skill for sn-plugin-lib development with gotchas and API quick reference [REPORTED, partially read].
+- `gorlix/supernote-plugin-dev` is an agent skill for sn-plugin-lib development with gotchas and API quick reference [REPORTED, read in full at `41fa3ad` on 2026-11-06; section 10.5].
 - `apclark31/supernote-plugin-research` has extracted official docs, SDK notes and device-tested patterns [REPORTED, `CLAUDE.md` read in full].
 
 ---
+
+### 10.5 Known platform gotchas: read them before an SDK call
+
+Three device rounds on 2026-11-06 failed on problems other developers had already recorded. The
+reference `gorlix/supernote-plugin-dev` (MIT, `SKILL.md` «Common Gotchas» and
+`references/patterns.md`, read at `41fa3ad`) and the official docs at `docs.supernote.com`
+(`llms.txt` lists every page; reachable from the cloud environment since 2026-11-06) are read
+before writing or changing an `sn-plugin-lib` call, and before fixing a device failure
+(AGENTS.md).
+
+| What failed on the Manta | Build | Already recorded as |
+| --- | --- | --- |
+| `recognizeElements` error 117 with the lasso size | 0.1.0 (1) | gorlix gotcha 25: pass `getPageSize`, never the lasso rect |
+| `getPageSize` error 1503 | 0.1.0 (2) | gorlix gotcha 38 and pattern 17: declare and request `FILE:READ` first |
+| The view stayed on its waiting text after opening | 0.1.0 (1), (4), (6) | gorlix gotcha 11 and pattern 5: the button event can fire before a listener registered in `App.tsx`; store a pending button id in `index.js`; pattern 9: reset the view on close with `registerPluginLifeListener` |
+| A native module is invisible unless listed | 0.1.0 (4) | gorlix gotcha 33: only `reactPackages` in `PluginConfig.json` loads it |
+| Logs | all | gorlix gotcha 40: `console.log` is not stripped in a real build; `adb logcat -s ReactNativeJS` reads it when a cable is available |
 
 ## 11. Risks
 
