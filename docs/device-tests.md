@@ -79,3 +79,16 @@ Prerelease [`v0.1.0-dev.10`](https://github.com/martonpaulo/ink2pic/releases/tag
 | 3 Tap a picture | Picture at the word | Pass | A gray ladle placed at the lassoed word; the plugin closed |
 | Page 2 of 9 | Pictures | Unclear | One screenshot shows «Searching…» with the pager at 2 / 9 and no pictures |
 | 4-8 | | Not reported | |
+
+## Build 0.1.0 (11), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.11`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.11), commit `c2871d1`. Seen on the owner's screen mirror; the owner reported «all worked as expected» for the steps not shown.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 Open, permissions | Log and Close, dialogs, then the search | Pass | Onboarding showed Log and Close; the dialog waited for the owner |
+| 3 Lasso "apple" | Six pictures, «Loading pictures…» on page 2 | Pass | 1 / 8 pages |
+| 4 Tap a picture | Just below the word | Pass | The word stays visible ([#39](https://github.com/martonpaulo/ink2pic/issues/39)) |
+| 5 Wi-Fi off | The no-internet sentence and the Library | Pass | Owner report |
+| 6 Network Access off | A sentence naming the internet permission | Fail, fixed | The onboarding cards showed with no word on what was missing; Start asked again. Fixed in `c198c4c`: the screen names each missing permission before Start ([#37](https://github.com/martonpaulo/ink2pic/issues/37)) |
+| 7 New note, "cat" | A search for "cat" | Pass | Owner report |
