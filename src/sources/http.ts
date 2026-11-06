@@ -1,10 +1,12 @@
 import {USER_AGENT} from '../config';
-import {FailureKind} from './types';
+import {FailureKind, SourceFailure, sourceFailure} from './types';
 
 /** About 5 s per source, so a slow source never blocks the other (brief section 8.5). */
 export const SOURCE_TIMEOUT_MS = 5000;
 
 const HTTP_FORBIDDEN = 403;
+/** MediaWiki error codes that mean "slow down", on Commons and Wikidata alike. */
+const THROTTLE_CODES = new Set(['ratelimited', 'maxlag']);
 const HTTP_TOO_MANY = 429;
 
 export type FetchLike = (
@@ -57,4 +59,13 @@ export async function fetchText(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** A MediaWiki API `error` object as a source failure. */
+export function apiFailure(error: {
+  code?: string;
+  info?: string;
+}): SourceFailure {
+  const kind = THROTTLE_CODES.has(error.code ?? '') ? 'throttled' : 'http';
+  return sourceFailure(kind, `${error.code}: ${error.info}`);
 }

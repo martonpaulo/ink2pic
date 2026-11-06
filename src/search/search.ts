@@ -73,7 +73,10 @@ export async function searchAll(
   sources.forEach((source, i) => {
     statuses[source.name] = status(outcomes[i]);
   });
-  const results = rankForEink(outcomes.map(o => (o.ok ? o.results : [])));
+  const results = rankForEink(
+    outcomes.map(o => (o.ok ? o.results : [])),
+    query,
+  );
   const failed = outcomes.filter(o => !o.ok).length;
   return {
     results,

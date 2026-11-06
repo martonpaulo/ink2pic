@@ -2,12 +2,17 @@ import {readFileSync} from 'fs';
 import {join} from 'path';
 import {
   COMMONS_WIDTHS,
+  commonsFiles,
+  DRAWING_FILTER,
+  filesUrl,
   nearestWidth,
+  parseFilesResponse,
   parseSearchResponse,
   resizeThumb,
   searchCommons,
   searchUrl,
 } from '../src/sources/commons';
+import {PAGE_SIZE} from '../src/search/pages';
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -181,5 +186,105 @@ describe('full width (#48)', () => {
     expect(fullUrl(page(300, 'image/svg+xml', 'Line.svg'), 960)).toBe(
       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Line.svg/960px-Line.svg',
     );
+  });
+});
+
+describe('drawings and canonical files (#43)', () => {
+  const ok = (text: string) => ({
+    ok: true,
+    status: 200,
+    text: () => Promise.resolve(text),
+  });
+  const pages = (count: number) =>
+    JSON.stringify({
+      batchcomplete: true,
+      query: {
+        pages: Array.from({length: count}, (_, i) => ({
+          pageid: 100 + i,
+          title: `File:Example ${i}.svg`,
+          index: i + 1,
+          imageinfo: [
+            {
+              mime: 'image/svg+xml',
+              thumburl: `https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Example_${i}.svg/330px-Example_${i}.svg.png`,
+            },
+          ],
+        })),
+      },
+    });
+
+  it('asks Commons for drawings', () => {
+    expect(searchUrl('apple', {drawings: true})).toContain(
+      `gsrsearch=${encodeURIComponent(`apple ${DRAWING_FILTER}`)}`,
+    );
+    expect(searchUrl('apple')).not.toContain('filetype');
+  });
+
+  it('drops PDF scans and videos, which are not pictures', () => {
+    const outcome = parseSearchResponse(fixture('commons-mixed.json'));
+    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+      'commons:7007',
+    ]);
+  });
+
+  it('makes one request when the drawings fill a page', async () => {
+    const fetch = jest.fn().mockResolvedValue(ok(pages(PAGE_SIZE)));
+    const outcome = await searchCommons('apple', {fetch});
+    expect(outcome.ok && outcome.results).toHaveLength(PAGE_SIZE);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][0]).toContain('filetype%3Adrawing');
+  });
+
+  it('adds a plain search when the drawings do not fill a page', async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(pages(1)))
+      .mockResolvedValueOnce(ok(pages(3)));
+    const outcome = await searchCommons('okra soup', {fetch});
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1][0]).not.toContain('filetype');
+    // The drawing comes first; the file both searches found is shown once.
+    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+      'commons:100',
+      'commons:101',
+      'commons:102',
+    ]);
+  });
+
+  it('keeps the drawings when the plain search fails', async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(pages(1)))
+      .mockResolvedValueOnce({ok: false, status: 429, text: jest.fn()});
+    const outcome = await searchCommons('okra soup', {fetch});
+    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+      'commons:100',
+    ]);
+  });
+
+  it('reads named files in the order asked, leaving out a missing one', () => {
+    const outcome = parseFilesResponse(fixture('commons-files.json'), [
+      'Example portrait.jpg',
+      'Example missing picture.png',
+      'Example flag.svg',
+    ]);
+    if (!outcome.ok) {
+      throw new Error(outcome.message);
+    }
+    expect(outcome.results.map(r => r.title)).toEqual([
+      'Example portrait',
+      'Example flag',
+    ]);
+    expect(outcome.results[0].license).toBe('CC BY-SA 4.0');
+    expect(outcome.results[1].thumbUrl).toContain('330px-Example_flag.svg.png');
+  });
+
+  it('asks for every named file in one request, and none for no file', async () => {
+    expect(filesUrl(['A b.jpg', 'C.svg'])).toContain(
+      `titles=${encodeURIComponent('File:A b.jpg|File:C.svg')}`,
+    );
+    const fetch = jest.fn();
+    expect(await commonsFiles([], {fetch})).toEqual({ok: true, results: []});
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

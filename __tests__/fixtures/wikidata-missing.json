@@ -1,0 +1,5 @@
+{
+ "_fixture": "documented, not captured: wbgetentities for an English Wikipedia title with no item (#43)",
+ "entities": {"-1": {"site": "enwiki", "title": "Qzxv", "missing": ""}},
+ "success": 1
+}

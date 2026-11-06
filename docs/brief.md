@@ -288,13 +288,64 @@ Complete interface: `exists`, `getExternalDirPath`, `makeDir`, `getExportPath`, 
 
 - MediaWiki Action API: `https://commons.wikimedia.org/w/api.php`.
 - Search files: `action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=<term>&gsrlimit=<n>&prop=imageinfo&iiprop=url|mime|size|extmetadata&iiurlwidth=<w>`. `thumburl` in the response is the scaled image [CONFIRMED pattern via public implementations, response not observed by us].
-- `gsrsearch` supports `filetype:bitmap` and `filetype:drawing` filters [INFERENCE from CirrusSearch keyword knowledge, TO TEST].
+- `gsrsearch` supports the `filetype:drawing` filter [CONFIRMED 2026-11-06, live: `apple filetype:drawing` answered 2,631 hits, all SVG]. Ink2Pic searches `<word> filetype:drawing`; only when the drawings fill less than one results page does a plain search add what Commons has, so a word with no drawing still shows pictures ([#43](https://github.com/martonpaulo/ink2pic/issues/43)). `filetype:bitmap` is not used [TO TEST].
+- A namespace 6 search also returns PDF scans, audio and video, each with a thumbnail [CONFIRMED 2026-11-06: `esperanto` returned two PDFs and a WebM]. Only `image/*` files other than DjVu are kept.
+- `thumburl` now points at `thumb.wikimedia.org` and carries `utm_*` query parameters [CONFIRMED 2026-11-06, live]; the `<n>px-` part `resizeThumb` changes is unchanged.
 - **User-Agent policy is enforced.** Requests without a descriptive User-Agent with contact info may get 403 or 429 [CONFIRMED, mediawiki.org Instant Commons page]. In React Native, set the `User-Agent` header on `fetch` [TO TEST that RN on device honors it; build 0.1.0 (1) sent it and Commons answered HTTP 200 from the owner's network, but the header itself was not observed]. Use `Ink2Pic/<versionName> (+https://github.com/martonpaulo/ink2pic)`. The repository is public, so the link resolves and serves as the contact the policy asks for. Keep the README and an issue tracker enabled so Wikimedia operators have a way to reach the owner.
 - Keep `gsrlimit` small (12 to 18, enough for two or three result pages) and cache results, to stay polite [DEFAULT].
 - **Predefined thumbnail widths.** Since early 2026, Wikimedia image servers prefer predefined widths and strictly rate limit others. Steps: `20, 40, 60, 120, 250, 330, 500, 960, 1280, 1920, 3840` [CONFIRMED, mediawiki.org]. Use only these for `iiurlwidth`.
 - Licenses vary per file. Store `extmetadata.LicenseShortName` and attribution with each saved image.
 - Our test from the cloud research machine got "You are making too many requests to the API" on the first call [CONFIRMED]. Shared cloud IPs are throttled. A home IP should be fine [INFERENCE].
 - Thumbnails of JPG originals are JPG. `insertImage` accepts JPG, so no conversion is required for insertion [CONFIRMED from SDK JSDoc].
+- On 2026-11-06 the cloud IP got HTTP 429 on some calls and answered others; a script spacing searches 4 s apart got an answer to every search of three 19-word runs [CONFIRMED].
+
+### 5.4 Wikidata: the word's canonical pictures
+
+The most typical picture of a word is often one Wikidata already names ([#43](https://github.com/martonpaulo/ink2pic/issues/43), owner comments of 2026-11-06): the Esperanto flag, Napoleon's portrait. Wikidata is keyless and is not a picture source of its own: it names Commons files.
+
+- Request 1: `https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&sites=enwiki&titles=<word>&normalize=1&props=claims`, the item the English Wikipedia article of that title is about. One request, with case and redirects resolved; the owner's proposal, `wbsearchentities` then the claims, costs one request more, so it waits for a device test that misses a word this way [DEFAULT].
+- From the claims, flag (P41), logo or symbol (P154) and image (P18), in that order: the preferred statement, else the first normal one, never a deprecated one.
+- Request 2: those files from Commons in one `titles=File:A|File:B` query with the search's `imageinfo` fields, so license and attribution come with them [CONFIRMED 2026-11-06, live, for the Commons half]. No item, or no picture claims: no second request.
+- The response shapes come from the documented API: `www.wikidata.org` is refused by the cloud session's proxy, so the first live run is on the device [TO TEST]. A large item (a famous person) sends all its claims, likely hundreds of KB before compression [INFERENCE, TO TEST on the device].
+- English titles only; a word whose article is a disambiguation page gets no canonical picture [DEFAULT].
+
+### 5.5 Ranking and its measurement
+
+Page 1 shows the most typical picture of the word first ([#43](https://github.com/martonpaulo/ink2pic/issues/43)). `src/search/rank.ts` holds the rule; every signal is one the sources already return, with no request per result:
+
+1. A title that names the word with at most one other word (`Cat silhouette`, `Esperanto-flago`) scores highest; one that names it in a longer phrase scores less; one that does not name it, least. Plurals count.
+2. Line-work words (drawing, sketch, silhouette, icon, engraving) add a point; so does Openclipart, or a PNG or SVG on Commons; a photo word removes one.
+3. Logos, wordmarks, maps, diagrams, charts, election margins, anatomy and structure drawings, flags, emblems, coats of arms, signatures, posters, patterns, 3D, AI-generated and gradient graphics fall below every plain picture, photos included.
+4. The canonical pictures from Wikidata follow the best-ranked result, so page 1 holds both a simple drawing and, for a person, the real portrait; a photo is never moved last when it is the canonical image.
+5. Ties keep each source's order and alternate the sources; a file two sources return is shown once.
+
+Requests per search: 2 before; 4 after when the word has a Wikidata item with pictures (Openclipart, Commons drawings, Wikidata, Commons files), 3 when it has none, and one more only when Commons has fewer than six drawings (none of the 19 words below).
+
+Measured on 2026-11-06 with the live APIs from the cloud session, by a scratch script that ran the pipeline before and after the change on 19 words. Openclipart and Commons answered every request; `www.wikidata.org` was refused by the session proxy, so the canonical pictures are not in this table [TO TEST on the device]. «Typical picture at» is the position of the first plain drawing of the word on page 1, judged by title, since the session cannot open Commons thumbnails; «Simple drawings» counts them among the six.
+
+| Word | First result, before | Typical picture at, before | First result, after | Typical picture at, after | Simple drawings of 6, before → after |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| apple | Apple svg, Apple clipart | 1 | Apple fruit icon | 1 | 5 → 6 |
+| soup | Waitress with cup or bowl | 3 | Soup Ladle | 1 | 1 → 6 |
+| cat | Cat Icon Grey | 1 | Cat Icon Grey | 1 | 5 → 6 |
+| house | Simple house icon | 1 | Simple house icon | 1 | 4 → 4 |
+| tree | Lutz - Xmas tree outline | 1 | Tree-icon-rounded | 1 | 3 → 6 |
+| car | Muscle Car Sketch | 1 | Muscle Car Sketch | 1 | 5 → 6 |
+| dog | dog reading book cute drawing | 2 | Dog Pinhead icon | 1 | 4 → 5 |
+| book | reading purple book icon | 4 | Wikimania2019 book icon | 1 | 1 → 6 |
+| chair | Beach chair silhouette | 1 | Chair-Icon | 1 | 6 → 6 |
+| sun | Sun Icon | 1 | Golden Sun Icon | 1 | 5 → 6 |
+| flower | flower art svg | 1 | Wikimania2019 flower icon | 1 | 3 → 6 |
+| bird | predatory bird silhouette | 1 | Bird Pinhead icon | 1 | 3 → 6 |
+| fish | Flying Fish | 1 | Flying Fish | 1 | 5 → 6 |
+| hat | A chef's hat silhouette art illustration | 2 | Straw hat icon | 1 | 2 → 5 |
+| key | Enter key | 1 | Key Pinhead icon | 1 | 4 → 6 |
+| clock | Old Art Déco clock panel with bird | 3 | Clock group | 1 | 3 → 6 |
+| bicycle | eco green bicycle icon | 1 | Bicycle counter icon | 1 | 4 → 6 |
+| esperanto | Logo Kuba Esperanto-Asocio star | 4 (Openclipart flag) | Esperanto nun | 2 (Openclipart flag) | 1 → 1 |
+| Napoleon | Hortense de Beauharnais | drawing at 4, no portrait | Napoleon | drawing at 1, no portrait | - |
+
+Typical picture first: 12 of 19 words before, 18 of 19 after (Napoleon counted by its drawing); simple drawings on page 1 for the 17 objects: 63 of 102 before, 98 of 102 after. Still open: the Esperanto flag first and Napoleon's portrait both depend on Wikidata, and the judgement reads titles only, so a title such as `Clock group` counts as a drawing that nobody has seen [TO TEST on the device].
 
 ### 5.3 Rejected sources
 
@@ -391,7 +442,7 @@ Targets [INFERENCE, to calibrate on device]:
 - Default inserted width about one third of the page width, about 600 to 700 px on a 1920 px wide Manta page, assuming the host maps image pixels to page pixels 1:1 [TO TEST].
 - Roughly 50 to 150 KB per saved image.
 
-Search-side quality: prefer results that render well in gray (line art, engravings, outlined clipart). Rank or filter accordingly. Show thumbnails converted to gray in the grid so the user sees the e-ink result before inserting [TO TEST cost].
+Search-side quality: prefer results that render well in gray (line art, engravings, outlined clipart), ranked as [section 5.5](#55-ranking-and-its-measurement) defines. Show thumbnails converted to gray in the grid so the user sees the e-ink result before inserting [TO TEST cost].
 
 ---
 
@@ -431,7 +482,7 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 - One status line, two lines high, sits under the search bar on every view and is always there; no message is inserted above the tiles, so a message never shrinks or repaints them. The page's «Loading pictures…» lies over the hidden grid ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
 - As in the system interface: black fill marks the one primary action of a screen (Start, Search); a selected toggle (Library, Log) shows a bar under its label ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
 - The results view is never blank: before any search, and after Search with an empty field, it says «Type a word first.»; a failed lasso opens on it with the field focused ([#50](https://github.com/martonpaulo/ink2pic/issues/50)).
-- Mixed list from both sources, ranked by e-ink suitability (line art and engravings first) [DEFAULT].
+- Mixed list from every source, the most typical picture of the word first: a simple drawing, then the word's canonical pictures from Wikidata, stylised graphics last ([section 5.5](#55-ranking-and-its-measurement), [#43](https://github.com/martonpaulo/ink2pic/issues/43)).
 
 Layout metrics [DEFAULT, calibrate on device]:
 

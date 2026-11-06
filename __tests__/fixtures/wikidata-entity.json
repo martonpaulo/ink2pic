@@ -1,0 +1,26 @@
+{
+ "_fixture": "documented, not captured: the shape of a Wikidata wbgetentities response with sites=enwiki and props=claims; www.wikidata.org is refused from the cloud session; ids and file names are synthetic (#43)",
+ "entities": {
+  "Q100": {
+   "type": "item",
+   "id": "Q100",
+   "claims": {
+    "P31": [
+     {"mainsnak": {"snaktype": "value", "property": "P31", "datavalue": {"value": {"entity-type": "item", "numeric-id": 5, "id": "Q5"}, "type": "wikibase-entityid"}, "datatype": "wikibase-item"}, "type": "statement", "id": "Q100$1", "rank": "normal"}
+    ],
+    "P18": [
+     {"mainsnak": {"snaktype": "value", "property": "P18", "datavalue": {"value": "Example old photo.jpg", "type": "string"}, "datatype": "commonsMedia"}, "type": "statement", "id": "Q100$2", "rank": "normal"},
+     {"mainsnak": {"snaktype": "value", "property": "P18", "datavalue": {"value": "Example portrait.jpg", "type": "string"}, "datatype": "commonsMedia"}, "type": "statement", "id": "Q100$3", "rank": "preferred"}
+    ],
+    "P41": [
+     {"mainsnak": {"snaktype": "value", "property": "P41", "datavalue": {"value": "Example flag.svg", "type": "string"}, "datatype": "commonsMedia"}, "type": "statement", "id": "Q100$4", "rank": "normal"}
+    ],
+    "P154": [
+     {"mainsnak": {"snaktype": "value", "property": "P154", "datavalue": {"value": "Example old logo.svg", "type": "string"}, "datatype": "commonsMedia"}, "type": "statement", "id": "Q100$5", "rank": "deprecated"},
+     {"mainsnak": {"snaktype": "novalue", "property": "P154", "datatype": "commonsMedia"}, "type": "statement", "id": "Q100$6", "rank": "normal"}
+    ]
+   }
+  }
+ },
+ "success": 1
+}

@@ -128,9 +128,9 @@ Ink2Pic never fails silently: it shows one sentence that says what to do.
 
 ## Privacy
 
-Ink2Pic sends only the searched word, and only to Openclipart and Wikimedia Commons. The device
-reads your handwriting itself; your notes never leave the device. Ink2Pic has no account, no server
-and no analytics.
+Ink2Pic sends only the searched word, and only to Openclipart, Wikimedia Commons and Wikidata,
+which names the word's typical pictures on Commons. The device reads your handwriting itself; your
+notes never leave the device. Ink2Pic has no account, no server and no analytics.
 
 ## Picture sources and licenses
 

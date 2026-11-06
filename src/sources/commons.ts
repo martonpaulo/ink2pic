@@ -1,12 +1,18 @@
 /**
- * Wikimedia Commons through the MediaWiki Action API (brief section 5.2). Built from the
- * documented response shape; the cloud IP is throttled, so the device run captures a real one.
+ * Wikimedia Commons through the MediaWiki Action API (brief section 5.2): a search for drawings,
+ * and the files Wikidata names for a word (#43). Fixtures are cut from real responses.
  */
-import {fetchText, HttpDeps} from './http';
+import {apiFailure, fetchText, HttpDeps} from './http';
 import {SearchResult, SourceOutcome, sourceFailure} from './types';
 import {USER_AGENT} from '../config';
+import {PAGE_SIZE} from '../search/pages';
 
 const API = 'https://commons.wikimedia.org/w/api.php';
+const INFO_PARAMS = [
+  'prop=imageinfo',
+  'iiprop=url|mime|size|extmetadata',
+  'iiextmetadatafilter=LicenseShortName|Artist|Credit',
+];
 
 /** Thumbnail widths Wikimedia serves without strict rate limits (brief section 5.2). */
 export const COMMONS_WIDTHS = [
@@ -17,7 +23,13 @@ const THUMB_WIDTH = 330;
 /** Enough for two or three result pages, small enough to stay polite (brief section 5.2). */
 const MIN_LIMIT = 12;
 const MAX_LIMIT = 18;
-const THROTTLE_CODES = new Set(['ratelimited', 'maxlag']);
+/**
+ * CirrusSearch keyword for SVG and other drawings [CONFIRMED 2026-11-06, live]: it keeps photos,
+ * audio, video and PDF scans out of the results (#43).
+ */
+export const DRAWING_FILTER = 'filetype:drawing';
+/** Pictures only: audio, video and scanned documents have thumbnails but are not pictures. */
+const PICTURE_MIME = /^image\/(?!vnd\.djvu)/;
 const FALLBACK_ATTRIBUTION = 'Wikimedia Commons';
 
 type Meta = Record<string, {value?: string} | undefined>;
@@ -50,19 +62,35 @@ export function nearestWidth(width: number): number {
 
 export function searchUrl(
   query: string,
-  {limit = MAX_LIMIT, thumbWidth = THUMB_WIDTH} = {},
+  {limit = MAX_LIMIT, thumbWidth = THUMB_WIDTH, drawings = false} = {},
 ): string {
+  const search = drawings ? `${query.trim()} ${DRAWING_FILTER}` : query.trim();
   const params = [
     'action=query',
     'format=json',
     'formatversion=2',
     'generator=search',
     'gsrnamespace=6',
-    `gsrsearch=${encodeURIComponent(query.trim())}`,
+    `gsrsearch=${encodeURIComponent(search)}`,
     `gsrlimit=${Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, limit))}`,
-    'prop=imageinfo',
-    'iiprop=url|mime|size|extmetadata',
-    'iiextmetadatafilter=LicenseShortName|Artist|Credit',
+    ...INFO_PARAMS,
+    `iiurlwidth=${nearestWidth(thumbWidth)}`,
+  ];
+  return `${API}?${params.join('&')}`;
+}
+
+/** The named files (without `File:`), with the same fields a search returns. */
+export function filesUrl(
+  names: readonly string[],
+  {thumbWidth = THUMB_WIDTH} = {},
+): string {
+  const titles = names.map(name => `File:${name}`).join('|');
+  const params = [
+    'action=query',
+    'format=json',
+    'formatversion=2',
+    `titles=${encodeURIComponent(titles)}`,
+    ...INFO_PARAMS,
     `iiurlwidth=${nearestWidth(thumbWidth)}`,
   ];
   return `${API}?${params.join('&')}`;
@@ -112,7 +140,7 @@ function plainText(html: string): string {
 function toResult(page: Page): SearchResult | null {
   const info = page.imageinfo?.[0];
   const thumb = info?.thumburl;
-  if (!info || !thumb) {
+  if (!info || !thumb || (info.mime && !PICTURE_MIME.test(info.mime))) {
     return null;
   }
   const meta = info.extmetadata ?? {};
@@ -132,8 +160,32 @@ function toResult(page: Page): SearchResult | null {
   };
 }
 
+const bySearchRank = (pages: Page[]) =>
+  [...pages].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+
 /** Results in search rank order, or why there are none. */
 export function parseSearchResponse(text: string): SourceOutcome {
+  return parseQuery(text, bySearchRank);
+}
+
+/** The named files in the order given; a missing file is left out. */
+export function parseFilesResponse(
+  text: string,
+  names: readonly string[],
+): SourceOutcome {
+  const rank = (page: Page) => {
+    const at = names.indexOf(page.title.replace(/^File:/, ''));
+    return at < 0 ? names.length : at;
+  };
+  return parseQuery(text, pages =>
+    [...pages].sort((a, b) => rank(a) - rank(b)),
+  );
+}
+
+function parseQuery(
+  text: string,
+  order: (pages: Page[]) => Page[],
+): SourceOutcome {
   let data: Response;
   try {
     data = JSON.parse(text) as Response;
@@ -144,33 +196,69 @@ export function parseSearchResponse(text: string): SourceOutcome {
     return sourceFailure('parse', 'the response is not a JSON object');
   }
   if (data.error) {
-    const kind = THROTTLE_CODES.has(data.error.code ?? '')
-      ? 'throttled'
-      : 'http';
-    return sourceFailure(kind, `${data.error.code}: ${data.error.info}`);
+    return apiFailure(data.error);
   }
   if (!data.query) {
     return data.batchcomplete
       ? {ok: true, results: []}
       : sourceFailure('parse', 'neither query nor error in the response');
   }
-  const pages = [...(data.query.pages ?? [])].sort(
-    (a, b) => (a.index ?? 0) - (b.index ?? 0),
-  );
   return {
     ok: true,
-    results: pages.map(toResult).filter((r): r is SearchResult => r !== null),
+    results: order(data.query.pages ?? [])
+      .map(toResult)
+      .filter((r): r is SearchResult => r !== null),
   };
 }
 
+async function ask(
+  url: string,
+  deps: HttpDeps,
+  parse: (text: string) => SourceOutcome,
+): Promise<SourceOutcome> {
+  const response = await fetchText(url, deps, {'Api-User-Agent': USER_AGENT});
+  return response.ok
+    ? parse(response.text)
+    : sourceFailure(response.kind, response.message);
+}
+
+/**
+ * Drawings first (#43). Only when they fill less than one results page does a plain search add
+ * what Commons has, so a word with no drawing still shows pictures.
+ */
 export async function searchCommons(
   query: string,
   deps: HttpDeps,
 ): Promise<SourceOutcome> {
-  const response = await fetchText(searchUrl(query), deps, {
-    'Api-User-Agent': USER_AGENT,
-  });
-  return response.ok
-    ? parseSearchResponse(response.text)
-    : sourceFailure(response.kind, response.message);
+  const drawings = await ask(
+    searchUrl(query, {drawings: true}),
+    deps,
+    parseSearchResponse,
+  );
+  if (!drawings.ok || drawings.results.length >= PAGE_SIZE) {
+    return drawings;
+  }
+  const plain = await ask(searchUrl(query), deps, parseSearchResponse);
+  if (!plain.ok) {
+    return drawings;
+  }
+  const seen = new Set(drawings.results.map(result => result.id));
+  return {
+    ok: true,
+    results: [
+      ...drawings.results,
+      ...plain.results.filter(result => !seen.has(result.id)),
+    ],
+  };
+}
+
+/** The named Commons files as results, in the order given; no request for an empty list. */
+export async function commonsFiles(
+  names: readonly string[],
+  deps: HttpDeps,
+): Promise<SourceOutcome> {
+  if (names.length === 0) {
+    return {ok: true, results: []};
+  }
+  return ask(filesUrl(names), deps, text => parseFilesResponse(text, names));
 }

@@ -14,9 +14,12 @@ Measured in the first Ink2Pic cloud backlog run, on 2026-11-06:
 - Network, by HTTP status of the site root: `openclipart.org` 200, `commons.wikimedia.org` 301
   (the redirect to the main page), `dl.google.com` 302, `repo1.maven.org` 429 at the root and 200
   for `/maven2/`.
-- The Commons Action API (`/w/api.php`, a file search) answered **429** on the first call: the
-  shared cloud IP is throttled. The Commons client is built from documented fixtures, and the live
-  capture is left to a device run.
+- The Commons Action API (`/w/api.php`, a file search) answers **429** to some calls: the shared
+  cloud IP is throttled. Searches spaced 4 s apart all answered on 2026-11-06, and the newer
+  fixtures are cut from those real responses ([#43](https://github.com/martonpaulo/ink2pic/issues/43)).
+- `www.wikidata.org`, `query.wikidata.org` and `en.wikipedia.org` are refused by the session proxy
+  (CONNECT 403, 2026-11-06): the Wikidata client is built from the documented response shape, and
+  its live run is left to the device.
 - The gate user `ink2pic-gates` exists; run the gate as
   `sudo -u ink2pic-gates -H bash -c 'cd /home/user/ink2pic && npm run validate'`.
 - No Supernote. Every device behavior stays a test the owner runs.

@@ -21,8 +21,8 @@ background that cannot move ([brief section 13](brief.md#13-history-of-options-c
 ## What it does
 
 - Turns a lassoed handwritten word into a search, with the text editable before searching.
-- Shows pictures from keyless public sources (Openclipart, Wikimedia Commons), best for e-ink
-  first, six per page.
+- Shows pictures from keyless public sources (Openclipart, Wikimedia Commons, with Wikidata naming
+  a word's typical pictures), the most typical picture of the word first, six per page.
 - Inserts the chosen picture with one tap, already sized and converted for the 16-gray screen.
 - Keeps every inserted picture, with its license and attribution, in a library that works offline.
 

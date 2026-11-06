@@ -79,13 +79,35 @@ describe('searchAll', () => {
 });
 
 describe('defaultSources', () => {
-  it('queries Openclipart and Commons with the given fetch', async () => {
+  it('queries Openclipart, Commons and Wikidata with the given fetch', async () => {
     const fetch = jest
       .fn()
       .mockResolvedValue({ok: false, status: 503, text: jest.fn()});
     const outcome = await searchAll('soup', defaultSources(fetch));
-    expect(Object.keys(outcome.statuses)).toEqual(['openclipart', 'commons']);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(Object.keys(outcome.statuses)).toEqual([
+      'openclipart',
+      'commons',
+      'wikidata',
+    ]);
+    // A failed request is never retried: one per source.
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('ranks with the query: the plain picture of the word comes first (#43)', async () => {
+    const titled = (id: string, title: string): SearchResult => ({
+      ...result(id),
+      title,
+    });
+    const outcome = await searchAll('cat', [
+      answering('a', {
+        ok: true,
+        results: [
+          titled('a1', 'Man walking past a house'),
+          titled('a2', 'Cat'),
+        ],
+      }),
+    ]);
+    expect(outcome.results.map(x => x.id)).toEqual(['a2', 'a1']);
   });
 });
 
