@@ -1,11 +1,26 @@
 /**
  * One result type for every SDK call, so no failure is swallowed and none throws past a wrapper.
  */
-export type Failure = {ok: false; code: number; message: string};
+export type Failure = {
+  ok: false;
+  code: number;
+  message: string;
+  /** The text code a plugin native module rejected with, such as `IO` or `TOO_LARGE` (#49). */
+  moduleCode?: string;
+};
 export type Result<T> = {ok: true; value: T} | Failure;
 
-/** Code used when a call threw instead of returning the SDK's response shape. */
+/*
+ * Every negative code, here and nowhere else (#49): the SDK's own codes are positive.
+ */
+/** A call threw, or answered outside its expected shape. */
 export const THROWN_CODE = -1;
+/** A plugin native module rejected; its text code is in `moduleCode`. */
+export const MODULE_CODE = -2;
+/** A call gave no answer within its time limit. */
+export const TIMEOUT_CODE = -3;
+/** The lasso holds no handwriting. */
+export const EMPTY_LASSO_CODE = -4;
 
 type SdkResponse = {
   success?: boolean;
@@ -17,8 +32,14 @@ export function ok<T>(value: T): Result<T> {
   return {ok: true, value};
 }
 
-export function fail(code: number, message: string): Failure {
-  return {ok: false, code, message};
+export function fail(
+  code: number,
+  message: string,
+  moduleCode?: string,
+): Failure {
+  return moduleCode === undefined
+    ? {ok: false, code, message}
+    : {ok: false, code, message, moduleCode};
 }
 
 /** Maps the SDK's `{success, result, error}` response to a Result. */

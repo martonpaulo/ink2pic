@@ -4,16 +4,19 @@
  */
 import {NativeModules} from 'react-native';
 import {USER_AGENT} from '../config';
-import {fail, ok, Result} from '../sdk/result';
+import {fail, MODULE_CODE, ok, Result} from '../sdk/result';
 
-/** The module's rejection codes, plus MISSING when PluginHost did not load it. */
+/**
+ * The module's rejection codes, plus MISSING when PluginHost did not load it. IO carries an error
+ * Android raised; `HTTP_<status>` a download that was not HTTP 200.
+ */
 export type FilesErrorCode =
   | 'HTTPS_ONLY'
   | 'BAD_PATH'
   | 'TOO_LARGE'
   | 'IO'
   | 'MISSING'
-  | string;
+  | `HTTP_${number}`;
 
 type NativeFiles = {
   downloadToFile: (
@@ -32,12 +35,10 @@ type NativeFiles = {
   listDir: (path: string) => Promise<string[] | null>;
 };
 
-/** Distinct from the SDK's numeric codes: the module rejects with a text code. */
-const MODULE_CODE = -2;
-
 /**
  * Calls one of the plugin's own native modules and maps a rejection to a Failure that keeps the
- * module's text code; MISSING when PluginHost did not load the module.
+ * module's text code in `moduleCode`, and in the message for the log; MISSING when PluginHost did
+ * not load the module.
  */
 export async function callModule<M, T>(
   name: string,
@@ -48,6 +49,7 @@ export async function callModule<M, T>(
     return fail(
       MODULE_CODE,
       `MISSING: ${name} is not loaded; check reactPackages in PluginConfig.json`,
+      'MISSING',
     );
   }
   try {
@@ -55,7 +57,7 @@ export async function callModule<M, T>(
   } catch (error) {
     const code = (error as {code?: string}).code ?? 'IO';
     const message = error instanceof Error ? error.message : String(error);
-    return fail(MODULE_CODE, `${code}: ${message}`);
+    return fail(MODULE_CODE, `${code}: ${message}`, code);
   }
 }
 

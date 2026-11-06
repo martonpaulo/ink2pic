@@ -496,8 +496,8 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `insert.running` | Adding to your note… |
 | `error.offline` | No internet. Showing your library. |
 | `error.sourceDown` | One source did not answer. Showing the other one. |
-| `error.permission.internet` | Ink2Pic needs internet access to search pictures. |
-| `error.permission.files` | Ink2Pic needs file access to save pictures to your library. |
+| `error.permission.internet` | Ink2Pic needs Network Access to search pictures. |
+| `error.permission.files` | Ink2Pic needs Read Files and Modify Files to save pictures to your library. |
 | `error.permission.settings` | To allow it, open Settings > Apps > Plugins > Ink2Pic > Permissions. |
 | `error.recognition` | Could not read the word. Type it instead. |
 | `error.emptyLasso` | There is no handwriting in the lasso. Type the word instead. |
@@ -506,7 +506,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `error.download` | Could not get this picture. Try another one. |
 | `error.save` | Could not save the picture. Free some space on the device and try again. |
 | `error.place` | Could not put the picture in the note. Open a note page and try again. |
-| `error.unexpected` | Something went wrong. Open Log for details. |
+| `error.unexpected` | Something went wrong. Close Ink2Pic and open it again. |
 | `onboarding.1` | Write a word in your note. |
 | `onboarding.2` | Circle it with the lasso. |
 | `onboarding.3` | Tap Find picture and choose one. |
@@ -514,10 +514,15 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 
 Permission request descriptions (`requestPermission(permission, desc)`) reuse the `error.permission.*` texts.
 
-Every failure shows one of these sentences, never a code; the log keeps the detail. One module,
-`src/flow/failure.ts`, maps a failure (its step, code and message) to its keys; a missing
-permission (error 1503, or `EACCES` from the file module) shows its `error.permission.*` text
-followed by `error.permission.settings` ([#37](https://github.com/martonpaulo/ink2pic/issues/37)).
+Every failure shows one of these sentences, never a code, and each names a step the person can
+take; the log keeps the detail. One module, `src/flow/failure.ts`, maps a failure (its step,
+numeric code and the native module's text code) to its keys; only the text of an Android OS error
+(module code `IO`) is matched. A missing permission (error 1503, or `EACCES` from the file module)
+shows its `error.permission.*` text, named as the Settings screen names it, followed by
+`error.permission.settings` ([#37](https://github.com/martonpaulo/ink2pic/issues/37)). Any other
+download failure shows `error.download`; `error.unexpected` is the failed start
+([#49](https://github.com/martonpaulo/ink2pic/issues/49)). Every negative code lives in
+`src/sdk/result.ts`.
 
 ---
 

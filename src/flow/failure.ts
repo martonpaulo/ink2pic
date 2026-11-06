@@ -1,11 +1,13 @@
 /**
  * The one mapping from a failure to the sentence the person reads (#37): it names the cause and
  * the next step, never a code. The technical detail stays in the log (`logged` writes it).
+ * It reads typed codes; only the text of an Android OS error is matched (#49).
  */
-import {logged, TIMEOUT_CODE} from '../log/memory';
+import {logged} from '../log/memory';
 import {hasPermission, PERMISSION_INTERNET} from '../sdk/plugin';
-import type {Failure} from '../sdk/result';
+import {EMPTY_LASSO_CODE, Failure, TIMEOUT_CODE} from '../sdk/result';
 import type {SearchOutcome} from '../search/search';
+import type {FilesErrorCode} from '../storage/files';
 import {copy, CopyKey} from '../ui/copy';
 
 /** Where a failure happened: reading the lasso, getting the picture, or putting it in the note. */
@@ -20,8 +22,9 @@ export function atStep(step: Step, failure: Failure): StepFailure {
 
 /** sn-plugin-lib's code for a missing file permission (brief section 10.5). */
 export const FILE_PERMISSION_CODE = 1503;
-/** The lasso holds no handwriting; SDK codes are positive, module codes -2, timeouts -3. */
-export const EMPTY_LASSO_CODE = -4;
+
+/** The module's code for an error Android raised; its text is the only cause it carries. */
+const OS_ERROR: FilesErrorCode = 'IO';
 
 /**
  * Android's answer to a socket or a host lookup without the INTERNET permission; checked before
@@ -33,8 +36,6 @@ const STORAGE =
   /ENOSPC|No space left|EROFS|Read-only file system|cannot create folder|cannot rename|cannot replace/i;
 const NO_INTERNET =
   /UnknownHost|Unable to resolve host|SocketTimeout|ConnectException|NoRouteToHost|SocketException|SSL/i;
-/** The plugin's file module rejects a download that is not HTTP 200 with `HTTP_<status>`. */
-const HTTP_STATUS = /^HTTP_\d+/;
 
 const MISSING_FILES: readonly CopyKey[] = [
   'error.permission.files',
@@ -45,7 +46,8 @@ const MISSING_INTERNET: readonly CopyKey[] = [
   'error.permission.settings',
 ];
 
-function downloadKeys({code, message}: Failure): readonly CopyKey[] {
+/** The keys for an Android OS error, from its text; null when the text names no known cause. */
+function osErrorKeys(message: string): readonly CopyKey[] | null {
   if (NO_INTERNET_PERMISSION.test(message)) {
     return MISSING_INTERNET;
   }
@@ -55,13 +57,22 @@ function downloadKeys({code, message}: Failure): readonly CopyKey[] {
   if (STORAGE.test(message)) {
     return ['error.save'];
   }
-  if (code === TIMEOUT_CODE || NO_INTERNET.test(message)) {
+  if (NO_INTERNET.test(message)) {
     return ['error.downloadOffline'];
   }
-  if (HTTP_STATUS.test(message)) {
-    return ['error.download'];
+  return null;
+}
+
+/**
+ * Any other download failure (an HTTP status, TOO_LARGE, NOT_IMAGE, a module that did not load)
+ * belongs to this picture: another one may work.
+ */
+function downloadKeys({code, message, moduleCode}: Failure): readonly CopyKey[] {
+  if (code === TIMEOUT_CODE) {
+    return ['error.downloadOffline'];
   }
-  return ['error.unexpected'];
+  const fromOs = moduleCode === OS_ERROR ? osErrorKeys(message) : null;
+  return fromOs ?? ['error.download'];
 }
 
 /** The copy keys of the sentence for a failure, in order. */

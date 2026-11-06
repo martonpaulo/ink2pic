@@ -1,4 +1,5 @@
 import {NativeModules} from 'react-native';
+import {MODULE_CODE} from '../src/sdk/result';
 import {prepareForEink} from '../src/storage/image';
 
 const native = {prepareForEink: jest.fn()};
@@ -30,8 +31,9 @@ describe('prepareForEink (#17)', () => {
     );
     expect(await prepareForEink('/s/a', '/s/b.jpg', 640, 'jpg')).toEqual({
       ok: false,
-      code: -2,
+      code: MODULE_CODE,
       message: 'NOT_IMAGE: cannot decode /s/a',
+      moduleCode: 'NOT_IMAGE',
     });
   });
 
@@ -41,5 +43,6 @@ describe('prepareForEink (#17)', () => {
     expect(result.ok === false && result.message).toMatch(
       /^MISSING: Ink2PicImage .*reactPackages/,
     );
+    expect(result.ok === false && result.moduleCode).toBe('MISSING');
   });
 });

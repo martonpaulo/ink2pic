@@ -21,9 +21,9 @@ export const copy = {
   'error.offline': 'No internet. Showing your library.',
   'error.sourceDown': 'One source did not answer. Showing the other one.',
   'error.permission.internet':
-    'Ink2Pic needs internet access to search pictures.',
+    'Ink2Pic needs Network Access to search pictures.',
   'error.permission.files':
-    'Ink2Pic needs file access to save pictures to your library.',
+    'Ink2Pic needs Read Files and Modify Files to save pictures to your library.',
   'error.permission.settings':
     'To allow it, open Settings > Apps > Plugins > Ink2Pic > Permissions.',
   'error.recognition': 'Could not read the word. Type it instead.',
@@ -49,7 +49,8 @@ export const copy = {
     'Could not put the picture in the note. Open a note page and try again.',
   'error.placeSlow':
     'The picture may still appear. Check the page before you try again.',
-  'error.unexpected': 'Something went wrong. Open Log for details.',
+  'error.unexpected':
+    'Something went wrong. Close Ink2Pic and open it again.',
   // Outside the brief's table: the starting screen (#12, build 0.1.0 (7)).
   'app.starting': 'Starting…',
   // Outside the brief's table: the empty Library tab (#15).

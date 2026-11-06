@@ -6,13 +6,8 @@ import React from 'react';
 import {NativeModules, Text} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {PluginManager} from 'sn-plugin-lib';
-import {
-  EMPTY_LASSO_CODE,
-  failureText,
-  isOffline,
-  Step,
-} from '../src/flow/failure';
-import {TIMEOUT_CODE} from '../src/log/memory';
+import {failureText, isOffline, Step} from '../src/flow/failure';
+import {EMPTY_LASSO_CODE, MODULE_CODE, TIMEOUT_CODE} from '../src/sdk/result';
 import type {Source} from '../src/search/search';
 import type {SourceOutcome} from '../src/sources/types';
 import {copy} from '../src/ui/copy';
@@ -125,18 +120,23 @@ describe('visible failures (#19)', () => {
 
 const at = (step: Step, code: number, message: string) =>
   failureText({ok: false, code, message, step});
+/** A download the plugin's module rejected with `moduleCode`; `osText` only for an IO error. */
+const rejected = (moduleCode: string, osText = 'detail for the log') =>
+  failureText({
+    ok: false,
+    code: MODULE_CODE,
+    message: `${moduleCode}: ${osText}`,
+    moduleCode,
+    step: 'download',
+  });
 const sentence = (...keys: (keyof typeof copy)[]) =>
   keys.map(key => copy[key]).join(' ');
 
-describe('the sentence for each failure (#37)', () => {
+describe('the sentence for each failure (#37, #49)', () => {
   it.each([
     [
       'the internet dropped during the download',
-      at(
-        'download',
-        -2,
-        'IO: java.net.UnknownHostException: Unable to resolve host',
-      ),
+      rejected('IO', 'java.net.UnknownHostException: Unable to resolve host'),
       sentence('error.downloadOffline'),
     ],
     [
@@ -146,28 +146,25 @@ describe('the sentence for each failure (#37)', () => {
     ],
     [
       'the internet permission is missing',
-      at(
-        'download',
-        -2,
-        'IO: java.net.SocketException: socket failed: EACCES (Permission denied)',
+      rejected(
+        'IO',
+        'java.net.SocketException: socket failed: EACCES (Permission denied)',
       ),
       sentence('error.permission.internet', 'error.permission.settings'),
     ],
     [
       'the internet permission is missing at the host lookup',
-      at(
-        'download',
-        -2,
-        'IO: java.net.UnknownHostException: Unable to resolve host "openclipart.org": android_getaddrinfo failed: EACCES (Permission denied)',
+      rejected(
+        'IO',
+        'java.net.UnknownHostException: Unable to resolve host "openclipart.org": android_getaddrinfo failed: EACCES (Permission denied)',
       ),
       sentence('error.permission.internet', 'error.permission.settings'),
     ],
     [
       'the file permission is missing at the download',
-      at(
-        'download',
-        -2,
-        'IO: java.io.FileNotFoundException: open failed: EACCES (Permission denied)',
+      rejected(
+        'IO',
+        'java.io.FileNotFoundException: open failed: EACCES (Permission denied)',
       ),
       sentence('error.permission.files', 'error.permission.settings'),
     ],
@@ -183,21 +180,51 @@ describe('the sentence for each failure (#37)', () => {
     ],
     [
       'the storage is full',
-      at(
-        'download',
-        -2,
-        'IO: java.io.IOException: write failed: ENOSPC (No space left on device)',
+      rejected(
+        'IO',
+        'java.io.IOException: write failed: ENOSPC (No space left on device)',
       ),
       sentence('error.save'),
     ],
     [
       'the folder cannot be written',
-      at('download', -2, 'IO: java.io.IOException: cannot create folder /x'),
+      rejected('IO', 'java.io.IOException: cannot create folder /x'),
       sentence('error.save'),
     ],
     [
       'the source refused the picture',
-      at('download', -2, 'HTTP_503: HTTP 503 for https://x'),
+      rejected('HTTP_503'),
+      sentence('error.download'),
+    ],
+    [
+      'the picture is too large',
+      rejected('TOO_LARGE'),
+      sentence('error.download'),
+    ],
+    [
+      'the file is not a picture',
+      rejected('NOT_IMAGE'),
+      sentence('error.download'),
+    ],
+    [
+      'the downloaded file is gone',
+      rejected('NOT_FOUND'),
+      sentence('error.download'),
+    ],
+    ['the path was refused', rejected('BAD_PATH'), sentence('error.download')],
+    [
+      'the file module did not load',
+      rejected('MISSING'),
+      sentence('error.download'),
+    ],
+    [
+      'an Android error with no known cause',
+      rejected('IO', 'java.lang.IllegalStateException: odd'),
+      sentence('error.download'),
+    ],
+    [
+      'a typed code wins over text that looks like a permission error',
+      rejected('TOO_LARGE', 'EACCES (Permission denied)'),
       sentence('error.download'),
     ],
     [
@@ -215,13 +242,25 @@ describe('the sentence for each failure (#37)', () => {
       at('place', 107, 'bad element'),
       sentence('error.place'),
     ],
-    [
-      'an unexpected error',
-      at('download', -2, 'MISSING: Ink2PicFiles is not loaded'),
-      sentence('error.unexpected'),
-    ],
   ])('%s', (_, shown, expected) => {
     expect(shown).toBe(expected);
     expect(shown).not.toMatch(/\d{3}|EACCES|java/);
+  });
+
+  it('gives every error a next step, never the developer log (#49)', () => {
+    const errors = Object.entries(copy).filter(([key]) =>
+      key.startsWith('error.'),
+    );
+    expect(errors.length).toBeGreaterThan(10);
+    for (const [, text] of errors) {
+      expect(text).not.toMatch(/\bLog\b/);
+    }
+  });
+
+  it('names each permission as the Settings screen does (#49)', () => {
+    expect(copy['error.permission.internet']).toContain('Network Access');
+    expect(copy['error.permission.files']).toContain(
+      'Read Files and Modify Files',
+    );
   });
 });

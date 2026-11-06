@@ -6,7 +6,7 @@
 import {flushLogFile, openLogFile} from '../log/file';
 import {logged, setAfterCall} from '../log/memory';
 import {getPluginDirPath} from '../sdk/plugin';
-import {fail, ok, Result} from '../sdk/result';
+import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
 import {logsDir} from '../storage/paths';
 
 /**
@@ -31,7 +31,7 @@ export async function sessionPaths(): Promise<Result<SessionPaths>> {
   cached = {root: SHARED_ROOT, pluginDir: dir.value};
   openLogFile(logsDir(cached.root));
   setAfterCall(flushLogFile);
-  return cached ? ok(cached) : fail(-1, 'no session paths');
+  return cached ? ok(cached) : fail(THROWN_CODE, 'no session paths');
 }
 
 export function resetSessionForTests(): void {

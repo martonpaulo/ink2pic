@@ -1,4 +1,5 @@
 import {NativeModules} from 'react-native';
+import {MODULE_CODE} from '../src/sdk/result';
 import {downloadToFile, readText, writeText} from '../src/storage/files';
 import {libraryDir, safeFileName} from '../src/storage/paths';
 
@@ -34,8 +35,9 @@ describe('files (#11)', () => {
     const result = await downloadToFile('https://x.test/', '/s/a');
     expect(result).toEqual({
       ok: false,
-      code: -2,
+      code: MODULE_CODE,
       message: 'HTTP_429: HTTP 429 for https://x.test/',
+      moduleCode: 'HTTP_429',
     });
   });
 
