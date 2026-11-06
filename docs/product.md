@@ -59,6 +59,15 @@ device builds measure one.
 - The agent cannot reach the device. The owner runs every device test
   ([brief section 18](brief.md#18-device-test-protocol)).
 
+## Limits the owner set
+
+| Limit | Value | Set |
+| :--- | :--- | :--- |
+| Time to page 1 of a search | About 2 s on a good Wi-Fi | Owner, 2026-11-06 ([#65](https://github.com/martonpaulo/ink2pic/issues/65)) |
+| Time to insert a picture | About 1.5 s on a good Wi-Fi | Owner, 2026-11-06 |
+| Extra requests when a search finds nothing | At most 3 | Owner, 2026-11-06 ([#71](https://github.com/martonpaulo/ink2pic/issues/71)) |
+| Weight on the device | No machine-learning model or runtime, no large library | Owner, 2026-11-06 |
+
 ## Alternatives considered
 
 New-project gate, 2026-11-06, verdict «build»:

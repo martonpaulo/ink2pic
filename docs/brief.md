@@ -352,7 +352,7 @@ Typical picture first: 12 of 19 words before, 18 of 19 after (Napoleon counted b
 
 | Source | Reason |
 | --- | --- |
-| Openverse API | Anonymous limit reported as 100 requests/day and 5/hour [REPORTED, mcp-openverse README]. Too low |
+| Openverse API | Anonymous limits 20 requests/minute and 200/day per IP, thumbnails 1000/day [CONFIRMED from live response headers, 2026-11-06, [search sources research](research/2026-11-search-sources.md)]; most results for people are NonCommercial or NoDerivatives photos, and abstract words bring unrelated pictures. Optional later source, not adopted |
 | Google Images | No keyless API, scraping is fragile and against terms |
 | Pixabay / Unsplash / Pexels | Require API keys, photo-centric, poor fit for e-ink |
 | Own proxy or Worker | Owner rejected any service |
@@ -863,6 +863,9 @@ Community code read during research (shallow clones, 2026-11-06):
 Search quality research, 2026-11-06 (notes in `docs/research/`):
 
 - [Ranking for e-ink, pixel measures and contour conversion](research/2026-11-search-ranking.md): Openverse's ranking (`WordPress/openverse`, read), XDoG (Winnemöller et al. 2012), graphics-versus-photo features (Athitsos et al. 1997), Stroke Width Transform (Epshtein et al. 2010).
+- [Better keyless picture sources](research/2026-11-search-sources.md): OpenMoji (`hfg-gmuend/openmoji`, CC BY-SA 4.0), emojilib (`muan/emojilib`, MIT), emojibase and CLDR keywords (`milesj/emojibase`, MIT; Unicode-3.0), Iconify icon sets (`iconify/icon-sets`, per-set licences), Openverse, the Met, the Art Institute of Chicago and the Library of Congress APIs, emoji-picker-element (`nolanlawson/emoji-picker-element`, Apache-2.0), informative-drawings (`carolineec/informative-drawings`, MIT, rejected as heavy), Excalidraw libraries, Saber and Rnote (GPL, ideas only).
+- [Query understanding for people, misspellings and other languages](research/2026-11-search-query.md): Wikipedia search with `pageprops` and `pageimages`, `wbsearchentities`, Commons depicts (P180), the signature property (P109), Commons spelling suggestions.
+- [The most typical picture first, and the cleanest line art](research/2026-11-search-iconic.md): Finding iconic images (Berg and Berg 2009), VisualRank (Jing and Baluja 2008), simplicity features (Ke, Tang and Jing 2006), Coherent Line Drawing (Kang et al. 2007; MIT reference code `SSARCandy`, `esimov/colidr`), XDoG reference code (`heitorrapela`, `Kazuhito00`), Potrace (GPL, rejected).
 
 Research method: primary sources first, source code over descriptions, cross-checks, and explicit separation of confirmed facts, reports, inferences and open items, following the owner's `skd-external-research` skill.
 
