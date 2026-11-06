@@ -24,6 +24,8 @@ export const PluginCommAPI = mocks(
   'deleteLassoElements',
   'getCurrentFilePath',
   'getCurrentPageNum',
+  'createElement',
+  'insertPageElements',
 );
 
 export const PluginNoteAPI = mocks(

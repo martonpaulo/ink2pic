@@ -1,7 +1,8 @@
 /**
- * One tap on a result: download it into MyStyle/Ink2Pic/library, insertImage, and record it in
- * the library with its license and attribution (brief sections 8.2 step 6 and 8.6; #12, #14).
- * A library picture is already on the device and is inserted without a download (#15).
+ * One tap on a result: download it, prepare it for e-ink (#17) into MyStyle/Ink2Pic/library,
+ * place it at the lassoed word (#20) or insert it where the host puts it, and record it in the
+ * library with its license and attribution (brief sections 7, 8.2, 8.3, 8.6; #12, #14). A library
+ * picture is already on the device and is inserted without a download (#15).
  */
 import {recordInsert} from '../library/device';
 import {logged} from '../log/memory';
@@ -9,7 +10,9 @@ import {insertImage} from '../sdk/note';
 import {ok, Result} from '../sdk/result';
 import type {SearchResult} from '../sources/types';
 import {downloadToFile} from '../storage/files';
+import {prepareForEink} from '../storage/image';
 import {libraryDir, safeFileName} from '../storage/paths';
+import {LassoPlace, placeAtLasso} from './place';
 import {sessionPaths} from './session';
 
 /** About one third of the 1920 px page (brief section 7); Commons rounds it to 960. */
@@ -21,32 +24,60 @@ export function imageExtension(url: string): string {
   return match ? match[1].toLowerCase() : 'png';
 }
 
-async function download(result: SearchResult): Promise<Result<string>> {
+type Saved = {path: string; size: {width: number; height: number} | null};
+
+/**
+ * Downloads the picture, then prepares it for e-ink into the library file. When the preparation
+ * fails, the downloaded file is used as it is, and the failure is in the log.
+ */
+async function download(result: SearchResult): Promise<Result<Saved>> {
   const paths = await sessionPaths();
   if (!paths.ok) {
     return paths;
   }
   const url = result.fullUrl(INSERT_WIDTH);
-  const path = `${libraryDir(paths.value.root)}/${safeFileName(
-    result.id,
-  )}.${imageExtension(url)}`;
-  const bytes = await logged(`downloadToFile(${url} -> ${path})`, () =>
-    downloadToFile(url, path),
+  const base = `${libraryDir(paths.value.root)}/${safeFileName(result.id)}`;
+  const raw = `${base}.source.${imageExtension(url)}`;
+  const bytes = await logged(`downloadToFile(${url} -> ${raw})`, () =>
+    downloadToFile(url, raw),
   );
-  return bytes.ok ? ok(path) : bytes;
+  if (!bytes.ok) {
+    return bytes;
+  }
+  const prepared = await logged(`prepareForEink(${raw})`, () =>
+    prepareForEink(raw, `${base}.png`, INSERT_WIDTH),
+  );
+  return prepared.ok
+    ? ok({path: `${base}.png`, size: prepared.value})
+    : ok({path: raw, size: null});
+}
+
+/** At the lasso when the view opened from the lasso (#20), else where the host puts it. */
+async function insertInNote(
+  saved: Saved,
+  place: LassoPlace | null,
+): Promise<Result<unknown>> {
+  if (place && saved.size) {
+    const placed = await placeAtLasso(saved.path, saved.size, place);
+    if (placed.ok) {
+      return placed;
+    }
+  }
+  return logged(`insertImage(${saved.path})`, () => insertImage(saved.path));
 }
 
 export async function insertPicture(
   result: SearchResult,
   query: string,
+  place: LassoPlace | null = null,
 ): Promise<Result<string>> {
-  const file = result.localPath ? ok(result.localPath) : await download(result);
-  if (!file.ok) {
-    return file;
+  const saved: Result<Saved> = result.localPath
+    ? ok({path: result.localPath, size: null})
+    : await download(result);
+  if (!saved.ok) {
+    return saved;
   }
-  const inserted = await logged(`insertImage(${file.value})`, () =>
-    insertImage(file.value),
-  );
+  const inserted = await insertInNote(saved.value, place);
   if (!inserted.ok) {
     return inserted;
   }
@@ -60,10 +91,10 @@ export async function insertPicture(
       license: result.license,
       attribution: result.attribution,
       savedAt: new Date().toISOString(),
-      path: file.value,
-      width: INSERT_WIDTH,
-      height: null,
+      path: saved.value.path,
+      width: saved.value.size?.width ?? INSERT_WIDTH,
+      height: saved.value.size?.height ?? null,
     });
   }
-  return ok(file.value);
+  return ok(saved.value.path);
 }

@@ -1,0 +1,61 @@
+/**
+ * Placement at the lassoed word (brief section 8.3, #20; spike S5): a Picture element with the
+ * lasso's top-left corner, inserted with insertPageElements. When anything fails, the caller
+ * falls back to insertImage and the host's placement. The handwritten word is kept [DEFAULT].
+ */
+import {logged} from '../log/memory';
+import type {Rect} from '../sdk/lasso';
+import {
+  createElement,
+  insertPageElements,
+  PICTURE_TYPE,
+  Size,
+} from '../sdk/page';
+import {fail, ok, Result} from '../sdk/result';
+
+/** Where the lasso was when the view opened; lasso context does not survive navigation. */
+export type LassoPlace = {rect: Rect; page: number; pageSize: Size};
+
+/** The picture's rect: the lasso's top-left corner, the picture's size, kept on the page. */
+export function placeRect(
+  lasso: Rect,
+  picture: {width: number; height: number},
+  page: Size,
+): Rect {
+  const width = Math.min(picture.width, page.width);
+  const height = Math.min(picture.height, page.height);
+  const left = Math.max(0, Math.min(lasso.left, page.width - width));
+  const top = Math.max(0, Math.min(lasso.top, page.height - height));
+  return {left, top, right: left + width, bottom: top + height};
+}
+
+export async function placeAtLasso(
+  path: string,
+  picture: {width: number; height: number},
+  place: LassoPlace,
+): Promise<Result<true>> {
+  const created = await logged('createElement(picture)', () =>
+    createElement(PICTURE_TYPE),
+  );
+  if (!created.ok) {
+    return created;
+  }
+  const rect = placeRect(place.rect, picture, place.pageSize);
+  const element = {
+    ...created.value,
+    type: PICTURE_TYPE,
+    pageNum: place.page,
+    layerNum: 0,
+    picture: {picturePath: path, rect},
+  };
+  const inserted = await logged(
+    `insertPageElements(picture at ${JSON.stringify(rect)})`,
+    () => insertPageElements([element], place.page, 0),
+  );
+  if (!inserted.ok) {
+    return inserted;
+  }
+  return inserted.value
+    ? ok(true)
+    : fail(-1, 'insertPageElements answered false');
+}

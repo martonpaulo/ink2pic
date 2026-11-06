@@ -19,7 +19,20 @@ beforeEach(() => {
 
 describe('readLassoQuery (#13)', () => {
   it('recognizes with the page size and trims the text', async () => {
-    expect(await readLassoQuery()).toEqual({ok: true, value: 'soup'});
+    comm.getLassoRect.mockReturnValue(
+      ok({left: 100, top: 200, right: 300, bottom: 260}),
+    );
+    expect(await readLassoQuery()).toEqual({
+      ok: true,
+      value: {
+        query: 'soup',
+        place: {
+          rect: {left: 100, top: 200, right: 300, bottom: 260},
+          page: 3,
+          pageSize: {width: 1920, height: 2560},
+        },
+      },
+    });
     expect(file.getPageSize).toHaveBeenCalledWith(
       '/storage/emulated/0/Note/a.note',
       3,

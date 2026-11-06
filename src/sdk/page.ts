@@ -27,3 +27,22 @@ export function insertElements(
 ): Promise<Result<unknown>> {
   return attempt(() => PluginFileAPI.insertElements(notePath, page, elements));
 }
+
+/** `Element.TYPE_PICTURE` in sn-plugin-lib 0.2.3 (brief section 4.7). */
+export const PICTURE_TYPE = 200;
+
+/** A new element with its native cache, as the official docs require before an insert. */
+export function createElement(
+  type: number,
+): Promise<Result<Record<string, unknown>>> {
+  return attempt(() => PluginCommAPI.createElement(type));
+}
+
+/** Inserts elements into a page of the current file, in pixel coordinates from getPageSize. */
+export function insertPageElements(
+  elements: object[],
+  page: number,
+  layer = 0,
+): Promise<Result<boolean>> {
+  return attempt(() => PluginCommAPI.insertPageElements(elements, page, layer));
+}

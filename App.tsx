@@ -10,6 +10,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
+import type {LassoPlace} from './src/flow/place';
 import {sessionPaths} from './src/flow/session';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
 import {log, logged, startLog} from './src/log/memory';
@@ -43,9 +44,12 @@ type Screen =
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>({name: 'starting'});
   const pressed = useRef(false);
+  // Where the lasso was when the view opened; the picture goes there (#20).
+  const place = useRef<LassoPlace | null>(null);
 
   /** Reads the lasso when the lasso button opened the view; permissions are checked by now. */
   const openSearch = async (buttonId: number) => {
+    place.current = null;
     if (buttonId !== LASSO_BUTTON_ID) {
       setScreen({
         name: 'search',
@@ -56,12 +60,14 @@ function App(): React.JSX.Element {
       return;
     }
     const query = await readLassoQuery();
-    if (!query.ok) {
+    if (query.ok) {
+      place.current = query.value.place;
+    } else {
       log(`recognition failed: ${query.code} ${query.message}`);
     }
     setScreen({
       name: 'search',
-      query: query.ok ? query.value : '',
+      query: query.ok ? query.value.query : '',
       recognitionFailed: !query.ok,
       opened: Date.now(),
     });
@@ -132,7 +138,7 @@ function App(): React.JSX.Element {
 
   const pick = async (result: SearchResult, query: string) => {
     log(`picked ${result.id}`);
-    const inserted = await insertPicture(result, query);
+    const inserted = await insertPicture(result, query, place.current);
     if (inserted.ok) {
       await logged('closePluginView', closePluginView);
     }

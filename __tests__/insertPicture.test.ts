@@ -1,5 +1,5 @@
 import {NativeModules} from 'react-native';
-import {FileUtils, PluginNoteAPI} from 'sn-plugin-lib';
+import {FileUtils, PluginCommAPI, PluginNoteAPI} from 'sn-plugin-lib';
 import {imageExtension, insertPicture} from '../src/flow/insertPicture';
 import {resetSessionForTests} from '../src/flow/session';
 import {resetLibraryForTests} from '../src/library/device';
@@ -16,6 +16,7 @@ const result: SearchResult = {
   license: 'CC0 1.0',
   attribution: 'Openclipart',
 };
+const image = {prepareForEink: jest.fn()};
 const native = {
   downloadToFile: jest.fn(),
   writeText: jest.fn(),
@@ -26,6 +27,12 @@ beforeEach(() => {
   jest.resetAllMocks();
   jest.spyOn(console, 'log').mockImplementation(() => {});
   NativeModules.Ink2PicFiles = native;
+  NativeModules.Ink2PicImage = image;
+  image.prepareForEink.mockResolvedValue({
+    width: 640,
+    height: 593,
+    bytes: 40000,
+  });
   resetSessionForTests();
   resetLibraryForTests();
   closeLogFileForTests();
@@ -54,7 +61,12 @@ describe('insertPicture (#12)', () => {
     });
     expect(native.downloadToFile.mock.calls[0].slice(0, 2)).toEqual([
       'https://openclipart.org/image/640px/340609',
+      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.source.png',
+    ]);
+    expect(image.prepareForEink.mock.calls[0].slice(0, 3)).toEqual([
+      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.source.png',
       path,
+      640,
     ]);
     expect(PluginNoteAPI.insertImage).toHaveBeenCalledWith(path);
     const saved = native.writeText.mock.calls.find(
@@ -105,5 +117,47 @@ describe('insertPicture (#12)', () => {
       imageExtension('https://upload.wikimedia.org/x/960px-Soup.JPG'),
     ).toBe('jpg');
     expect(imageExtension('https://openclipart.org/image/640px/1')).toBe('png');
+  });
+
+  it('uses the downloaded file when the e-ink preparation fails (#17)', async () => {
+    image.prepareForEink.mockRejectedValue(
+      Object.assign(new Error('bad'), {code: 'NOT_IMAGE'}),
+    );
+    const done = await insertPicture(result, 'soup');
+    expect(done.ok && done.value).toMatch(/openclipart-340609\.source\.png$/);
+  });
+
+  it('places the picture at the lasso, else falls back to insertImage (#20)', async () => {
+    const place = {
+      rect: {left: 100, top: 200, right: 300, bottom: 260},
+      page: 3,
+      pageSize: {width: 1920, height: 2560},
+    };
+    (PluginCommAPI.createElement as jest.Mock).mockResolvedValue({
+      success: true,
+      result: {uuid: 'u'},
+    });
+    (PluginCommAPI.insertPageElements as jest.Mock).mockResolvedValue({
+      success: true,
+      result: true,
+    });
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+    const [elements, page, layer] = (
+      PluginCommAPI.insertPageElements as jest.Mock
+    ).mock.calls[0];
+    expect([page, layer]).toEqual([3, 0]);
+    expect(elements[0]).toMatchObject({
+      type: 200,
+      pageNum: 3,
+      picture: {rect: {left: 100, top: 200, right: 740, bottom: 793}},
+    });
+    expect(PluginNoteAPI.insertImage).not.toHaveBeenCalled();
+
+    (PluginCommAPI.insertPageElements as jest.Mock).mockResolvedValue({
+      success: false,
+      error: {code: 107, message: 'bad element'},
+    });
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+    expect(PluginNoteAPI.insertImage).toHaveBeenCalled();
   });
 });

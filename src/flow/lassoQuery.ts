@@ -3,12 +3,18 @@
  * recognizeElements needs: the lasso size fails with 117 (device tests, builds 1 to 3).
  */
 import {logged} from '../log/memory';
-import {getLassoElements, recognizeElements} from '../sdk/lasso';
+import {getLassoElements, getLassoRect, recognizeElements} from '../sdk/lasso';
+import type {LassoPlace} from './place';
 import {getCurrentFilePath, getCurrentPageNum, getPageSize} from '../sdk/page';
 import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
 
-/** The recognized word, trimmed; an empty recognition is a failure, never an empty query. */
-export async function readLassoQuery(): Promise<Result<string>> {
+export type LassoQuery = {query: string; place: LassoPlace | null};
+
+/**
+ * The recognized word, trimmed, and where the lasso was (#20); an empty recognition is a
+ * failure, never an empty query. A missing rect only loses the placement.
+ */
+export async function readLassoQuery(): Promise<Result<LassoQuery>> {
   const elements = await logged('getLassoElements', getLassoElements);
   if (!elements.ok) {
     return elements;
@@ -37,7 +43,14 @@ export async function readLassoQuery(): Promise<Result<string>> {
     return text;
   }
   const query = text.value.trim();
-  return query
-    ? ok(query)
-    : fail(THROWN_CODE, 'the handwriting was recognized as empty text');
+  if (!query) {
+    return fail(THROWN_CODE, 'the handwriting was recognized as empty text');
+  }
+  const rect = await logged('getLassoRect', getLassoRect);
+  return ok({
+    query,
+    place: rect.ok
+      ? {rect: rect.value, page: page.value, pageSize: size.value}
+      : null,
+  });
 }
