@@ -1,6 +1,6 @@
 {
   "name": "Ink2Pic",
-  "desc": "Write a word, get a picture.",
+  "desc": "Write a word, lasso it, and insert a matching picture. The word you search is sent to Openclipart and Wikimedia Commons; pictures are saved in MyStyle/Ink2Pic.",
   "iconPath": "assets/icon.png",
   "versionName": "0.1.0",
   "versionCode": "7",

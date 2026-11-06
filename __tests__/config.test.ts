@@ -23,3 +23,18 @@ describe('USER_AGENT', () => {
     );
   });
 });
+
+describe('review readiness (#28)', () => {
+  it('discloses in desc where the searched word goes', () => {
+    expect(pluginConfig.desc).toMatch(/Openclipart/);
+    expect(pluginConfig.desc).toMatch(/Wikimedia Commons/);
+  });
+
+  it('declares only the permissions the code requests', () => {
+    expect(pluginConfig['uses-permissions']).toEqual([
+      'plugin.permission.INTERNET',
+      'plugin.permission.FILE:READ',
+      'plugin.permission.FILE:WRITE',
+    ]);
+  });
+});
