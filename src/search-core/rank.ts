@@ -4,7 +4,7 @@
  * rest; logos, maps, diagrams and other stylised graphics last (brief sections 5.4, 7 and 8.4).
  * Every signal is one the sources already return: no request per result.
  */
-import {QueryIntent, readIntent, words} from './query';
+import {hasStyle, QueryIntent, readIntent, StyleGroup, words} from './query';
 import type {SearchResult} from './types';
 
 /**
@@ -15,10 +15,19 @@ export type Scorer = (result: SearchResult, intent: QueryIntent) => number;
 
 const LINE_WORK =
   /\b(engraving|etching|woodcut|drawing|line ?art|sketch|outline|silhouette|illustration|clip ?art|icon|lithograph)\b/i;
-const PHOTO = /\b(photo|photograph|picture of)\b/i;
-/** Graphics that are about the word but are not a picture of it (#43). */
-const STYLISED =
-  /\b(logo|wordmark|maps?|diagrams?|charts?|graphs?|elections?|anatomy|structure|coat of arms|coa|herald(ry|ic)|flags?|emblem|signature|poster|screenshot|quote|qr code|pattern|frame|wireframe|3d|ai generated|chatgpt|gradient)\b/i;
+/**
+ * Graphics that are about the word but are not a picture of it (#43), beyond the style groups a
+ * query can ask for: these are never wanted.
+ */
+const STYLISED_OTHER =
+  /\b(elections?|anatomy|structure|coat of arms|coa|herald(ry|ic)|emblem|signature|poster|screenshot|quote|qr code|pattern|frame|wireframe|3d|ai generated|chatgpt|gradient)\b/i;
+/** The style groups that fall with the stylised graphics unless the query asks for them. */
+const STYLISED_GROUPS: readonly StyleGroup[] = [
+  'logo',
+  'flag',
+  'map',
+  'diagram',
+];
 const LINE_FORMATS = new Set(['image/png', 'image/svg+xml']);
 /** Title words that say how the thing is drawn, not what else is in the picture. */
 const FORM_WORDS = new Set([
@@ -49,6 +58,8 @@ const LINE_WORK_SCORE = 1;
 const FORMAT_SCORE = 1;
 const CLIPART_SCORE = 1;
 const PHOTO_SCORE = -1;
+/** A title carrying a style the query asks for («apple logo»), per group (#65). */
+const ASKED_STYLE_SCORE = 2;
 /** Below a photo that names the word: these are about it, not a picture of it. */
 const STYLISED_SCORE = -5;
 const MENTION_SCORE = 1;
@@ -62,7 +73,7 @@ function sameWord(word: string, queryWord: string): boolean {
 }
 
 /** How directly the title names the subject: 0 not at all, else the mention or plain-subject score. */
-const subjectScorer: Scorer = (result, {subject}) => {
+const subjectScorer: Scorer = (result, {subject, styles}) => {
   const have = words(result.title);
   if (
     subject.length === 0 ||
@@ -72,7 +83,11 @@ const subjectScorer: Scorer = (result, {subject}) => {
   }
   const others = new Set(
     have.filter(
-      word => !FORM_WORDS.has(word) && !subject.some(q => sameWord(word, q)),
+      word =>
+        !FORM_WORDS.has(word) &&
+        !subject.some(q => sameWord(word, q)) &&
+        // The style the query asks for is not another thing in the picture: «Apple Inc. logo».
+        ![...styles].some(group => hasStyle(word, group)),
     ),
   );
   return others.size <= PLAIN_SUBJECT_WORDS
@@ -83,11 +98,22 @@ const subjectScorer: Scorer = (result, {subject}) => {
 const lineWorkScorer: Scorer = result =>
   LINE_WORK.test(result.title) ? LINE_WORK_SCORE : 0;
 
-const photoScorer: Scorer = result =>
-  PHOTO.test(result.title) ? PHOTO_SCORE : 0;
+const photoScorer: Scorer = (result, {styles}) =>
+  !styles.has('photo') && hasStyle(result.title, 'photo') ? PHOTO_SCORE : 0;
 
-const stylisedScorer: Scorer = result =>
-  STYLISED.test(result.title) ? STYLISED_SCORE : 0;
+/** One penalty for any stylised graphic the query did not ask for. */
+const stylisedScorer: Scorer = (result, {styles}) =>
+  STYLISED_OTHER.test(result.title) ||
+  STYLISED_GROUPS.some(
+    group => !styles.has(group) && hasStyle(result.title, group),
+  )
+    ? STYLISED_SCORE
+    : 0;
+
+/** The styles the query asks for, each one the title carries. */
+const askedStyleScorer: Scorer = (result, {styles}) =>
+  [...styles].filter(group => hasStyle(result.title, group)).length *
+  ASKED_STYLE_SCORE;
 
 const formatScorer: Scorer = result => {
   if (result.source === 'openclipart') {
@@ -104,6 +130,7 @@ export const DEFAULT_SCORERS: readonly Scorer[] = [
   lineWorkScorer,
   photoScorer,
   stylisedScorer,
+  askedStyleScorer,
   formatScorer,
 ];
 

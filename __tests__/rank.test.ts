@@ -126,3 +126,53 @@ describe('rankForEink', () => {
     expect(firstPage.filter(x => x.source === 'commons')).toHaveLength(3);
   });
 });
+
+describe('style words in the query (#65)', () => {
+  const apples = [
+    r('openclipart', 'Apple'),
+    r('openclipart', 'Red apple icon'),
+    r('commons', 'Apple logo', 'image/svg+xml'),
+    r('commons', 'Apple origins map', 'image/svg+xml'),
+  ];
+
+  it('«apple logo» shows the logo first (owner, 2026-11-06)', () => {
+    expect(rankForEink([apples], 'apple logo')[0].title).toBe('Apple logo');
+  });
+
+  it('«apple» still puts the logo below a plain apple', () => {
+    const titles = rankForEink([apples], 'apple').map(x => x.title);
+    expect(titles.indexOf('Apple logo')).toBeGreaterThan(
+      titles.indexOf('Apple'),
+    );
+  });
+
+  it('a style word cancels only its own group: «apple logo» keeps the map low', () => {
+    const titles = rankForEink([apples], 'apple logo').map(x => x.title);
+    expect(titles[titles.length - 1]).toBe('Apple origins map');
+  });
+
+  it('a plain apple still answers «apple logo», below the logo', () => {
+    expect(einkScore(apples[0], 'apple logo')).toBeGreaterThan(
+      einkScore(r('openclipart', 'Pear'), 'apple logo'),
+    );
+  });
+
+  it('a query of style words alone keeps them as its subject', () => {
+    expect(
+      einkScore(r('commons', 'Flag', 'image/svg+xml'), 'flag'),
+    ).toBeGreaterThan(
+      einkScore(r('commons', 'Logo of a bank', 'image/svg+xml'), 'flag'),
+    );
+  });
+
+  it('«photo» lifts photos, «painting» paintings', () => {
+    const photo = r('commons', 'Apple photo', 'image/jpeg');
+    expect(einkScore(photo, 'apple photo')).toBeGreaterThan(
+      einkScore(photo, 'apple'),
+    );
+    const painting = r('commons', 'Apple painting', 'image/jpeg');
+    expect(einkScore(painting, 'apple painting')).toBeGreaterThan(
+      einkScore(r('commons', 'Apple', 'image/jpeg'), 'apple painting'),
+    );
+  });
+});
