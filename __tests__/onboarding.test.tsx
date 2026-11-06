@@ -54,6 +54,16 @@ describe('permissions', () => {
     );
   });
 
+  it('trusts the host check after a request with an unknown answer (build 0.1.0 (10))', async () => {
+    has.mockResolvedValueOnce(0).mockResolvedValue(1);
+    request.mockResolvedValue(undefined);
+    const outcome = await requestMissing();
+    expect(outcome.denied).toEqual([]);
+    expect(outcome.granted.map(n => n.permission)).toEqual([
+      'plugin.permission.INTERNET',
+    ]);
+  });
+
   it('treats cancel and an SDK error as denied', async () => {
     has.mockResolvedValue(0);
     request.mockResolvedValueOnce(-1).mockRejectedValue(new Error('1500'));

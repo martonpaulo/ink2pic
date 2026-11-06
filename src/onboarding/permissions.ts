@@ -45,6 +45,17 @@ export async function needsOnboarding(): Promise<boolean> {
   return (await missingPermissions()).length > 0;
 }
 
+/**
+ * Asks the host again after a request: on build 0.1.0 (10), «Always Allow» was granted but its
+ * answer was not 1 or 2, and the plugin said the permission was missing (#13).
+ */
+async function grantedNow(need: PermissionNeed): Promise<boolean> {
+  const check = await logged(`hasPermission(${need.permission}) again`, () =>
+    hasPermission(need.permission),
+  );
+  return check.ok && check.value;
+}
+
 /** Requests every missing permission in turn and reports what stays denied. */
 export async function requestMissing(): Promise<{
   granted: PermissionNeed[];
@@ -56,7 +67,10 @@ export async function requestMissing(): Promise<{
     const answer = await logged(`requestPermission(${need.permission})`, () =>
       requestPermission(need.permission, need.reason),
     );
-    if (answer.ok && GRANTING_ANSWERS.has(answer.value)) {
+    if (
+      (answer.ok && GRANTING_ANSWERS.has(answer.value)) ||
+      (await grantedNow(need))
+    ) {
       granted.push(need);
     } else {
       denied.push({
