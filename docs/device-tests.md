@@ -13,6 +13,7 @@ One entry per build sent to the owner's Manta ([brief section 18](brief.md#18-de
 - [Build 0.1.0 (11), 2026-11-06, firmware 3.31.45](#build-010-11-2026-11-06-firmware-33145)
 - [Build 0.1.0 (12), 2026-11-06, firmware 3.31.45](#build-010-12-2026-11-06-firmware-33145)
 - [Build 0.1.0 (13), 2026-11-06, firmware 3.31.45](#build-010-13-2026-11-06-firmware-33145)
+- [Build 0.1.0 (14), 2026-11-06, firmware 3.31.45](#build-010-14-2026-11-06-firmware-33145)
 
 ## Build 0.1.0 (1), 2026-11-06, firmware 3.31.45
 
@@ -126,3 +127,12 @@ Prerelease [`v0.1.0-dev.13`](https://github.com/martonpaulo/ink2pic/releases/tag
 | --- | --- | --- | --- |
 | 2 to 4, 6, 7 | Library kept, typical pictures first, latest press wins, keyboard closes | Pass | Owner report; Wikidata answered (`source wikidata: ok, count 1` for "apple") |
 | 5 Tap a picture | Just below the word | Fail on about half | `SecurityException: no DELETE permission` on the second write of `insert-download.png` and of `library.json`: PluginHost counts replacing a shared file as a delete ([#62](https://github.com/martonpaulo/ink2pic/issues/62)) |
+
+## Build 0.1.0 (14), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.14`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.14), commit `fb69a0d`. Owner report «everything working».
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 Four inserts in a row | All four in the note | Pass | Shared files written in place ([#62](https://github.com/martonpaulo/ink2pic/issues/62)) |
+| 3, 4 Library, then reopen | The four pictures, kept | Pass | `library.json` saves every time |
