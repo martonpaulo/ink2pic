@@ -1,0 +1,4 @@
+{
+  "_fixture": "documented, not captured: a generator=search with no hits answers with batchcomplete and no query (#7)",
+  "batchcomplete": true
+}

@@ -1,0 +1,73 @@
+{
+  "_fixture": "documented, not captured: the shape of a MediaWiki Action API generator=search response with prop=imageinfo and formatversion=2; names and files are synthetic (#7)",
+  "batchcomplete": true,
+  "continue": {"gsroffset": 3, "continue": "gsroffset||"},
+  "query": {
+    "pages": [
+      {
+        "pageid": 2002,
+        "ns": 6,
+        "title": "File:Example soup engraving.png",
+        "index": 2,
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "size": 81234,
+            "width": 1200,
+            "height": 900,
+            "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Example_soup_engraving.png/330px-Example_soup_engraving.png",
+            "thumbwidth": 330,
+            "thumbheight": 248,
+            "url": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Example_soup_engraving.png",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Example_soup_engraving.png",
+            "mime": "image/png",
+            "extmetadata": {
+              "LicenseShortName": {"value": "Public domain", "source": "commons-desc-page"},
+              "Credit": {"value": "Example Archive", "source": "commons-desc-page"}
+            }
+          }
+        ]
+      },
+      {
+        "pageid": 1001,
+        "ns": 6,
+        "title": "File:Example bowl of soup.jpg",
+        "index": 1,
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "size": 204800,
+            "width": 2000,
+            "height": 1500,
+            "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Example_bowl_of_soup.jpg/330px-Example_bowl_of_soup.jpg",
+            "thumbwidth": 330,
+            "thumbheight": 248,
+            "url": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Example_bowl_of_soup.jpg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Example_bowl_of_soup.jpg",
+            "mime": "image/jpeg",
+            "extmetadata": {
+              "LicenseShortName": {"value": "CC BY-SA 4.0", "source": "commons-desc-page"},
+              "Artist": {"value": "<a href=\"//commons.wikimedia.org/wiki/User:Example\">Example Artist</a>", "source": "commons-desc-page"}
+            }
+          }
+        ]
+      },
+      {
+        "pageid": 3003,
+        "ns": 6,
+        "title": "File:Example soup recording.ogg",
+        "index": 3,
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "size": 5000,
+            "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Example_soup_recording.ogg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Example_soup_recording.ogg",
+            "mime": "application/ogg",
+            "extmetadata": {}
+          }
+        ]
+      }
+    ]
+  }
+}
