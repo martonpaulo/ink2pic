@@ -5,6 +5,7 @@ import {
   cachedSearch,
   cacheKey,
 } from '../src/search/cache';
+import {fullImageUrl, resizeThumb} from '../src/sources/commons';
 import type {SearchOutcome} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';
 import type {TextStorage} from '../src/library/types';
@@ -29,7 +30,7 @@ const commons: SearchResult = {
   source: 'commons',
   title: 'Soup',
   thumbUrl: THUMB,
-  fullUrl: () => 'unused',
+  fullUrl: width => resizeThumb(THUMB, width),
   license: 'CC BY-SA 4.0',
   attribution: 'Example Artist',
 };
@@ -89,6 +90,39 @@ describe('cachedSearch', () => {
     const [clip, photo] = cached.results;
     expect(clip.fullUrl(1000)).toBe('https://openclipart.org/image/1000px/42');
     expect(photo.fullUrl(1000)).toBe(THUMB.replace('/330px-', '/1280px-'));
+  });
+
+  it('keeps a narrow Commons original, so a cached result is never upscaled (#55)', async () => {
+    const original = {
+      url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Soup.png',
+      width: 576,
+      mime: 'image/png',
+    };
+    const narrow: SearchResult = {
+      ...commons,
+      mime: 'image/png',
+      fullUrl: width => fullImageUrl(THUMB, width, original),
+    };
+    const {storage, files} = memoryStorage();
+    const fresh = await cachedSearch(
+      'soup',
+      runner(outcome([narrow])),
+      storage,
+      PATH,
+      NOW,
+    );
+    await fresh.saved;
+    // A new storage over the same files: the entry is read back from the file.
+    const {outcome: cached, fromCache} = await cachedSearch(
+      'soup',
+      runner(),
+      memoryStorage(files).storage,
+      PATH,
+      NOW,
+    );
+    expect(fromCache).toBe(true);
+    expect(cached.results[0].fullUrl(960)).toBe(original.url);
+    expect(cached.results[0].fullUrl(960)).toBe(narrow.fullUrl(960));
   });
 
   it('searches again once an entry expires', async () => {

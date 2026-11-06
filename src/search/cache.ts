@@ -5,7 +5,11 @@
  * The file is read once per runtime and kept parsed in memory; a write runs after the results
  * are shown, never before (#46).
  */
-import {resizeThumb} from '../sources/commons';
+import {
+  COMMONS_FULL_WIDTH,
+  fullImageUrl,
+  resizeThumb,
+} from '../sources/commons';
 import {imageUrl} from '../sources/openclipart';
 import type {SearchResult, SourceName} from '../sources/types';
 import type {TextStorage} from '../library/types';
@@ -18,8 +22,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** Older entries are searched again. DEFAULT: a week keeps offline repeats useful. */
 export const CACHE_MAX_AGE_MS = 7 * DAY_MS;
 
-/** A SearchResult without its fullUrl function, which JSON cannot hold. */
-export type StoredResult = Omit<SearchResult, 'fullUrl'>;
+/**
+ * A Commons original taken as it is (#55). SearchResult does not carry the original's width, so
+ * `width` is the insert width the original was found at or below, an upper bound.
+ */
+type StoredOriginal = {url: string; width: number};
+/**
+ * A SearchResult without its fullUrl function, which JSON cannot hold. An entry without
+ * `original` stays valid and rebuilds the thumbnail, so the cache version does not change.
+ */
+export type StoredResult = Omit<SearchResult, 'fullUrl'> & {
+  original?: StoredOriginal;
+};
 type StoredOutcome = Omit<SearchOutcome, 'results'> & {results: StoredResult[]};
 type Entry = {query: string; savedAt: number; outcome: StoredOutcome};
 
@@ -56,8 +70,23 @@ const FULL_URL: Record<
     const sourceId = result.id.slice(result.id.indexOf(':') + 1);
     return width => imageUrl(sourceId, width);
   },
-  commons: result => width => resizeThumb(result.thumbUrl, width),
+  commons: result => width =>
+    fullImageUrl(result.thumbUrl, width, {
+      ...result.original,
+      mime: result.mime,
+    }),
 };
+
+/** The original a fresh Commons result gives at the insert width, when it is not a thumbnail. */
+function commonsOriginal(result: SearchResult): StoredOriginal | undefined {
+  if (result.source !== 'commons') {
+    return undefined;
+  }
+  const url = result.fullUrl(COMMONS_FULL_WIDTH);
+  return url === resizeThumb(result.thumbUrl, COMMONS_FULL_WIDTH)
+    ? undefined
+    : {url, width: COMMONS_FULL_WIDTH};
+}
 
 export function cacheKey(query: string): string {
   return query.trim().toLowerCase();
@@ -65,11 +94,23 @@ export function cacheKey(query: string): string {
 
 function store(result: SearchResult): StoredResult {
   const {id, source, title, thumbUrl, license, attribution, mime} = result;
-  return {id, source, title, thumbUrl, license, attribution, mime};
+  const original = commonsOriginal(result);
+  return {
+    id,
+    source,
+    title,
+    thumbUrl,
+    license,
+    attribution,
+    mime,
+    ...(original && {original}),
+  };
 }
 
 function restore(result: StoredResult): SearchResult {
-  return {...result, fullUrl: FULL_URL[result.source](result)};
+  const fields: StoredResult = {...result};
+  delete fields.original;
+  return {...fields, fullUrl: FULL_URL[result.source](result)};
 }
 
 const STRING_FIELDS = [
@@ -84,13 +125,23 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
 }
 
+function isOriginal(value: unknown): boolean {
+  return (
+    value === undefined ||
+    (isObject(value) &&
+      typeof value.url === 'string' &&
+      typeof value.width === 'number')
+  );
+}
+
 function isStoredResult(value: unknown): value is StoredResult {
   return (
     isObject(value) &&
     typeof value.source === 'string' &&
     Object.keys(FULL_URL).includes(value.source) &&
     STRING_FIELDS.every(field => typeof value[field] === 'string') &&
-    (value.mime === undefined || typeof value.mime === 'string')
+    (value.mime === undefined || typeof value.mime === 'string') &&
+    isOriginal(value.original)
   );
 }
 
