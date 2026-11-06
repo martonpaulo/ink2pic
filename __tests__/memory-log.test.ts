@@ -1,4 +1,12 @@
-import {brief, log, logged, logLines, startLog} from '../src/log/memory';
+import {
+  brief,
+  log,
+  logged,
+  logLines,
+  onLog,
+  startLog,
+  TIMEOUT_CODE,
+} from '../src/log/memory';
 
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -19,10 +27,10 @@ describe('spike log', () => {
       }),
     );
     const lines = logLines();
-    expect(lines[0]).toMatch(
+    expect(lines[1]).toMatch(
       /^\+\d+ms getPageSize -> ok \{"width":1920\} \(\d+ ms\)$/,
     );
-    expect(lines[1]).toMatch(/getPageSize -> error 1503: no FILE:READ/);
+    expect(lines[3]).toMatch(/getPageSize -> error 1503: no FILE:READ/);
   });
 
   it('starts empty on each run', () => {
@@ -33,5 +41,38 @@ describe('spike log', () => {
 
   it('cuts long values', () => {
     expect(brief('x'.repeat(10), 5)).toBe('"xxxx…(12)');
+  });
+});
+
+describe('live log and timeouts (#11)', () => {
+  it('tells listeners about each line and stops on request', () => {
+    const seen: number[] = [];
+    const stop = onLog(lines => seen.push(lines.length));
+    log('a');
+    log('b');
+    stop();
+    log('c');
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it('logs the start of a call and fails a call that never answers', async () => {
+    jest.useFakeTimers();
+    try {
+      const pending = logged(
+        'downloadToFile',
+        () => new Promise<never>(() => {}),
+        1000,
+      );
+      expect(logLines()[0]).toMatch(/downloadToFile …$/);
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(await pending).toEqual({
+        ok: false,
+        code: TIMEOUT_CODE,
+        message: 'TIMEOUT: no answer in 1000 ms',
+      });
+      expect(logLines()[1]).toMatch(/downloadToFile -> error -3: TIMEOUT/);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

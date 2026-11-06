@@ -34,6 +34,7 @@ export const copy = {
   // Outside the brief's table: the search button and the call log (owner's logging rule, #13).
   'action.search': 'Search',
   'action.log': 'Log',
+  'action.checkFiles': 'Check files',
 } as const;
 
 export type CopyKey = keyof typeof copy;

@@ -3,20 +3,34 @@
  * owner in the plugin (owner rule, 2026-11-06, AGENTS.md). Also sent to console.log for a device
  * log reader. The session log file is #21.
  */
-import type {Result} from '../sdk/result';
+import {fail, Result} from '../sdk/result';
 
 const lines: string[] = [];
 let started = Date.now();
+const listeners = new Set<(lines: string[]) => void>();
+
+/** A call that never answers ends here, so the screen never stays stuck (build 0.1.0 (4), #11). */
+export const CALL_TIMEOUT_MS = 20000;
+/** The code of a call that hit CALL_TIMEOUT_MS; SDK codes are positive, module codes -2. */
+export const TIMEOUT_CODE = -3;
+
+/** Calls `listener` with every line as it is written; returns the function that stops it. */
+export function onLog(listener: (lines: string[]) => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
 
 export function startLog(): void {
   lines.length = 0;
   started = Date.now();
+  listeners.forEach(listener => listener(logLines()));
 }
 
 export function log(line: string): void {
   const entry = `+${Date.now() - started}ms ${line}`;
   lines.push(entry);
   console.log(`[Ink2Pic] ${entry}`);
+  listeners.forEach(listener => listener(logLines()));
 }
 
 export function logLines(): string[] {
@@ -37,13 +51,28 @@ export function brief(value: unknown, max = BRIEF_MAX): string {
   return text.length > max ? `${text.slice(0, max)}…(${text.length})` : text;
 }
 
-/** Runs one SDK wrapper and logs its label, answer and duration. */
+/**
+ * Runs one SDK or module call and logs its label, answer and duration. The start is logged too,
+ * so a call that hangs shows where; after `timeoutMs` it fails with TIMEOUT_CODE.
+ */
 export async function logged<T>(
   label: string,
   call: () => Promise<Result<T>>,
+  timeoutMs = CALL_TIMEOUT_MS,
 ): Promise<Result<T>> {
   const at = Date.now();
-  const result = await call();
+  log(`${label} …`);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<Result<T>>(resolve => {
+    timer = setTimeout(
+      () =>
+        resolve(fail(TIMEOUT_CODE, `TIMEOUT: no answer in ${timeoutMs} ms`)),
+      timeoutMs,
+    );
+  });
+  const result = await Promise.race([call(), expired]).finally(() =>
+    clearTimeout(timer),
+  );
   const took = Date.now() - at;
   log(
     result.ok

@@ -48,8 +48,10 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
         promise.resolve(job.run());
       } catch (SafePaths.Refused refused) {
         promise.reject(refused.code, refused.getMessage());
-      } catch (Exception error) {
-        promise.reject("IO", error.getClass().getSimpleName() + ": " + error.getMessage());
+      } catch (Throwable error) {
+        // Throwable, not Exception: an Error such as NoClassDefFoundError left the promise
+        // unsettled and the plugin view waiting (build 0.1.0 (4), #11).
+        promise.reject("IO", error.getClass().getName() + ": " + error.getMessage());
       }
     });
   }

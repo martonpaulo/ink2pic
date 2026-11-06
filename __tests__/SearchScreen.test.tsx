@@ -86,4 +86,16 @@ describe('SearchScreen (#13)', () => {
     expect(texts(tree).join('\n')).toContain('search "soup"');
     act(() => tree.unmount());
   });
+
+  it('runs the files check from the log and shows each line live (#11)', async () => {
+    const tree = await render();
+    const press = (label: string) =>
+      tree.root
+        .find(n => n.props.accessibilityLabel === label && n.props.onPress)
+        .props.onPress();
+    act(() => press(copy['action.log']));
+    await act(async () => press(copy['action.checkFiles']));
+    expect(texts(tree).join('\n')).toContain('Ink2PicFiles: not loaded');
+    act(() => tree.unmount());
+  });
 });

@@ -248,6 +248,17 @@ export async function probeRecognition(): Promise<Section> {
  */
 export async function probeWrite(): Promise<Section> {
   const lines: string[] = [];
+  let turbo: unknown = null;
+  try {
+    turbo = TurboModuleRegistry.get('Ink2PicFiles');
+  } catch {
+    turbo = null;
+  }
+  const loaded =
+    describeModule('Ink2PicFiles', turbo, NativeModules.Ink2PicFiles) ??
+    'Ink2PicFiles: not loaded (check reactPackages and restart the device)';
+  log(loaded);
+  lines.push(loaded);
   const roots = await logged('getExternalDirPath', getExternalDirPath);
   if (roots.ok) {
     const target = `${libraryDir(roots.value[0])}/spike-340609.png`;

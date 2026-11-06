@@ -4,7 +4,8 @@
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import {log, logLines} from '../log/memory';
+import {log, logLines, onLog} from '../log/memory';
+import {probeWrite} from '../spike/probes';
 import {SearchOutcome, searchAll, Source} from '../search/search';
 import {defaultSources} from '../search/sources';
 import type {SearchResult} from '../sources/types';
@@ -33,6 +34,10 @@ export function SearchScreen({
   const [searching, setSearching] = useState(false);
   const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
   const [showLog, setShowLog] = useState(false);
+  const [lines, setLines] = useState<string[]>(logLines);
+
+  // The log is shown live: a call that hangs is visible while it waits (#11, build 0.1.0 (4)).
+  useEffect(() => onLog(setLines), []);
 
   const search = useCallback(
     async (text: string) => {
@@ -81,7 +86,15 @@ export function SearchScreen({
         <Text style={styles.text}>{copy['error.recognition']}</Text>
       )}
       {showLog ? (
-        <Text style={styles.log}>{logLines().join('\n')}</Text>
+        <View style={styles.logView}>
+          <Button
+            label={copy['action.checkFiles']}
+            onPress={() =>
+              probeWrite().then(section => log(`[${section.title}] done`))
+            }
+          />
+          <Text style={styles.log}>{lines.join('\n')}</Text>
+        </View>
       ) : (
         (searching || outcome) && (
           <ResultsGrid
@@ -143,4 +156,5 @@ const styles = StyleSheet.create({
   },
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
   log: {fontSize: metrics.bodyFont / 2, color: metrics.ink},
+  logView: {gap: metrics.gap, alignItems: 'flex-start'},
 });
