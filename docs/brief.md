@@ -742,6 +742,7 @@ What was actually executed during research, so the agent knows what is proven:
 - Confirmed reachability of `dl.google.com` and Maven Central from the research machine.
 - No code was run on a Supernote device. Every on-device behavior is either REPORTED by others or TO TEST.
 - Searched GitHub repositories for candidate names (`Ink2Pic`, `Word2Pic`, `SuperPic`, `SuperImage`, `InkPic`, `sn-picture`, `sn-image`). None collides with a Supernote project.
+- 2026-11-06, first cloud backlog run: `bash buildPlugin.sh` ran in the cloud and built `Ink2Pic.snplg` (JS only, no Gradle) [CONFIRMED]. Once a root `PluginConfig.json` exists the script copies it unchanged: it does **not** copy `versionName` from `package.json`, so a test keeps the two equal [CONFIRMED by reading and running]. `pluginID` `23c48qc2qvw7rwb6` was generated once, with the script's own method, and committed ([#3](https://github.com/martonpaulo/ink2pic/issues/3)).
 - Confirmed in the cloud machine: Java and javac installed, Node 22 installed, outbound HTTPS to npm, GitHub, Openclipart, `dl.google.com` and Maven Central.
 
 ---
@@ -760,7 +761,7 @@ The owner prefers working without the local Mac when possible. Most work can run
 | Commons client tests | Fixtures only | The Commons API throttled the cloud IP on the first call [CONFIRMED]. Record real responses once from the device or the owner's network, then test against fixtures |
 | Java code and JVM tests for pixel logic | Yes | Java and javac are installed in the cloud machine [CONFIRMED]. Pic2Note tests its pixel engine the same way |
 | Android SDK platform 35, build-tools 35, `react-android` AAR | Yes | `dl.google.com` and Maven Central were reachable [CONFIRMED] |
-| Building the `.snplg` | **Needs owner approval** | Running the template's downloaded `buildPlugin.sh` was blocked by the session safety policy during research [CONFIRMED]. Ask the owner to approve the build step, or move the build to the Mac |
+| Building the `.snplg` | Yes | `buildPlugin.sh` ran in the cloud session of 2026-11-06 and produced `build/outputs/Ink2Pic.snplg` for a JS-only build [CONFIRMED]. The owner allows it without asking (AGENTS.md) |
 | UI preview in a browser | Possible | `firestormkirby/sn-plugin-ui-preview` [REPORTED, not evaluated] |
 | Install and test on the Manta | **No, owner only** | Section 18 |
 

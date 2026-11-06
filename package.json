@@ -1,6 +1,7 @@
 {
   "name": "Ink2Pic",
   "version": "0.1.0",
+  "description": "Write a word, get a picture.",
   "private": true,
   "scripts": {
     "lint": "eslint .",

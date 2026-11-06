@@ -7,11 +7,7 @@
    "buildPlugin.ps1",
    "scripts/**"
   ],
-  "counts": {
-   "index.js": {
-    "number": 5
-   }
-  }
+  "counts": {}
  },
  "duplicates": {
   "depth": 1,
