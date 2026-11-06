@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, TextInput} from 'react-native';
+import {Keyboard, Text, TextInput} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import type {Source} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';
@@ -69,14 +69,17 @@ describe('SearchScreen (#13)', () => {
     act(() => tree.unmount());
   });
 
-  it('searches again with the fixed word', async () => {
+  it('searches again with the fixed word, closing the keyboard (#42)', async () => {
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const tree = await render();
+    dismiss.mockClear();
     const input = tree.root.findByType(TextInput);
     act(() => input.props.onChangeText('wine'));
     await act(async () =>
       tree.root.findByType(TextInput).props.onSubmitEditing(),
     );
     expect(search).toHaveBeenLastCalledWith('wine');
+    expect(dismiss).toHaveBeenCalled();
     act(() => tree.unmount());
   });
 

@@ -4,7 +4,7 @@
  * which also opens by itself when there is no network; and the live log.
  */
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {StyleSheet, Text, TextInput, View} from 'react-native';
+import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
 import {getLibrary, recordSearch} from '../library/device';
 import type {Library} from '../library/types';
@@ -105,6 +105,8 @@ export function SearchScreen({
         return;
       }
       setQuery(word);
+      // The keyboard covered half of the results on build 0.1.0 (12) (#42).
+      Keyboard.dismiss();
       setView('results');
       setStatus(null);
       const ticket = ++latestSearch.current;
