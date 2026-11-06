@@ -33,6 +33,8 @@ describe('review readiness (#28)', () => {
   it('discloses in desc where the searched word goes', () => {
     expect(pluginConfig.desc).toMatch(/Openclipart/);
     expect(pluginConfig.desc).toMatch(/Wikimedia Commons/);
+    // #43 asks Wikidata for the word's typical pictures (#28: every destination is named).
+    expect(pluginConfig.desc).toMatch(/Wikidata/);
   });
 
   it('declares only the permissions the code requests', () => {

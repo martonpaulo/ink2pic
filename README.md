@@ -98,7 +98,7 @@ are named as in the first column.
 
 | Permission | Why |
 | :--- | :--- |
-| Network Access | To search Openclipart and Wikimedia Commons and to get the picture you choose. |
+| Network Access | To search Openclipart, Wikimedia Commons and Wikidata, and to get the picture you choose. |
 | Read Files | To read your saved pictures and the log in `MyStyle/Ink2Pic/`. |
 | Modify Files | To save each picture you insert in `MyStyle/Ink2Pic/library/`, and the log in `MyStyle/Ink2Pic/logs/`. |
 
