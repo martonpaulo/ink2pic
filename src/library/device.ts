@@ -6,7 +6,7 @@
  */
 import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
-import {fail, ok, Result} from '../sdk/result';
+import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
 import {readText, writeText} from '../storage/files';
 import {libraryDir} from '../storage/paths';
 import {addItem, addRecentSearch, emptyLibrary, serialize} from './library';
@@ -84,8 +84,8 @@ export async function getLibrary(): Promise<Library> {
   }
   const loaded = await logged('loadLibrary', () =>
     loadLibrary(deviceStorage, path.value).then(
-      parsed => (parsed.ok ? ok(parsed.library) : fail(-1, parsed.message)),
-      error => fail(-1, String(error)),
+      parsed => (parsed.ok ? ok(parsed.library) : fail(THROWN_CODE, parsed.message)),
+      error => fail(THROWN_CODE, String(error)),
     ),
   );
   writable = loaded.ok;
@@ -108,7 +108,7 @@ async function save(next: Library): Promise<void> {
   await logged('saveLibrary', () =>
     saveLibrary(deviceStorage, path.value, next).then(
       () => ok(true),
-      error => fail(-1, String(error)),
+      error => fail(THROWN_CODE, String(error)),
     ),
   );
 }

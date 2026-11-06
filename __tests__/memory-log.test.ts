@@ -5,9 +5,9 @@ import {
   logLines,
   onLog,
   startLog,
-  TIMEOUT_CODE,
   PERSON_TIMEOUT_MS,
 } from '../src/log/memory';
+import {TIMEOUT_CODE} from '../src/sdk/result';
 
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});

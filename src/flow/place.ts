@@ -11,7 +11,7 @@ import {
   PICTURE_TYPE,
   Size,
 } from '../sdk/page';
-import {fail, ok, Result} from '../sdk/result';
+import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
 
 /** Where the lasso was when the view opened; lasso context does not survive navigation. */
 export type LassoPlace = {rect: Rect; page: number; pageSize: Size};
@@ -60,7 +60,7 @@ export async function placeAtLasso(
 ): Promise<Result<true>> {
   const rect = placeRect(place.rect, picture, place.pageSize);
   if (!rect) {
-    return fail(-1, `no band of ${MIN_PLACE_BAND} px beside the lasso`);
+    return fail(THROWN_CODE, `no band of ${MIN_PLACE_BAND} px beside the lasso`);
   }
   const created = await logged('createElement(picture)', () =>
     createElement(PICTURE_TYPE),
@@ -84,5 +84,5 @@ export async function placeAtLasso(
   }
   return inserted.value
     ? ok(true)
-    : fail(-1, 'insertPageElements answered false');
+    : fail(THROWN_CODE, 'insertPageElements answered false');
 }

@@ -7,9 +7,9 @@
  */
 import {getLibrary, recordInsert} from '../library/device';
 import {findItem} from '../library/library';
-import {logged, log, TIMEOUT_CODE} from '../log/memory';
+import {logged, log} from '../log/memory';
 import {insertImage} from '../sdk/note';
-import {fail, ok, Result} from '../sdk/result';
+import {fail, ok, Result, THROWN_CODE, TIMEOUT_CODE} from '../sdk/result';
 import {COMMONS_FULL_WIDTH} from '../sources/commons';
 import {OPENCLIPART_FULL_WIDTH} from '../sources/openclipart';
 import type {SearchResult, SourceName} from '../sources/types';
@@ -112,7 +112,7 @@ async function insertInNote(
   );
   // `{success: true, result: false}` inserted nothing (#47).
   return inserted.ok && inserted.value !== true
-    ? fail(-1, 'insertImage answered false')
+    ? fail(THROWN_CODE, 'insertImage answered false')
     : inserted;
 }
 

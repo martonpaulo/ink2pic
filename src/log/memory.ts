@@ -3,7 +3,7 @@
  * owner in the plugin (owner rule, 2026-11-06, AGENTS.md). Also sent to console.log for a device
  * log reader. The session log file is #21.
  */
-import {fail, Result} from '../sdk/result';
+import {fail, Result, TIMEOUT_CODE} from '../sdk/result';
 
 /** Lines kept in memory and in the file: enough for a whole opening, small enough to rewrite (#45). */
 export const LOG_MAX_LINES = 2000;
@@ -47,9 +47,6 @@ export const CALL_TIMEOUT_MS = 20000;
  * cannot hold the screen for good.
  */
 export const PERSON_TIMEOUT_MS = 5 * 60 * 1000;
-/** The code of a call that hit CALL_TIMEOUT_MS; SDK codes are positive, module codes -2. */
-export const TIMEOUT_CODE = -3;
-
 /** Calls `listener` with every line as it is written; returns the function that stops it. */
 export function onLog(listener: (lines: string[]) => void): () => void {
   listeners.add(listener);

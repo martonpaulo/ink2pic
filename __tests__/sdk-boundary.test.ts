@@ -37,3 +37,14 @@ it('imports sn-plugin-lib only from src/sdk/', () => {
   );
   expect(offenders).toEqual([]);
 });
+
+it('defines every negative failure code in src/sdk/result.ts only (#49, #54)', () => {
+  const offenders = sources(join(ROOT, 'src')).filter(
+    path =>
+      path !== 'src/sdk/result.ts' &&
+      /fail\(\s*-\d|_CODE\s*=\s*-\d/.test(
+        readFileSync(join(ROOT, path), 'utf8'),
+      ),
+  );
+  expect(offenders).toEqual([]);
+});
