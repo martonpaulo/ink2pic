@@ -1,10 +1,13 @@
 /**
  * Layout metrics for the Manta (brief section 8.4), the one place they are set.
- * shortcut: layout units are taken 1:1 to screen pixels [DEFAULT]; calibrate SCALE here once #3
- * reports PixelRatio and the window size on the device.
+ * Layout units are density-independent: on the Manta PixelRatio is 1.875 and the window is
+ * 1024 x 1365 units for 1920 x 2560 pixels (build 0.1.0 (1), #3), so millimetres are converted
+ * with the runtime PixelRatio.
  */
-const SCALE = 1;
-/** Pixels per millimetre on the 299 ppi Manta screen. */
+import {PixelRatio} from 'react-native';
+
+const SCALE = 1 / PixelRatio.get();
+/** Physical pixels per millimetre on the 299 ppi Manta screen. */
 const PX_PER_MM = 11.8;
 
 const TOUCH_TARGET_MM = 10;
