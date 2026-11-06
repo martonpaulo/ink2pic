@@ -679,6 +679,32 @@ before writing or changing an `sn-plugin-lib` call, and before fixing a device f
 | `getExternalDirPath` can close the plugin | 0.1.0 (9) | sn-plugin-lib 0.2.3 source ([#34](https://github.com/martonpaulo/ink2pic/issues/34)) [CONFIRMED in code]: it reads the current activity with no null check, so its error never reaches JS; `listFiles` returns `{path,type}` objects, `null` for an empty folder |
 | Logs | all | gorlix gotcha 40: `console.log` is not stripped in a real build; `adb logcat -s ReactNativeJS` reads it when a cable is available |
 
+What the PluginHost itself does, read from the Manta firmware 3.31.45 APK on 2026-11-06
+([#34](https://github.com/martonpaulo/ink2pic/issues/34), step 3; behaviour only, no Ratta
+code). Each item is CONFIRMED in the host's code until a device test shows otherwise; the one
+INFERENCE is marked.
+
+- A `RuntimeException` thrown in a native module destroys the plugin: lifecycle 4 then 5, never
+  3, with no retry and no message. `getCurrentActivity()` is always null: the host resumes React
+  with no activity, so an SDK native method that dereferences it throws and the plugin dies.
+- The host closes a view that shows nothing: about 5 s after show it looks for one visible,
+  non-transparent child of non-zero size, re-checks 3 s later, then closes (lifecycle 3). Render
+  an opaque, sized view at once.
+- The host accepts SDK versions 0.1.62 to 0.3.1 and assumes 0.1.60 until the SDK reports one.
+  The SDK's `init()` reports the version only after `onMounted`, so a button press replayed on
+  mount can be rejected with a «plugin run failed» dialog and the view closes from lifecycle 1
+  without reaching 2 [INFERENCE that builds (8) and (9) hit this].
+- `plugin_button_event` and lifecycle 2 always arrive as a pair, in that order; lifecycle 1 comes
+  from the SDK's `onMounted`. Hiding because the Note app paused or the file changed sends no
+  lifecycle event at all: the plugin still believes it is at 2.
+- A pending `requestPermission` resolves to -1 when the container hides or the plugin is
+  destroyed. A request made while the view is hidden and the plugin has buttons is parked and
+  answered only on the next press or show.
+- `insertImage(path)` ignores the lasso: the Note app centres the bitmap on the screen as a
+  floating selection, at least 100 px and at most 2560 px per side. `createElement(200)` plus
+  `insertElements` places the picture at the plugin's `picture.rect`, read as Android pixel
+  coordinates, with no clamping to the page.
+
 ## 11. Risks
 
 | Risk | Impact | Mitigation |
