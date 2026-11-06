@@ -12,7 +12,9 @@ in a public issue.
 
 ## Local setup
 
-Node.js 18 or newer, npm, and Python 3 for the repository checks:
+Node.js 18 or newer, npm, Python 3 for the repository checks, and a JDK 21 whose `javac` is on
+`PATH` for the native tests (on macOS with Homebrew: `export PATH="$(brew --prefix openjdk@21)/bin:$PATH"`,
+because the keg is not linked and the system `java` stub fails with «Unable to locate a Java Runtime»):
 
 ```bash
 git clone https://github.com/martonpaulo/ink2pic.git
