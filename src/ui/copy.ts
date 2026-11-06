@@ -35,6 +35,9 @@ export const copy = {
   'action.search': 'Search',
   'action.log': 'Log',
   'action.checkFiles': 'Check files',
+  // Outside the brief's table: insert failure and the starting screen (#12, build 0.1.0 (7)).
+  'error.insert': 'Could not add the picture. Open Log to see why.',
+  'app.starting': 'Starting…',
 } as const;
 
 export type CopyKey = keyof typeof copy;

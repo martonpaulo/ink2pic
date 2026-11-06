@@ -13,7 +13,10 @@ import {Onboarding} from '../src/ui/Onboarding';
 const has = PluginManager.hasPermission as jest.Mock;
 const request = PluginManager.requestPermission as jest.Mock;
 
-beforeEach(() => jest.resetAllMocks());
+beforeEach(() => {
+  jest.resetAllMocks();
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+});
 
 describe('permissions', () => {
   it('needs nothing when all are granted', async () => {
@@ -23,9 +26,9 @@ describe('permissions', () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it('counts a failed check as missing', async () => {
+  it('does not let a failed check block the plugin (#13, build 0.1.0 (6))', async () => {
     has.mockRejectedValue(new Error('bridge down'));
-    expect(await missingPermissions()).toHaveLength(3);
+    expect(await missingPermissions()).toEqual([]);
   });
 
   it('requests each missing permission with its reason', async () => {

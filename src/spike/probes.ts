@@ -251,11 +251,17 @@ export async function probeWrite(): Promise<Section> {
   let turbo: unknown = null;
   try {
     turbo = TurboModuleRegistry.get('Ink2PicFiles');
-  } catch {
-    turbo = null;
+  } catch (error) {
+    log(`TurboModuleRegistry.get(Ink2PicFiles) threw: ${String(error)}`);
+  }
+  let legacy: unknown = null;
+  try {
+    legacy = NativeModules.Ink2PicFiles;
+  } catch (error) {
+    log(`NativeModules.Ink2PicFiles threw: ${String(error)}`);
   }
   const loaded =
-    describeModule('Ink2PicFiles', turbo, NativeModules.Ink2PicFiles) ??
+    describeModule('Ink2PicFiles', turbo, legacy) ??
     'Ink2PicFiles: not loaded (check reactPackages and restart the device)';
   log(loaded);
   lines.push(loaded);

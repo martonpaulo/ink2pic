@@ -4,13 +4,15 @@
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import {log, logLines, onLog} from '../log/memory';
+import {log} from '../log/memory';
 import {probeWrite} from '../spike/probes';
 import {SearchOutcome, searchAll, Source} from '../search/search';
 import {defaultSources} from '../search/sources';
+import type {Result} from '../sdk/result';
 import type {SearchResult} from '../sources/types';
 import {copy} from './copy';
 import {metrics} from './metrics';
+import {LogView} from './LogView';
 import {ResultsGrid} from './ResultsGrid';
 
 export type SearchScreenProps = {
@@ -18,7 +20,8 @@ export type SearchScreenProps = {
   initialQuery: string;
   /** Recognition failed: show why, with the field empty and focused. */
   recognitionFailed: boolean;
-  onPick: (result: SearchResult) => void;
+  /** Inserts the picture; a failure is shown with the log. */
+  onPick: (result: SearchResult) => Promise<Result<unknown>>;
   onClose: () => void;
   sources?: Source[];
 };
@@ -34,10 +37,29 @@ export function SearchScreen({
   const [searching, setSearching] = useState(false);
   const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
   const [showLog, setShowLog] = useState(false);
-  const [lines, setLines] = useState<string[]>(logLines);
+  const [status, setStatus] = useState<string | null>(null);
 
-  // The log is shown live: a call that hangs is visible while it waits (#11, build 0.1.0 (4)).
-  useEffect(() => onLog(setLines), []);
+  // Logs its start at once and any error, so a failure is never silent (build 0.1.0 (6)).
+  const checkFiles = async () => {
+    log('check files: start');
+    try {
+      const section = await probeWrite();
+      log(`check files: done, ${section.lines.join(' | ')}`);
+    } catch (error) {
+      log(`check files: failed: ${String(error)}`);
+    }
+  };
+
+  const pick = async (result: SearchResult) => {
+    setStatus(copy['insert.running']);
+    const inserted = await onPick(result);
+    if (inserted.ok) {
+      setStatus(null);
+      return;
+    }
+    setStatus(copy['error.insert']);
+    setShowLog(true);
+  };
 
   const search = useCallback(
     async (text: string) => {
@@ -48,8 +70,8 @@ export function SearchScreen({
       log(`search "${word}"`);
       setSearching(true);
       const result = await searchAll(word, sources ?? defaultSources());
-      for (const [name, status] of Object.entries(result.statuses)) {
-        log(`source ${name}: ${JSON.stringify(status)}`);
+      for (const [name, sourceStatus] of Object.entries(result.statuses)) {
+        log(`source ${name}: ${JSON.stringify(sourceStatus)}`);
       }
       setOutcome(result);
       setSearching(false);
@@ -80,20 +102,20 @@ export function SearchScreen({
           returnKeyType="search"
         />
         <Button label={copy['action.search']} onPress={() => search(query)} />
+        <Button
+          label={copy['action.log']}
+          onPress={() => setShowLog(!showLog)}
+        />
         <Button label={copy['action.close']} onPress={onClose} />
       </View>
+      {status && <Text style={styles.text}>{status}</Text>}
       {recognitionFailed && (
         <Text style={styles.text}>{copy['error.recognition']}</Text>
       )}
       {showLog ? (
         <View style={styles.logView}>
-          <Button
-            label={copy['action.checkFiles']}
-            onPress={() =>
-              probeWrite().then(section => log(`[${section.title}] done`))
-            }
-          />
-          <Text style={styles.log}>{lines.join('\n')}</Text>
+          <Button label={copy['action.checkFiles']} onPress={checkFiles} />
+          <LogView />
         </View>
       ) : (
         (searching || outcome) && (
@@ -101,11 +123,10 @@ export function SearchScreen({
             results={outcome?.results ?? []}
             searching={searching}
             sourceDown={outcome?.sourceDown ?? false}
-            onPick={onPick}
+            onPick={pick}
           />
         )
       )}
-      <Button label={copy['action.log']} onPress={() => setShowLog(!showLog)} />
     </View>
   );
 }
@@ -155,6 +176,5 @@ const styles = StyleSheet.create({
     borderColor: metrics.ink,
   },
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
-  log: {fontSize: metrics.bodyFont / 2, color: metrics.ink},
   logView: {gap: metrics.gap, alignItems: 'flex-start'},
 });

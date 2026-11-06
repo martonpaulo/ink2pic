@@ -1,22 +1,32 @@
 /**
  * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
- * search; the lasso button first turns the lassoed word into the query (#13).
+ * search; the lasso button first turns the lassoed word into the query (#13). A tap on a result
+ * inserts it (#12). Every step is logged; the starting screen shows the log live.
  *
  * @format
  */
 
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
-import {LASSO_BUTTON_ID} from './src/buttons';
-import {log, startLog} from './src/log/memory';
+import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
+import {log, logged, startLog} from './src/log/memory';
 import {needsOnboarding} from './src/onboarding/permissions';
+import {getLassoElements} from './src/sdk/lasso';
 import {closePluginView, onButtonPress} from './src/sdk/plugin';
 import type {SearchResult} from './src/sources/types';
 import {copy} from './src/ui/copy';
+import {LogView} from './src/ui/LogView';
 import {metrics} from './src/ui/metrics';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
+
+/**
+ * The button event did not always arrive when the view opened (builds 0.1.0 (1) and (6) stayed
+ * on the waiting text); after this, the view opens by itself.
+ */
+const BUTTON_EVENT_WAIT_MS = 2000;
 
 type Screen =
   | {name: 'starting'}
@@ -25,8 +35,9 @@ type Screen =
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>({name: 'starting'});
+  const pressed = useRef(false);
 
-  /** Reads the lasso when the lasso button opened the view; permissions are granted by now. */
+  /** Reads the lasso when the lasso button opened the view; permissions are checked by now. */
   const openSearch = async (buttonId: number) => {
     if (buttonId !== LASSO_BUTTON_ID) {
       setScreen({
@@ -49,23 +60,54 @@ function App(): React.JSX.Element {
     });
   };
 
+  const start = async (buttonId: number) => {
+    setScreen({name: 'starting'});
+    if (await needsOnboarding()) {
+      log('onboarding: a permission is missing');
+      setScreen({name: 'onboarding', buttonId});
+      return;
+    }
+    await openSearch(buttonId);
+  };
+
   useEffect(() => {
-    return onButtonPress(async ({id}) => {
+    startLog();
+    log('view mounted');
+    const stop = onButtonPress(({id}) => {
+      pressed.current = true;
       startLog();
       log(`button ${id}`);
-      setScreen({name: 'starting'});
-      if (await needsOnboarding()) {
-        setScreen({name: 'onboarding', buttonId: id});
+      start(id);
+    });
+    const watchdog = setTimeout(async () => {
+      if (pressed.current) {
         return;
       }
-      await openSearch(id);
-    });
-    // The listener is registered once; openSearch only sets state.
+      log(
+        `no button event after ${BUTTON_EVENT_WAIT_MS} ms; checking the lasso`,
+      );
+      const lasso = await logged('getLassoElements', getLassoElements);
+      start(
+        lasso.ok && lasso.value.length > 0
+          ? LASSO_BUTTON_ID
+          : SIDEBAR_BUTTON_ID,
+      );
+    }, BUTTON_EVENT_WAIT_MS);
+    return () => {
+      stop();
+      clearTimeout(watchdog);
+    };
+    // Registered once for the life of the view; start only sets state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const pick = (result: SearchResult) => {
-    // Inserting the picture is #14; until then the choice is only logged.
+  const pick = async (result: SearchResult) => {
     log(`picked ${result.id}`);
+    const inserted = await insertPicture(result);
+    if (inserted.ok) {
+      await logged('closePluginView', closePluginView);
+    }
+    return inserted;
   };
 
   switch (screen.name) {
@@ -84,14 +126,20 @@ function App(): React.JSX.Element {
     default:
       return (
         <View style={styles.screen}>
-          <Text style={styles.text}>{copy['search.running']}</Text>
+          <Text style={styles.text}>{copy['app.starting']}</Text>
+          <LogView />
         </View>
       );
   }
 }
 
 const styles = StyleSheet.create({
-  screen: {flex: 1, backgroundColor: metrics.paper, padding: metrics.gap},
+  screen: {
+    flex: 1,
+    backgroundColor: metrics.paper,
+    padding: metrics.gap,
+    gap: metrics.gap,
+  },
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
 });
 

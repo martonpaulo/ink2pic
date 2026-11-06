@@ -98,4 +98,17 @@ describe('SearchScreen (#13)', () => {
     expect(texts(tree).join('\n')).toContain('Ink2PicFiles: not loaded');
     act(() => tree.unmount());
   });
+
+  it('shows the insert failure and opens the log (#12)', async () => {
+    const onPick = jest
+      .fn()
+      .mockResolvedValue({ok: false, code: -2, message: 'MISSING'});
+    const tree = await render({onPick});
+    await act(async () =>
+      tree.root.findByProps({testID: 'tile-openclipart:1'}).props.onPress(),
+    );
+    expect(texts(tree)).toContain(copy['error.insert']);
+    expect(tree.root.findByProps({testID: 'log'})).toBeTruthy();
+    act(() => tree.unmount());
+  });
 });

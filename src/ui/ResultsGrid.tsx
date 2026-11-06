@@ -12,6 +12,8 @@ import {metrics} from './metrics';
 
 /** A page shows at the latest after this, with unanswered thumbnails marked failed (#24). */
 export const THUMB_TIMEOUT_MS = 8000;
+/** Two tiles per row, three rows: the six of PAGE_SIZE. */
+const COLUMNS = 2;
 const THUMB_HEADERS = {'User-Agent': USER_AGENT};
 
 export type ResultsGridProps = {
@@ -90,27 +92,33 @@ export function ResultsGrid({
         testID="grid"
         style={[styles.grid, !ready && styles.hidden]}
         accessibilityElementsHidden={!ready}>
-        {visible.map(result => (
-          <Pressable
-            key={result.id}
-            testID={`tile-${result.id}`}
-            accessibilityRole="button"
-            accessibilityLabel={result.title}
-            style={styles.tile}
-            onPress={() => onPick(result)}>
-            {failed.has(result.id) ? (
-              <Text style={styles.failedTitle}>{result.title}</Text>
-            ) : (
-              <Image
-                source={{uri: result.thumbUrl, headers: THUMB_HEADERS}}
-                style={styles.image}
-                resizeMode="contain"
-                fadeDuration={0}
-                onLoad={() => settle(result.id)}
-                onError={() => fail(result.id)}
-              />
-            )}
-          </Pressable>
+        {[0, 1, 2].map(row => (
+          <View key={row} style={styles.row}>
+            {visible
+              .slice(row * COLUMNS, row * COLUMNS + COLUMNS)
+              .map(result => (
+                <Pressable
+                  key={result.id}
+                  testID={`tile-${result.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={result.title}
+                  style={styles.tile}
+                  onPress={() => onPick(result)}>
+                  {failed.has(result.id) ? (
+                    <Text style={styles.failedTitle}>{result.title}</Text>
+                  ) : (
+                    <Image
+                      source={{uri: result.thumbUrl, headers: THUMB_HEADERS}}
+                      style={styles.image}
+                      resizeMode="contain"
+                      fadeDuration={0}
+                      onLoad={() => settle(result.id)}
+                      onError={() => fail(result.id)}
+                    />
+                  )}
+                </Pressable>
+              ))}
+          </View>
         ))}
       </View>
       <View style={styles.nav}>
@@ -159,17 +167,14 @@ function NavButton({
 }
 
 const styles = StyleSheet.create({
-  screen: {flex: 1, backgroundColor: metrics.paper, alignItems: 'center'},
-  grid: {
-    width: metrics.tileWidth * 2 + metrics.gap,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: metrics.gap,
-  },
+  // The grid takes the height left by the field and the page buttons, so the buttons are
+  // always on screen (build 0.1.0 (6): fixed-size tiles pushed them under the Log button).
+  screen: {flex: 1, alignSelf: 'stretch', backgroundColor: metrics.paper},
+  grid: {flex: 1, gap: metrics.gap},
+  row: {flex: 1, flexDirection: 'row', gap: metrics.gap},
   hidden: {opacity: 0},
   tile: {
-    width: metrics.tileWidth,
-    height: metrics.tileHeight,
+    flex: 1,
     borderWidth: metrics.border,
     borderColor: metrics.ink,
     backgroundColor: metrics.paper,
@@ -183,6 +188,7 @@ const styles = StyleSheet.create({
   nav: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: metrics.gap,
     marginTop: metrics.gap,
   },

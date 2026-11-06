@@ -7,6 +7,7 @@ import {
   requestPermission,
 } from '../sdk/plugin';
 import {copy} from '../ui/copy';
+import {logged} from '../log/memory';
 
 /** `requestPermission` answers that grant: allowed this time (1) or always (2). */
 const GRANTING_ANSWERS = new Set([1, 2]);
@@ -21,15 +22,22 @@ export const PERMISSIONS: readonly PermissionNeed[] = [
 
 export type Denied = PermissionNeed & {detail: string};
 
-/** Permissions not reported granted; a failed check counts as missing. */
+/**
+ * Permissions the host reports as not granted. Each check is logged with a time limit; a check
+ * that fails or times out is logged and not counted, so a stuck check never blocks the plugin
+ * (build 0.1.0 (6) stayed on its starting screen); the real call then shows its own error.
+ */
 export async function missingPermissions(): Promise<PermissionNeed[]> {
-  const checks = await Promise.all(
-    PERMISSIONS.map(need => hasPermission(need.permission)),
-  );
-  return PERMISSIONS.filter((_, i) => {
-    const check = checks[i];
-    return !(check.ok && check.value);
-  });
+  const missing: PermissionNeed[] = [];
+  for (const need of PERMISSIONS) {
+    const check = await logged(`hasPermission(${need.permission})`, () =>
+      hasPermission(need.permission),
+    );
+    if (check.ok && !check.value) {
+      missing.push(need);
+    }
+  }
+  return missing;
 }
 
 /** Shown-once signal until the file writer (#11) can store a flag. */
@@ -45,7 +53,9 @@ export async function requestMissing(): Promise<{
   const granted: PermissionNeed[] = [];
   const denied: Denied[] = [];
   for (const need of await missingPermissions()) {
-    const answer = await requestPermission(need.permission, need.reason);
+    const answer = await logged(`requestPermission(${need.permission})`, () =>
+      requestPermission(need.permission, need.reason),
+    );
     if (answer.ok && GRANTING_ANSWERS.has(answer.value)) {
       granted.push(need);
     } else {

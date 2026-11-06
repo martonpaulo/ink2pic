@@ -4,7 +4,7 @@
   "description": "Write a word, get a picture.",
   "private": true,
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
     "validate": "npm run lint && npm run typecheck && npm test && npm run test:native && python3 scripts/text_check.py && python3 scripts/issue_links.py && python3 scripts/dry_check.py",
