@@ -14,7 +14,7 @@ import type {LassoPlace} from './src/flow/place';
 import {sessionPaths} from './src/flow/session';
 import {rotateLogFile} from './src/log/file';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
-import {log, logged, startLog} from './src/log/memory';
+import {log, logged} from './src/log/memory';
 import {needsOnboarding} from './src/onboarding/permissions';
 import {getLassoElements} from './src/sdk/lasso';
 import {
@@ -30,12 +30,6 @@ import {LogView} from './src/ui/LogView';
 import {metrics} from './src/ui/metrics';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
-
-/**
- * The button event did not always arrive when the view opened (builds 0.1.0 (1) and (6) stayed
- * on the waiting text); after this, the view opens by itself.
- */
-const BUTTON_EVENT_WAIT_MS = 2000;
 
 type Screen =
   | {name: 'starting'}
@@ -109,13 +103,38 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
-    startLog();
+    // No startLog here: index.js logged the registrations before the view mounted.
     log('view mounted');
+    // The press this opening is for; a live event with another id still restarts the flow.
+    let chosen: number | null = null;
     const handle = (id: number, how: string) => {
+      if (pressed.current && chosen === id) {
+        log(`button ${id} (${how}) already handled`);
+        return;
+      }
       pressed.current = true;
-      startLog();
+      chosen = id;
       log(`button ${id} (${how})`);
       start(id);
+    };
+    /**
+     * Decides without the button event and without a timer: build 0.1.0 (8) stayed at lifecycle 1
+     * with no press and no timer firing. A lasso selection means the lasso button (#13).
+     */
+    const decide = async () => {
+      if (pressed.current) {
+        return;
+      }
+      const lasso = await logged('getLassoElements', getLassoElements);
+      if (pressed.current) {
+        return;
+      }
+      handle(
+        lasso.ok && lasso.value.length > 0
+          ? LASSO_BUTTON_ID
+          : SIDEBAR_BUTTON_ID,
+        'decided on open',
+      );
     };
     // 1. A press that arrived before the view mounted (gorlix pattern 5).
     const early = takePendingButton();
@@ -127,41 +146,23 @@ function App(): React.JSX.Element {
       takePendingButton();
       handle(id, 'live');
     });
-    // 3. The view closed: show the starting screen next time, never stale state (pattern 9).
+    // 3. Closed: the next opening starts fresh (pattern 9); opened again: decide again.
     const stopLife = onLifecycle(state => {
       log(`lifecycle ${state}`);
       if (state === LifeState.stop) {
         pressed.current = false;
+        chosen = null;
         generation.current += 1;
         setScreen({name: 'starting'});
       } else if (state === LifeState.start) {
-        armWatchdog();
+        decide();
       }
     });
-    // 4. Last resort, on mount and each time the view opens again: no press within the wait.
-    let watchdog: ReturnType<typeof setTimeout> | undefined;
-    const armWatchdog = () => {
-      clearTimeout(watchdog);
-      watchdog = setTimeout(async () => {
-        if (pressed.current) {
-          return;
-        }
-        log(
-          `no button event after ${BUTTON_EVENT_WAIT_MS} ms; checking the lasso`,
-        );
-        const lasso = await logged('getLassoElements', getLassoElements);
-        start(
-          lasso.ok && lasso.value.length > 0
-            ? LASSO_BUTTON_ID
-            : SIDEBAR_BUTTON_ID,
-        );
-      }, BUTTON_EVENT_WAIT_MS);
-    };
-    armWatchdog();
+    // 4. Now, on mount.
+    decide();
     return () => {
       stopPresses();
       stopLife();
-      clearTimeout(watchdog);
     };
     // Registered once for the life of the view; start only sets state.
     // eslint-disable-next-line react-hooks/exhaustive-deps

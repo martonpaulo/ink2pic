@@ -44,3 +44,15 @@ Prerelease [`v0.1.0-dev.3`](https://github.com/martonpaulo/ink2pic/releases/tag/
 | 7-8 Screenshots and log | `[log]` readable | Pass | Lasso elements carry `stroke`, `numInPage`, `pageNum`, `layerNum`, `type` and `uuid` |
 
 Result: S0, S1 and S3 are all answered; [#3](https://github.com/martonpaulo/ink2pic/issues/3) is done.
+
+## Build 0.1.0 (8), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.8`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.8), commit `39cfec4`. Seen on the owner's screen mirror.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 Icon | A picture frame with a pen | Pass | In the plugin list (side bar) and as «Find picture» in the lasso menu ([#31](https://github.com/martonpaulo/ink2pic/issues/31)) |
+| 3 Lasso, Find picture | Six pictures | Fail | The view stayed on «Starting…» with two log lines, `view mounted` and `lifecycle 1`: no button event, no lifecycle 2, and the 2-second watchdog timer never fired. Timers do not run while the host holds the view at lifecycle 1 |
+| 4-8 | | Not run | Blocked by step 3 |
+
+Follow-up: build 0.1.0 (9) decides on mount, with no button event and no timer: an active lasso selection opens the lasso flow, else an empty search ([#13](https://github.com/martonpaulo/ink2pic/issues/13)).

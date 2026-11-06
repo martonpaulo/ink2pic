@@ -15,11 +15,18 @@ import {
 } from './src/buttons';
 import {initPlugin, registerButton, startButtonQueue} from './src/sdk/buttons';
 import {copy} from './src/ui/copy';
+import {log} from './src/log/memory';
 
 AppRegistry.registerComponent(appName, () => App);
 
 /** A failed registration leaves no button, so it is always reported. */
 function report(what, result) {
+  // Into the view's log too, so a failed or slow registration shows on screen (#13, build 8).
+  log(
+    result.ok
+      ? `${what}: ok`
+      : `${what} failed: ${result.code} ${result.message}`,
+  );
   if (!result.ok) {
     console.error(`Ink2Pic: ${what} failed: ${result.code} ${result.message}`);
   }
