@@ -32,6 +32,13 @@ export const STYLE_GROUPS = {
   painting: wordPattern('paintings?|portraits?'),
   drawing: wordPattern('drawings?|sketch(?:es)?|line ?art'),
   icon: wordPattern('icons?'),
+  // Text-only pictures: quotes set as posters, lettering (#65, in en, pt and es).
+  text: wordPattern(
+    'text|words?|quotes?|quotations?|lettering|typography|calligraphy|citação|citações|cita|citas|frases?',
+  ),
+  signature: wordPattern(
+    'signatures?|signatur|firma|assinatura|unterschrift|autographs?',
+  ),
 } as const;
 
 export type StyleGroup = keyof typeof STYLE_GROUPS;

@@ -176,3 +176,62 @@ describe('style words in the query (#65)', () => {
     );
   });
 });
+
+describe('text-only pictures and signatures (#65)', () => {
+  const plain = r('commons', 'Miguel de Cervantes', 'image/jpeg');
+
+  it.each([
+    'Miguel de Cervantes quote',
+    'Miguel de Cervantes text',
+    'Miguel de Cervantes lettering',
+    'Miguel de Cervantes typography',
+    'Miguel de Cervantes calligraphy',
+    'Frase de Miguel de Cervantes',
+    'Citação de Miguel de Cervantes',
+  ])(
+    'ranks «%s» below a plain picture (owner: text-only images rank low)',
+    title => {
+      expect(
+        einkScore(r('commons', title, 'image/svg+xml'), 'Miguel de Cervantes'),
+      ).toBeLessThan(einkScore(plain, 'Miguel de Cervantes') - 2);
+    },
+  );
+
+  it('keeps a text picture up when the query asks for text', () => {
+    const quote = r('commons', 'Miguel de Cervantes quote', 'image/svg+xml');
+    expect(einkScore(quote, 'Miguel de Cervantes quote')).toBeGreaterThan(
+      einkScore(quote, 'Miguel de Cervantes'),
+    );
+  });
+
+  it.each([
+    'Miguel de Cervantes signature',
+    'Frida Kahlo signature firma',
+    'Assinatura de Machado de Assis',
+    'Clarice-Lispector-Unterschrift',
+    'Napoleon autograph',
+  ])('drops «%s»', title => {
+    const signed = r('commons', title, 'image/svg+xml');
+    expect(rankForEink([[plain, signed]], 'cervantes')).toEqual([plain]);
+  });
+
+  it('drops a signature named only in the file name', () => {
+    const signed = {
+      ...r('commons', 'Cervantes 1605'),
+      thumbUrl:
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Cervantes_firma.svg/330px-Cervantes_firma.svg.png',
+    };
+    expect(rankForEink([[plain, signed]], 'cervantes')).toEqual([plain]);
+  });
+
+  it('keeps signatures when the query asks for one', () => {
+    const signed = r(
+      'commons',
+      'Miguel de Cervantes signature',
+      'image/svg+xml',
+    );
+    expect(rankForEink([[plain, signed]], 'cervantes signature')[0]).toBe(
+      signed,
+    );
+  });
+});

@@ -20,7 +20,7 @@ const LINE_WORK =
  * query can ask for: these are never wanted.
  */
 const STYLISED_OTHER =
-  /\b(elections?|anatomy|structure|coat of arms|coa|herald(ry|ic)|emblem|signature|poster|screenshot|quote|qr code|pattern|frame|wireframe|3d|ai generated|chatgpt|gradient)\b/i;
+  /\b(elections?|anatomy|structure|coat of arms|coa|herald(ry|ic)|emblem|poster|screenshot|qr code|pattern|frame|wireframe|3d|ai generated|chatgpt|gradient)\b/i;
 /** The style groups that fall with the stylised graphics unless the query asks for them. */
 const STYLISED_GROUPS: readonly StyleGroup[] = [
   'logo',
@@ -58,6 +58,8 @@ const LINE_WORK_SCORE = 1;
 const FORMAT_SCORE = 1;
 const CLIPART_SCORE = 1;
 const PHOTO_SCORE = -1;
+/** Below a plain photo of the word: the picture is mostly letters (owner, #65). */
+const TEXT_SCORE = -4;
 /** A title carrying a style the query asks for («apple logo»), per group (#65). */
 const ASKED_STYLE_SCORE = 2;
 /** Below a photo that names the word: these are about it, not a picture of it. */
@@ -110,6 +112,9 @@ const stylisedScorer: Scorer = (result, {styles}) =>
     ? STYLISED_SCORE
     : 0;
 
+const textScorer: Scorer = (result, {styles}) =>
+  !styles.has('text') && hasStyle(result.title, 'text') ? TEXT_SCORE : 0;
+
 /** The styles the query asks for, each one the title carries. */
 const askedStyleScorer: Scorer = (result, {styles}) =>
   [...styles].filter(group => hasStyle(result.title, group)).length *
@@ -130,6 +135,7 @@ export const DEFAULT_SCORERS: readonly Scorer[] = [
   lineWorkScorer,
   photoScorer,
   stylisedScorer,
+  textScorer,
   askedStyleScorer,
   formatScorer,
 ];
@@ -148,6 +154,31 @@ export function einkScore(
   scorers: readonly Scorer[] = DEFAULT_SCORERS,
 ): number {
   return total(result, readIntent(query), scorers);
+}
+
+/** The file name the result's picture comes from, which may say more than its title. */
+function fileName(result: SearchResult): string {
+  const path = (result.original?.url ?? result.thumbUrl).split('?')[0];
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}
+
+/**
+ * A signature is never a picture of the word: it is left out unless the query asks for one
+ * (#65; research of 2026-11-06 found one on every person's page).
+ */
+function wanted(result: SearchResult, {styles}: QueryIntent): boolean {
+  return (
+    styles.has('signature') ||
+    !(
+      hasStyle(result.title, 'signature') ||
+      hasStyle(fileName(result), 'signature')
+    )
+  );
 }
 
 /**
@@ -172,8 +203,9 @@ export function rankForEink(
       }
     }
   }
-  const canonical = interleaved.filter(result => result.canonical);
-  const [best, ...rest] = interleaved
+  const kept = interleaved.filter(result => wanted(result, intent));
+  const canonical = kept.filter(result => result.canonical);
+  const [best, ...rest] = kept
     .filter(result => !result.canonical)
     .map((result, order) => ({
       result,
