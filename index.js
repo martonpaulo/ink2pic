@@ -15,7 +15,20 @@ import {
 } from './src/buttons';
 import {initPlugin, registerButton, startButtonQueue} from './src/sdk/buttons';
 import {copy} from './src/ui/copy';
-import {log} from './src/log/memory';
+import {log, setAfterCall} from './src/log/memory';
+import {flushLogFile, openLogFile} from './src/log/file';
+import {SHARED_ROOT} from './src/flow/session';
+import {logsDir} from './src/storage/paths';
+import {catchCrashes} from './src/flow/crash';
+
+// First: any later error leaves a trace on the page and in crash.log, and the log reaches its
+// file from the start, flushed around every call, so a plugin the host closes leaves its last
+// line in MyStyle/Ink2Pic/logs/session.log (#13, build 0.1.0 (9)).
+catchCrashes();
+openLogFile(logsDir(SHARED_ROOT));
+setAfterCall(() => {
+  flushLogFile();
+});
 
 AppRegistry.registerComponent(appName, () => App);
 

@@ -23,6 +23,7 @@ type NativeFiles = {
   ) => Promise<number>;
   writeText: (path: string, text: string) => Promise<null>;
   readText: (path: string) => Promise<string | null>;
+  listDir: (path: string) => Promise<string[] | null>;
 };
 
 /** Distinct from the SDK's numeric codes: the module rejects with a text code. */
@@ -73,4 +74,9 @@ export function writeText(path: string, text: string): Promise<Result<null>> {
 /** `null` when the file does not exist. */
 export function readText(path: string): Promise<Result<string | null>> {
   return call(files => files.readText(path));
+}
+
+/** The names in a folder, or null when it does not exist; through the plugin's own module (#13). */
+export function listDir(path: string): Promise<Result<string[] | null>> {
+  return call(files => files.listDir(path));
 }

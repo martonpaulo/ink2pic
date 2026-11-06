@@ -77,6 +77,27 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   }
 
   /** Resolves null when the file does not exist. */
+  /**
+   * The names in a folder, or null when it does not exist. Replaces FileUtils.listFiles and exists:
+   * a SecurityException there escapes the TurboModule and the host closes the plugin
+   * (j-raghavan/sn-dictionary [REPORTED]; build 0.1.0 (9) closed at once, #13). Errors here reject.
+   */
+  @ReactMethod
+  public void listDir(String path, Promise promise) {
+    submit(promise, () -> {
+      File folder = new File(SafePaths.checkPath(path).getPath());
+      String[] names = folder.isDirectory() ? folder.list() : null;
+      if (names == null) {
+        return null;
+      }
+      com.facebook.react.bridge.WritableArray array = com.facebook.react.bridge.Arguments.createArray();
+      for (String name : names) {
+        array.pushString(name);
+      }
+      return array;
+    });
+  }
+
   @ReactMethod
   public void readText(String path, Promise promise) {
     submit(promise, () -> {

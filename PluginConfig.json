@@ -3,7 +3,7 @@
   "desc": "Write a word, lasso it, and insert a matching picture. The word you search is sent to Openclipart and Wikimedia Commons; pictures are saved in MyStyle/Ink2Pic.",
   "iconPath": "assets/icon.png",
   "versionName": "0.1.0",
-  "versionCode": "9",
+  "versionCode": "10",
   "pluginID": "23c48qc2qvw7rwb6",
   "pluginKey": "Ink2Pic",
   "jsMainPath": "index",

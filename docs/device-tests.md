@@ -56,3 +56,14 @@ Prerelease [`v0.1.0-dev.8`](https://github.com/martonpaulo/ink2pic/releases/tag/
 | 4-8 | | Not run | Blocked by step 3 |
 
 Follow-up: build 0.1.0 (9) decides on mount, with no button event and no timer: an active lasso selection opens the lasso flow, else an empty search ([#13](https://github.com/martonpaulo/ink2pic/issues/13)).
+
+## Build 0.1.0 (9), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.9`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.9), commit `42945ad`. Seen on the owner's screen mirror; the Manta was restarted after the install.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 Lasso, Find picture | Six pictures | Fail | The view showed «Starting…» and 4 or 5 log lines for an instant, then closed. Nothing reached `MyStyle` (no `Ink2Pic` folder) |
+| 3-8 | | Not run | Blocked by step 2 |
+
+Cause, inferred: after deciding the flow, the view's first file call was `FileUtils.getExternalDirPath`; `RTNFileUtils` calls can throw inside the host, where JS cannot catch them, and the host closes the plugin (`j-raghavan/sn-dictionary`, device-verified [REPORTED]). Build 0.1.0 (10) no longer calls `FileUtils` in the product, writes the log file around every call from the start, and writes any JS error into the page and `crash.log` ([#13](https://github.com/martonpaulo/ink2pic/issues/13)).

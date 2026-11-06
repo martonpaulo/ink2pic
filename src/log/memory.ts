@@ -68,6 +68,8 @@ export async function logged<T>(
 ): Promise<Result<T>> {
   const at = Date.now();
   log(`${label} …`);
+  // On disk before the call too: a call that makes the host close the plugin leaves its name (#13).
+  afterCall();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const expired = new Promise<Result<T>>(resolve => {
     timer = setTimeout(

@@ -27,9 +27,9 @@ import {
   Section,
 } from './report';
 import {brief, log, logged} from '../log/memory';
-import {exists, getExternalDirPath} from '../sdk/files';
 import {getPluginDirPath} from '../sdk/plugin';
-import {downloadToFile, readText, writeText} from '../storage/files';
+import {SHARED_ROOT} from '../flow/session';
+import {downloadToFile, listDir, readText, writeText} from '../storage/files';
 import {libraryDir} from '../storage/paths';
 
 const FETCH_TIMEOUT_MS = 10000;
@@ -265,18 +265,19 @@ export async function probeWrite(): Promise<Section> {
     'Ink2PicFiles: not loaded (check reactPackages and restart the device)';
   log(loaded);
   lines.push(loaded);
-  const roots = await logged('getExternalDirPath', getExternalDirPath);
-  if (roots.ok) {
-    const target = `${libraryDir(roots.value[0])}/spike-340609.png`;
-    const bytes = await logged(`downloadToFile(${target})`, () =>
-      downloadToFile(OPENCLIPART_IMAGE, target),
-    );
-    lines.push(`download: ${describe(bytes, b => `${b} bytes to ${target}`)}`);
-    const there = await logged('exists', () => exists(target));
-    lines.push(`exists: ${describe(there, String)}`);
-  } else {
-    lines.push('download: not attempted, no shared-storage root');
-  }
+  const target = `${libraryDir(SHARED_ROOT)}/spike-340609.png`;
+  const bytes = await logged(`downloadToFile(${target})`, () =>
+    downloadToFile(OPENCLIPART_IMAGE, target),
+  );
+  lines.push(`download: ${describe(bytes, b => `${b} bytes to ${target}`)}`);
+  const listed = await logged('listDir library', () =>
+    listDir(libraryDir(SHARED_ROOT)),
+  );
+  lines.push(
+    `in the folder: ${describe(listed, names =>
+      String((names ?? []).includes('spike-340609.png')),
+    )}`,
+  );
   const dir = await logged('getPluginDirPath', getPluginDirPath);
   if (dir.ok) {
     const file = `${dir.value}/spike.json`;

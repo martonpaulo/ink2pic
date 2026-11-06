@@ -5,7 +5,7 @@
  */
 import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
-import {exists, listFiles} from '../sdk/files';
+import {listDir} from '../storage/files';
 import {downloadToFile} from '../storage/files';
 import {safeFileName} from '../storage/paths';
 import type {SearchResult} from '../sources/types';
@@ -50,17 +50,12 @@ export function cachedThumbUri(
 /** Lists the stored thumbnails once per session; an unreadable folder turns the cache off. */
 async function listThumbs(pluginDir: string): Promise<Set<string> | null> {
   const dir = thumbDir(pluginDir);
-  const listed = await logged('listFiles thumbs', () => listFiles(dir));
+  const listed = await logged('listDir thumbs', () => listDir(dir));
   if (listed.ok) {
-    // Names or full paths: the device answer is not measured yet, so keep the last segment.
-    const names = listed.value
-      .map(entry => entry.slice(entry.lastIndexOf('/') + 1))
-      .filter(name => name && !name.endsWith(PART_SUFFIX));
+    const names = (listed.value ?? []).filter(
+      name => name && !name.endsWith(PART_SUFFIX),
+    );
     return new Set(names.map(name => `${dir}/${name}`));
-  }
-  const there = await logged('exists thumbs', () => exists(dir));
-  if (there.ok && !there.value) {
-    return new Set();
   }
   log(`thumbs: cannot list ${dir}: ${listed.message}`);
   return null;

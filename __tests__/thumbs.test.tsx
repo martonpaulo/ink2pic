@@ -1,7 +1,7 @@
 import React from 'react';
 import {Image, NativeModules} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
-import {FileUtils, PluginManager} from 'sn-plugin-lib';
+import {PluginManager} from 'sn-plugin-lib';
 import {resetSessionForTests} from '../src/flow/session';
 import {closeLogFileForTests} from '../src/log/file';
 import {
@@ -34,6 +34,7 @@ const native = {
   downloadToFile: jest.fn(),
   writeText: jest.fn(),
   readText: jest.fn(),
+  listDir: jest.fn(),
 };
 
 beforeEach(() => {
@@ -44,13 +45,10 @@ beforeEach(() => {
   resetThumbsForTests();
   closeLogFileForTests();
   (PluginManager.getPluginDirPath as jest.Mock).mockResolvedValue(DIR);
-  (FileUtils.getExternalDirPath as jest.Mock).mockResolvedValue([
-    '/storage/emulated/0',
-  ]);
   native.readText.mockResolvedValue(null);
   native.writeText.mockResolvedValue(null);
   native.downloadToFile.mockResolvedValue(42000);
-  (FileUtils.listFiles as jest.Mock).mockResolvedValue([]);
+  native.listDir.mockResolvedValue([]);
 });
 
 describe('thumbnail files (#16)', () => {
@@ -88,10 +86,10 @@ describe('thumbnail files (#16)', () => {
     );
   });
 
-  it('skips stored thumbnails, listed by name or path, and ignores part files', async () => {
-    (FileUtils.listFiles as jest.Mock).mockResolvedValue([
+  it('skips stored thumbnails, listed by name, and ignores part files', async () => {
+    native.listDir.mockResolvedValue([
       'openclipart-1',
-      `${THUMBS}/openclipart-2`,
+      'openclipart-2',
       'openclipart-3.part',
     ]);
     await prepareThumbs();
@@ -112,7 +110,7 @@ describe('thumbnail files (#16)', () => {
   });
 
   it('stores nothing past the limit', async () => {
-    (FileUtils.listFiles as jest.Mock).mockResolvedValue(
+    native.listDir.mockResolvedValue(
       Array.from({length: THUMB_LIMIT}, (_, n) => `old-${n}`),
     );
     await prepareThumbs();
@@ -121,16 +119,16 @@ describe('thumbnail files (#16)', () => {
   });
 
   it('starts empty when the folder does not exist yet', async () => {
-    (FileUtils.listFiles as jest.Mock).mockRejectedValue(new Error('no dir'));
-    (FileUtils.exists as jest.Mock).mockResolvedValue(false);
+    native.listDir.mockResolvedValue(null);
     expect(await prepareThumbs()).toBe(DIR);
     await storeThumbs([result(1)], DIR);
     expect(native.downloadToFile).toHaveBeenCalledTimes(1);
   });
 
   it('turns the cache off when the folder cannot be listed', async () => {
-    (FileUtils.listFiles as jest.Mock).mockRejectedValue(new Error('denied'));
-    (FileUtils.exists as jest.Mock).mockResolvedValue(true);
+    native.listDir.mockRejectedValue(
+      Object.assign(new Error('denied'), {code: 'IO'}),
+    );
     expect(await prepareThumbs()).toBeNull();
     await storeThumbs([result(1)], DIR);
     expect(native.downloadToFile).not.toHaveBeenCalled();
@@ -147,7 +145,7 @@ describe('thumbnail files (#16)', () => {
 
 describe('the grid with stored thumbnails (#16)', () => {
   it('reads stored files at once and stores the rest only after the page shows', async () => {
-    (FileUtils.listFiles as jest.Mock).mockResolvedValue(['openclipart-1']);
+    native.listDir.mockResolvedValue(['openclipart-1']);
     await prepareThumbs();
     const results = [result(1), result(2)];
     let tree!: ReactTestRenderer;

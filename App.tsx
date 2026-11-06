@@ -81,6 +81,10 @@ function App(): React.JSX.Element {
     const mine = generation.current;
     try {
       await startFlow(buttonId, mine);
+    } catch (error) {
+      // A rejected promise is not an uncaught error: report it the same way (#13).
+      log(`start failed: ${String(error)}`);
+      setScreen({name: 'starting'});
     } finally {
       running.current = false;
     }

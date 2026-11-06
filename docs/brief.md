@@ -662,6 +662,7 @@ before writing or changing an `sn-plugin-lib` call, and before fixing a device f
 | `getPageSize` error 1503 | 0.1.0 (2) | gorlix gotcha 38 and pattern 17: declare and request `FILE:READ` first |
 | The view stayed on its waiting text after opening | 0.1.0 (1), (4), (6) | gorlix gotcha 11 and pattern 5: the button event can fire before a listener registered in `App.tsx`; store a pending button id in `index.js`; pattern 9: reset the view on close with `registerPluginLifeListener` |
 | A native module is invisible unless listed | 0.1.0 (4) | gorlix gotcha 33: only `reactPackages` in `PluginConfig.json` loads it |
+| The view closed at once, with no trace | 0.1.0 (9) | `j-raghavan/sn-dictionary` notes: an `RTNFileUtils` call can throw inside the host, past JS, and the host closes the plugin [REPORTED]; Ink2Pic reaches files only through its own module, and a test keeps `FileUtils` out of product code |
 | Logs | all | gorlix gotcha 40: `console.log` is not stripped in a real build; `adb logcat -s ReactNativeJS` reads it when a cable is available |
 
 ## 11. Risks
