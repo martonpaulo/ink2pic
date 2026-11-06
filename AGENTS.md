@@ -14,7 +14,7 @@
 - Copyright: 2026 Marton Paulo
 - Development language: English.
 - Product copy: English only, a product requirement; no other locale. Every user-facing string lives in `src/ui/copy.ts` ([brief section 8.10](docs/brief.md#810-user-facing-copy)).
-- Branch policy: work on `main` only; create or switch branches only when the owner asks.
+- Branch policy: work on `main` only, with no branch protection, because direct pushes to `main` are the workflow; create or switch branches only when the owner asks.
 - Commit policy: commit each coherent task automatically once it is complete and `npm run validate` passes; only the change's files, one concern per commit.
 - Push policy: push each validated commit to `origin/main` automatically, so a cloud session loses nothing.
 - Product versioning: SemVer; `version` in `package.json` is the canonical `versionName` (the build copies it into `PluginConfig.json`), starting at `0.1.0`. `versionCode` in `PluginConfig.json` goes up by one on every build sent to the device, so each test report maps to exact code. A tag, a `CHANGELOG.md` entry and a GitHub release with the `.snplg` happen only when the owner asks, through `project-release`.
