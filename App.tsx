@@ -30,6 +30,9 @@ import {SearchScreen} from './src/ui/SearchScreen';
 import {StatusScreen} from './src/ui/StatusScreen';
 import {copy} from './src/ui/copy';
 
+/** The host replays the last press within 1 s of a new listener (#34); a margin on top. */
+const REPLAY_WINDOW_MS = 1500;
+
 type Screen =
   | {name: 'starting'}
   | {name: 'failed'}
@@ -115,15 +118,27 @@ function App(): React.JSX.Element {
   useEffect(() => {
     // No startLog here: index.js logged the registrations before the view mounted.
     log('view mounted');
-    // The press this opening is for; a live event with another id still restarts the flow.
+    // The press this opening is for, and when it was handled.
     let chosen: number | null = null;
+    let handledAt = 0;
     const handle = (id: number, how: string) => {
-      if (pressed.current && chosen === id) {
+      // Only a replay is a duplicate: the host replays the last press to a listener added within
+      // 1 s. A later press is a new opening, even with no lifecycle 3 between: the host hides the
+      // view with no event when the note app pauses (brief section 10.5, #34).
+      if (
+        pressed.current &&
+        chosen === id &&
+        Date.now() - handledAt < REPLAY_WINDOW_MS
+      ) {
         log(`button ${id} (${how}) already handled`);
         return;
       }
+      if (pressed.current) {
+        generation.current += 1;
+      }
       pressed.current = true;
       chosen = id;
+      handledAt = Date.now();
       log(`button ${id} (${how})`);
       start(id);
     };

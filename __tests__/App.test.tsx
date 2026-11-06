@@ -9,6 +9,7 @@ import {
 } from 'sn-plugin-lib';
 import App from '../App';
 import {logLines} from '../src/log/memory';
+import {startButtonQueue} from '../src/sdk/buttons';
 
 const ok = (result: unknown) => Promise.resolve({success: true, result});
 
@@ -61,5 +62,31 @@ it('opens an empty search when no lasso is active', async () => {
   const tree = await mount();
   expect(logLines().join('\n')).toContain('button 100 (decided on open)');
   expect(tree.root.findByProps({testID: 'query'}).props.value).toBe('');
+  act(() => tree.unmount());
+});
+
+it('takes a later press as a new opening, even with no lifecycle 3 (#34)', async () => {
+  (PluginCommAPI.getLassoElements as jest.Mock).mockReturnValue(
+    ok([{type: 700}]),
+  );
+  startButtonQueue();
+  const press = (PluginManager.registerButtonListener as jest.Mock).mock
+    .calls[0][0].onButtonPress;
+  const now = jest.spyOn(Date, 'now');
+  now.mockReturnValue(1_000_000);
+  const tree = await mount();
+  // The host's replay of the opening press: a duplicate.
+  await act(async () => press({id: 200}));
+  expect(logLines().join('\n')).toContain('button 200 (live) already handled');
+  // Minutes later, after a silent hide, the person lassoes a new word.
+  now.mockReturnValue(1_000_000 + 60_000);
+  (PluginCommAPI.recognizeElements as jest.Mock).mockReturnValue(ok('apple'));
+  await act(async () => press({id: 200}));
+  for (let i = 0; i < 5; i++) {
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve));
+    });
+  }
+  expect(tree.root.findByProps({testID: 'query'}).props.value).toBe('apple');
   act(() => tree.unmount());
 });
