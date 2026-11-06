@@ -14,7 +14,13 @@ import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
 import {log, logged, startLog} from './src/log/memory';
 import {needsOnboarding} from './src/onboarding/permissions';
 import {getLassoElements} from './src/sdk/lasso';
-import {closePluginView, onButtonPress} from './src/sdk/plugin';
+import {
+  LifeState,
+  onButtonEvent,
+  onLifecycle,
+  takePendingButton,
+} from './src/sdk/buttons';
+import {closePluginView} from './src/sdk/plugin';
 import type {SearchResult} from './src/sources/types';
 import {copy} from './src/ui/copy';
 import {LogView} from './src/ui/LogView';
@@ -73,12 +79,31 @@ function App(): React.JSX.Element {
   useEffect(() => {
     startLog();
     log('view mounted');
-    const stop = onButtonPress(({id}) => {
+    const handle = (id: number, how: string) => {
       pressed.current = true;
       startLog();
-      log(`button ${id}`);
+      log(`button ${id} (${how})`);
       start(id);
+    };
+    // 1. A press that arrived before the view mounted (gorlix pattern 5).
+    const early = takePendingButton();
+    if (early !== null) {
+      handle(early, 'pending');
+    }
+    // 2. Presses while the view is mounted.
+    const stopPresses = onButtonEvent(({id}) => {
+      takePendingButton();
+      handle(id, 'live');
     });
+    // 3. The view closed: show the starting screen next time, never stale state (pattern 9).
+    const stopLife = onLifecycle(state => {
+      log(`lifecycle ${state}`);
+      if (state === LifeState.stop) {
+        pressed.current = false;
+        setScreen({name: 'starting'});
+      }
+    });
+    // 4. Last resort: no press at all within the wait.
     const watchdog = setTimeout(async () => {
       if (pressed.current) {
         return;
@@ -94,7 +119,8 @@ function App(): React.JSX.Element {
       );
     }, BUTTON_EVENT_WAIT_MS);
     return () => {
-      stop();
+      stopPresses();
+      stopLife();
       clearTimeout(watchdog);
     };
     // Registered once for the life of the view; start only sets state.

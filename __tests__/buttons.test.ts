@@ -31,3 +31,48 @@ describe('initPlugin (#24)', () => {
     expect(initPlugin()).toEqual({ok: false, code: -1, message: 'no bridge'});
   });
 });
+
+describe('button queue (#13, gotcha 11)', () => {
+  it('keeps a press that came before the view listened, once', () => {
+    const {startButtonQueue, takePendingButton, onButtonEvent} =
+      jest.requireActual(
+        '../src/sdk/buttons',
+      ) as typeof import('../src/sdk/buttons');
+    let press: ((event: {id: number}) => void) | undefined;
+    register.mockReset();
+    (PluginManager.registerButtonListener as jest.Mock).mockImplementation(
+      listener => {
+        press = listener.onButtonPress;
+        return {remove: jest.fn()};
+      },
+    );
+    startButtonQueue();
+    press?.({id: 200});
+    expect(takePendingButton()).toBe(200);
+    expect(takePendingButton()).toBeNull();
+    const seen: number[] = [];
+    const stop = onButtonEvent(({id}) => seen.push(id));
+    press?.({id: 100});
+    stop();
+    press?.({id: 200});
+    expect(seen).toEqual([100]);
+  });
+
+  it('reports lifecycle states', () => {
+    const {onLifecycle} = jest.requireActual(
+      '../src/sdk/buttons',
+    ) as typeof import('../src/sdk/buttons');
+    let msg: ((m: {state: number}) => void) | undefined;
+    (PluginManager.registerPluginLifeListener as jest.Mock).mockImplementation(
+      listener => {
+        msg = listener.onMsg;
+        return {remove: jest.fn()};
+      },
+    );
+    const states: number[] = [];
+    const stop = onLifecycle(state => states.push(state));
+    msg?.({state: 3});
+    stop();
+    expect(states).toEqual([3]);
+  });
+});

@@ -13,7 +13,7 @@ import {
   SHOW_FULL_VIEW,
   SIDEBAR_BUTTON_ID,
 } from './src/buttons';
-import {initPlugin, registerButton} from './src/sdk/buttons';
+import {initPlugin, registerButton, startButtonQueue} from './src/sdk/buttons';
 import {copy} from './src/ui/copy';
 
 AppRegistry.registerComponent(appName, () => App);
@@ -43,3 +43,6 @@ registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
   editDataTypes: [EDIT_DATA_STROKES],
   showType: SHOW_FULL_VIEW,
 }).then(result => report('lasso button', result));
+
+// After registerButton, as the official docs order it; before the view exists (gotcha 11).
+startButtonQueue();

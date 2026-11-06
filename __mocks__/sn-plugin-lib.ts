@@ -13,6 +13,7 @@ export const PluginManager = {
     'closePluginView',
   ),
   registerButtonListener: jest.fn(() => ({remove: jest.fn()})),
+  registerPluginLifeListener: jest.fn(() => ({remove: jest.fn()})),
 };
 
 export const PluginCommAPI = mocks(
@@ -25,8 +26,17 @@ export const PluginCommAPI = mocks(
   'getCurrentPageNum',
 );
 
-export const PluginNoteAPI = mocks('insertText', 'insertImage', 'saveCurrentNote');
+export const PluginNoteAPI = mocks(
+  'insertText',
+  'insertImage',
+  'saveCurrentNote',
+);
 
 export const PluginFileAPI = mocks('getPageSize', 'insertElements');
 
-export const FileUtils = mocks('exists', 'makeDir', 'listFiles', 'getExternalDirPath');
+export const FileUtils = mocks(
+  'exists',
+  'makeDir',
+  'listFiles',
+  'getExternalDirPath',
+);
