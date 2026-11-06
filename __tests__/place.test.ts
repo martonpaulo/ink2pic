@@ -26,14 +26,24 @@ describe('placeRect (#20, #39)', () => {
     });
   });
 
-  it('stays on the page when it fits neither below nor above', () => {
+  it('shrinks into the larger band, keeping proportions, rather than cover the word', () => {
     const tall = {width: 640, height: 2000};
     const word = {left: 100, top: 1000, right: 300, bottom: 1100};
-    expect(placeRect(word, tall, page)).toEqual({
-      left: 100,
-      top: 560,
-      right: 740,
-      bottom: 2560,
-    });
+    const rect = placeRect(word, tall, page);
+    // Below: 2560 - 1124 = 1436 px of room, more than the 976 above.
+    expect(rect.top).toBe(1100 + PLACE_GAP);
+    expect(rect.bottom).toBe(2560);
+    expect(rect.right - rect.left).toBe(Math.round((640 * 1436) / 2000));
+  });
+
+  it('shrinks a picture wider than the page without distorting it', () => {
+    const wide = {width: 3840, height: 400};
+    const rect = placeRect(
+      {left: 0, top: 100, right: 50, bottom: 150},
+      wide,
+      page,
+    );
+    expect(rect.right - rect.left).toBe(1920);
+    expect(rect.bottom - rect.top).toBe(200);
   });
 });

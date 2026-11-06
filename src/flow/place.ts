@@ -21,24 +21,26 @@ export const PLACE_GAP = 24;
 
 /**
  * The picture's rect, left-aligned with the word: just below it, else just above it, so it never
- * covers the handwriting (#39); when neither fits, kept on the page as near as possible.
+ * covers the handwriting (#39). When it fits neither, it shrinks, keeping its proportions, into
+ * the larger free band; it also shrinks to the page width.
  */
 export function placeRect(
   lasso: Rect,
   picture: {width: number; height: number},
   page: Size,
 ): Rect {
-  const width = Math.min(picture.width, page.width);
-  const height = Math.min(picture.height, page.height);
-  const left = Math.max(0, Math.min(lasso.left, page.width - width));
   const below = lasso.bottom + PLACE_GAP;
-  const above = lasso.top - PLACE_GAP - height;
-  const top =
-    below + height <= page.height
-      ? below
-      : above >= 0
-      ? above
-      : Math.max(0, page.height - height);
+  const aboveRoom = Math.max(0, lasso.top - PLACE_GAP);
+  const belowRoom = Math.max(0, page.height - below);
+  const fitWidth = Math.min(1, page.width / picture.width);
+  let height = picture.height * fitWidth;
+  const goesBelow = height <= belowRoom || belowRoom >= aboveRoom;
+  const room = goesBelow ? belowRoom : aboveRoom;
+  const scale = fitWidth * Math.min(1, room / height);
+  const width = Math.round(picture.width * scale);
+  height = Math.round(picture.height * scale);
+  const left = Math.max(0, Math.min(lasso.left, page.width - width));
+  const top = goesBelow ? below : aboveRoom - height;
   return {left, top, right: left + width, bottom: top + height};
 }
 
