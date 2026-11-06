@@ -53,6 +53,7 @@ through its source repository, `github/docs`.
 - `fharper/awesome-supernote`, 647 stars, <https://github.com/fharper/awesome-supernote> (read).
   It has a Plugins section, one line per plugin (a link to the repository, a colon, one sentence), takes additions by
   pull request, and merged plugin entries in January and September 2026.
+  Ink2Pic's entry: [fharper/awesome-supernote#28](https://github.com/fharper/awesome-supernote/pull/28), opened 2026-11-06.
 - «List of All Available Plugins», a post on r/Supernote_dev, updated 2026-09-09, which Ratta's
   help page links (snippet). How entries are added was not readable.
 - `dwongdev/sugoi-supernote` was archived on 2026-08-31 (read): not usable.
