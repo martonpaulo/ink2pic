@@ -12,6 +12,7 @@ One entry per build sent to the owner's Manta ([brief section 18](brief.md#18-de
 - [Build 0.1.0 (10), 2026-11-06, firmware 3.31.45](#build-010-10-2026-11-06-firmware-33145)
 - [Build 0.1.0 (11), 2026-11-06, firmware 3.31.45](#build-010-11-2026-11-06-firmware-33145)
 - [Build 0.1.0 (12), 2026-11-06, firmware 3.31.45](#build-010-12-2026-11-06-firmware-33145)
+- [Build 0.1.0 (13), 2026-11-06, firmware 3.31.45](#build-010-13-2026-11-06-firmware-33145)
 
 ## Build 0.1.0 (1), 2026-11-06, firmware 3.31.45
 
@@ -116,3 +117,12 @@ Prerelease [`v0.1.0-dev.12`](https://github.com/martonpaulo/ink2pic/releases/tag
 | Keyboard after a typed search | The six tiles and the pager | Fail, fixed | The keyboard stayed open over half of the grid ([#42](https://github.com/martonpaulo/ink2pic/issues/42)) |
 | 4 Lasso "apple" again | Pictures at once, from the device | Pass | Owner report ([#16](https://github.com/martonpaulo/ink2pic/issues/16)) |
 | 5 `MyStyle/Ink2Pic/logs/` | `session.log` | Pass | Owner report ([#21](https://github.com/martonpaulo/ink2pic/issues/21)) |
+
+## Build 0.1.0 (13), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.13`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.13), commit `c94ff7d`. Owner report «everything worked except half of the pictures», with a screenshot of the Log.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 to 4, 6, 7 | Library kept, typical pictures first, latest press wins, keyboard closes | Pass | Owner report; Wikidata answered (`source wikidata: ok, count 1` for "apple") |
+| 5 Tap a picture | Just below the word | Fail on about half | `SecurityException: no DELETE permission` on the second write of `insert-download.png` and of `library.json`: PluginHost counts replacing a shared file as a delete ([#62](https://github.com/martonpaulo/ink2pic/issues/62)) |
