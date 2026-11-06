@@ -12,3 +12,8 @@ export function safeFileName(name: string): string {
     name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'file'
   );
 }
+
+/** `<root>/MyStyle/Ink2Pic/logs`, where the session log lives (#21). */
+export function logsDir(externalRoot: string): string {
+  return `${externalRoot.replace(/\/+$/, '')}/${SHARED_FOLDER}/logs`;
+}

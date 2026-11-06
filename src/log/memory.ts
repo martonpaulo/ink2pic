@@ -8,6 +8,12 @@ import {fail, Result} from '../sdk/result';
 const lines: string[] = [];
 let started = Date.now();
 const listeners = new Set<(lines: string[]) => void>();
+let afterCall: () => void = () => {};
+
+/** Called after each logged call: the session log file flushes here, on events (#21). */
+export function setAfterCall(hook: () => void): void {
+  afterCall = hook;
+}
 
 /** A call that never answers ends here, so the screen never stays stuck (build 0.1.0 (4), #11). */
 export const CALL_TIMEOUT_MS = 20000;
@@ -79,5 +85,6 @@ export async function logged<T>(
       ? `${label} -> ok ${brief(result.value)} (${took} ms)`
       : `${label} -> error ${result.code}: ${result.message} (${took} ms)`,
   );
+  afterCall();
   return result;
 }
