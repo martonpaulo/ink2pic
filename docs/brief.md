@@ -526,8 +526,8 @@ S0, S1 and S3 can share one JS-only test plugin. Every spike result must be writ
 Results so far ([device-tests](device-tests.md)):
 
 - S1 passed on build 0.1.0 (1) [CONFIRMED].
-- S0 was inconclusive: `Object.keys(NativeModules)` returns no keys in PluginHost, which runs the new architecture. Build 0.1.0 (2) looks each candidate module up by name.
-- S3 failed with `117` because the build passed the lasso size; build 0.1.0 (2) passes the page size.
+- S0 answered on build 0.1.0 (2): `Object.keys(NativeModules)` returns no keys in PluginHost, but each module is found by name. The host has no module that writes bytes to a file or downloads to a file: `RTNFileUtils` only copies, renames, lists and deletes, and no RNFS-like module is loaded [CONFIRMED]. So the plugin needs the small Java module (section 6.2, option 2a), [#11](https://github.com/martonpaulo/ink2pic/issues/11).
+- S3 failed with `117` because build 0.1.0 (1) passed the lasso size. Build 0.1.0 (2) could not read the page size: `getPageSize` needs `plugin.permission.FILE:READ` declared and granted, else it fails with `1503` [CONFIRMED]. Build 0.1.0 (3) requests the file permissions first.
 
 Decision tree after the spikes:
 

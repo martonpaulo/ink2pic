@@ -16,3 +16,17 @@ Prerelease [`v0.1.0-dev.1`](https://github.com/martonpaulo/ink2pic/releases/tag/
 | 8 Screenshots | Sent | Pass | One screenshot through the Inbox |
 
 Follow-up: build 0.1.0 (2) probes the modules by name and passes the page size to `recognizeElements`.
+
+## Build 0.1.0 (2), 2026-11-06, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.2`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.2), commit `2bc4bce`, issue [#3](https://github.com/martonpaulo/ink2pic/issues/3). Screenshots: [`0.1.0-2-host.jpg`](device-tests/0.1.0-2-host.jpg), [`0.1.0-2-lasso.jpg`](device-tests/0.1.0-2-lasso.jpg).
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 1-3 Install | Ink2Pic updated | Pass | Published by the `Prerelease` workflow from a tag pushed on the Mac |
+| 4 Sidebar button, S0 | Modules listed by name | Pass | Found as TurboModule and legacy: `BlobModule`, `FileReaderModule`, `Networking`, `ImageLoader`, `ImageStoreManager`, `RTNFileUtils`, `FileSelector`, `NativePluginAPI`, `NativePluginManager`, `NativeUIUtils`. None of `RNFSManager`, `RNFetchBlob`, `ReactNativeBlobUtil`, `RNCFileSystem`. No module writes bytes to a file or downloads to a file |
+| 4 Sidebar button, S1 | Both sources answer | Pass | Openclipart 200 (32 links), `400px` 200, Commons 200 with 3 `thumburl` |
+| 5-6 Lasso button, S3 | Words recognized | Fail | `getPageSize` failed with `1503: File read permission has not been requested`, so recognition was not attempted. The build declared and requested only `INTERNET` |
+| 7-8 Screenshots | Sent | Pass | Two screenshots |
+
+Owner's note: always log everything that can help debugging, and request the permissions other plugins request (file read and write). Build 0.1.0 (3) requests `FILE:READ`, `FILE:WRITE` and `INTERNET` first and prints a log of every SDK call with its answer.

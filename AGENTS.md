@@ -51,6 +51,7 @@ Before editing under a path, read the file its row names. A module with rules of
 - TypeScript first; Java only for what JavaScript provably cannot do. Every `sn-plugin-lib` call goes
   through the wrappers in `src/sdk/`.
 - Never change `pluginID` after the first build: the device would lose the plugin's library.
+- Every device build declares in `uses-permissions`, and requests before its first file or note call, each permission its calls need (`FILE:READ` gates `getPageSize`), and logs every SDK call and network request with its answer where the owner can read it (owner, 2026-11-06; [#3](https://github.com/martonpaulo/ink2pic/issues/3)).
 - The template's `buildPlugin.sh` may run without asking, locally and in a cloud session (owner
   decision, 2026-11-06; [brief section 16.1](docs/brief.md#161-where-each-part-runs)).
 
