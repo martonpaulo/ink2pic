@@ -36,7 +36,6 @@ export const copy = {
   // Outside the brief's table: the search button and the call log (owner's logging rule, #13).
   'action.search': 'Search',
   'action.log': 'Log',
-  'action.checkFiles': 'Check files',
   'error.emptyLasso':
     'There is no handwriting in the lasso. Type the word instead.',
   'error.sourcesDown':

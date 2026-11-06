@@ -93,18 +93,6 @@ describe('SearchScreen (#13)', () => {
     act(() => tree.unmount());
   });
 
-  it('runs the files check from the log and shows each line live (#11)', async () => {
-    const tree = await render();
-    const press = (label: string) =>
-      tree.root
-        .find(n => n.props.accessibilityLabel === label && n.props.onPress)
-        .props.onPress();
-    act(() => press(copy['action.log']));
-    await act(async () => press(copy['action.checkFiles']));
-    expect(texts(tree).join('\n')).toContain('Ink2PicFiles: not loaded');
-    act(() => tree.unmount());
-  });
-
   it('shows the insert failure as a sentence and keeps the results (#12, #37)', async () => {
     const onPick = jest.fn().mockResolvedValue({
       ok: false,

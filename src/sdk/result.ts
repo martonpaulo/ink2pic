@@ -50,10 +50,3 @@ export async function attempt<T>(
     );
   }
 }
-
-/** One line for a report: the value or the error code and message. */
-export function describe<T>(result: Result<T>, show: (v: T) => string): string {
-  return result.ok
-    ? show(result.value)
-    : `error ${result.code}: ${result.message}`;
-}

@@ -33,7 +33,7 @@ it('keeps every source file off FileUtils', () => {
       const path = join(dir, name);
       return statSync(path).isDirectory() ? files(path) : [path];
     });
-  // An import or a call; comments and the module-name list of the spike report may name it.
+  // An import or a call; a comment may name it.
   const offenders = files(root).filter(path =>
     /import[^;]*\bFileUtils\b|\bFileUtils\.\w+\(/.test(
       readFileSync(path, 'utf8'),

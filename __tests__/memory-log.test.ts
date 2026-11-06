@@ -15,7 +15,7 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-describe('spike log', () => {
+describe('the call log', () => {
   it('records each call with its answer', async () => {
     await logged('getPageSize', () =>
       Promise.resolve({ok: true as const, value: {width: 1920}}),

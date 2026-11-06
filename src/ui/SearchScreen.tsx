@@ -22,7 +22,6 @@ import {SearchOutcome, Source} from '../search/search';
 import {defaultSources} from '../search/sources';
 import {prepareThumbs} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
-import {probeWrite} from '../spike/probes';
 import {Button} from './Button';
 import {copy} from './copy';
 import {LogView} from './LogView';
@@ -73,17 +72,6 @@ export function SearchScreen({
   useEffect(() => {
     getLibrary().then(setLibrary);
   }, []);
-
-  // Logs its start at once and any error, so a failure is never silent (build 0.1.0 (6)).
-  const checkFiles = async () => {
-    log('check files: start');
-    try {
-      const section = await probeWrite();
-      log(`check files: done, ${section.lines.join(' | ')}`);
-    } catch (error) {
-      log(`check files: failed: ${String(error)}`);
-    }
-  };
 
   const pick = async (result: SearchResult) => {
     if (inserting.current) {
@@ -185,12 +173,7 @@ export function SearchScreen({
         <Button label={copy['action.close']} onPress={onClose} />
       </View>
       {status && <Text style={styles.text}>{status}</Text>}
-      {view === 'log' && (
-        <View style={styles.column}>
-          <Button label={copy['action.checkFiles']} onPress={checkFiles} />
-          <LogView />
-        </View>
-      )}
+      {view === 'log' && <LogView />}
       {view === 'library' && (
         <View style={styles.fill}>
           {library && library.recentSearches.length > 0 && (
@@ -242,7 +225,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: metrics.gap,
   },
   text: {fontSize: metrics.bodyFont, color: metrics.ink},
-  column: {gap: metrics.gap, alignItems: 'flex-start'},
   fill: {flex: 1, gap: metrics.gap},
   recent: {
     flexDirection: 'row',
