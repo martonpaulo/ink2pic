@@ -34,8 +34,8 @@ describe('einkScore', () => {
       'cat',
     );
     const other = einkScore(r('openclipart', 'Dog'), 'cat');
-    // A silhouette is line work too: one point more.
-    expect(named).toBe(plain + 1);
+    // A silhouette is no line work: a solid fill is hard to write on (#65).
+    expect(named).toBe(plain);
     expect(plural).toBe(plain);
     expect(plain).toBeGreaterThan(scene);
     expect(scene).toBeGreaterThan(other);
@@ -232,6 +232,35 @@ describe('text-only pictures and signatures (#65)', () => {
     );
     expect(rankForEink([[plain, signed]], 'cervantes signature')[0]).toBe(
       signed,
+    );
+  });
+});
+
+describe('silhouettes and frames (#65)', () => {
+  it('gives a silhouette no line-work point: a solid fill is hard to write on', () => {
+    expect(einkScore(r('openclipart', 'Cat silhouette'), 'cat')).toBe(
+      einkScore(r('openclipart', 'Cat'), 'cat'),
+    );
+  });
+
+  it.each([
+    'Apple Runner',
+    'Apple border',
+    'Apple frame',
+    'Apple ornament',
+    'Apple divider',
+  ])('ranks «%s» below a plain apple for «apple»', title => {
+    const titles = rankForEink(
+      [[r('openclipart', title), r('openclipart', 'Red apple')]],
+      'apple',
+    ).map(x => x.title);
+    expect(titles).toEqual(['Red apple', title]);
+  });
+
+  it('keeps a frame up when the query asks for one', () => {
+    const frame = r('openclipart', 'Apple frame');
+    expect(einkScore(frame, 'apple frame')).toBeGreaterThan(
+      einkScore(frame, 'apple'),
     );
   });
 });

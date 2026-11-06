@@ -14,19 +14,20 @@ import type {SearchResult} from './types';
 export type Scorer = (result: SearchResult, intent: QueryIntent) => number;
 
 const LINE_WORK =
-  /\b(engraving|etching|woodcut|drawing|line ?art|sketch|outline|silhouette|illustration|clip ?art|icon|lithograph)\b/i;
+  /\b(engraving|etching|woodcut|drawing|line ?art|sketch|outline|illustration|clip ?art|icon|lithograph)\b/i;
 /**
  * Graphics that are about the word but are not a picture of it (#43), beyond the style groups a
  * query can ask for: these are never wanted.
  */
 const STYLISED_OTHER =
-  /\b(elections?|anatomy|structure|coat of arms|coa|herald(ry|ic)|emblem|poster|screenshot|qr code|pattern|frame|wireframe|3d|ai generated|chatgpt|gradient)\b/i;
+  /\b(elections?|anatomy|structure|coat of arms|coa|herald(ry|ic)|emblem|poster|screenshot|qr code|pattern|wireframe|3d|ai generated|chatgpt|gradient)\b/i;
 /** The style groups that fall with the stylised graphics unless the query asks for them. */
 const STYLISED_GROUPS: readonly StyleGroup[] = [
   'logo',
   'flag',
   'map',
   'diagram',
+  'frame',
 ];
 const LINE_FORMATS = new Set(['image/png', 'image/svg+xml']);
 /** Title words that say how the thing is drawn, not what else is in the picture. */
