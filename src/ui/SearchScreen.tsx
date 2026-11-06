@@ -13,6 +13,7 @@ import type {Result} from '../sdk/result';
 import {searchCached} from '../search/device';
 import {SearchOutcome, Source} from '../search/search';
 import {defaultSources} from '../search/sources';
+import {prepareThumbs} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
 import {probeWrite} from '../spike/probes';
 import {Button} from './Button';
@@ -61,6 +62,7 @@ export function SearchScreen({
     recognitionFailed ? copy['error.recognition'] : null,
   );
   const [library, setLibrary] = useState<Library | null>(null);
+  const [thumbDir, setThumbDir] = useState<string | null>(null);
 
   useEffect(() => {
     getLibrary().then(setLibrary);
@@ -99,7 +101,12 @@ export function SearchScreen({
       setStatus(null);
       log(`search "${word}"`);
       setSearching(true);
-      const result = await searchCached(word, sources ?? defaultSources());
+      // The stored thumbnails are listed while the search runs, so the grid knows them at once.
+      const [result, dir] = await Promise.all([
+        searchCached(word, sources ?? defaultSources()),
+        prepareThumbs(),
+      ]);
+      setThumbDir(dir);
       for (const [name, sourceStatus] of Object.entries(result.statuses)) {
         log(`source ${name}: ${JSON.stringify(sourceStatus)}`);
       }
@@ -187,6 +194,7 @@ export function SearchScreen({
           searching={searching}
           sourceDown={outcome?.sourceDown ?? false}
           onPick={pick}
+          thumbDir={thumbDir}
         />
       )}
     </View>

@@ -6,6 +6,7 @@ import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
 import {pageCount, pageOf} from '../search/pages';
+import {cachedThumbUri, storeThumbs} from '../search/thumbs';
 import type {SearchResult} from '../sources/types';
 import {Button} from './Button';
 import {copy} from './copy';
@@ -25,6 +26,8 @@ export type ResultsGridProps = {
   onPick: (result: SearchResult) => void;
   /** Shown when there is no result; the search's own text by default. */
   emptyText?: string;
+  /** The plugin folder whose stored thumbnails the grid reads and fills (#16); none for files. */
+  thumbDir?: string | null;
 };
 
 export function ResultsGrid({
@@ -33,6 +36,7 @@ export function ResultsGrid({
   sourceDown,
   onPick,
   emptyText = copy['search.empty'],
+  thumbDir = null,
 }: ResultsGridProps): React.JSX.Element {
   // The page belongs to one results list: a new list starts at page 1 in the same render.
   const [paging, setPaging] = useState({results, page: 0});
@@ -43,6 +47,19 @@ export function ResultsGrid({
   const [settled, setSettled] = useState<ReadonlySet<string>>(new Set());
   const pages = pageCount(results.length);
   const visible = useMemo(() => pageOf(results, page), [results, page]);
+
+  // Chosen once per results list, so a thumbnail stored while the list is shown does not
+  // reload its tile; the next list with that result reads the file.
+  const thumbUris = useMemo(
+    () =>
+      new Map(
+        results.map(result => [
+          result.id,
+          thumbDir ? cachedThumbUri(result, thumbDir) : result.thumbUrl,
+        ]),
+      ),
+    [results, thumbDir],
+  );
 
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
 
@@ -74,6 +91,13 @@ export function ResultsGrid({
     // The timer restarts per page, not per settled tile.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, ready]);
+
+  // A shown page stores its thumbnails afterwards: the page never waits for these downloads.
+  useEffect(() => {
+    if (ready && thumbDir) {
+      storeThumbs(visible, thumbDir);
+    }
+  }, [visible, ready, thumbDir]);
 
   if (searching) {
     return <Text style={styles.message}>{copy['search.running']}</Text>;
@@ -112,7 +136,10 @@ export function ResultsGrid({
                     <Text style={styles.failedTitle}>{result.title}</Text>
                   ) : (
                     <Image
-                      source={{uri: result.thumbUrl, headers: THUMB_HEADERS}}
+                      source={{
+                        uri: thumbUris.get(result.id) ?? result.thumbUrl,
+                        headers: THUMB_HEADERS,
+                      }}
                       style={styles.image}
                       resizeMode="contain"
                       fadeDuration={0}
