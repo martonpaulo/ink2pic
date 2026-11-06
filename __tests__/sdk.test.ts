@@ -37,27 +37,9 @@ const responseCalls: [string, jest.Mock, () => Promise<unknown>, unknown][] = [
     'soup',
   ],
   [
-    'setLassoBoxState',
-    mocked(PluginCommAPI.setLassoBoxState),
-    () => lasso.setLassoBoxState(lasso.LassoBox.remove),
-    true,
-  ],
-  [
-    'deleteLassoElements',
-    mocked(PluginCommAPI.deleteLassoElements),
-    () => lasso.deleteLassoElements(),
-    true,
-  ],
-  [
     'insertImage',
     mocked(PluginNoteAPI.insertImage),
     () => note.insertImage('/a.png'),
-    true,
-  ],
-  [
-    'saveCurrentNote',
-    mocked(PluginNoteAPI.saveCurrentNote),
-    () => note.saveCurrentNote(),
     true,
   ],
   [
@@ -77,12 +59,6 @@ const responseCalls: [string, jest.Mock, () => Promise<unknown>, unknown][] = [
     mocked(PluginFileAPI.getPageSize),
     () => page.getPageSize('/Note/a.note', 0),
     {width: 1920, height: 2560},
-  ],
-  [
-    'insertElements',
-    mocked(PluginFileAPI.insertElements),
-    () => page.insertElements('/Note/a.note', 0, []),
-    true,
   ],
 ];
 
@@ -153,28 +129,16 @@ describe('plain-value calls', () => {
     });
   });
 
-  it('reads the device type and closes the view', async () => {
-    mocked(PluginManager.getDeviceType).mockResolvedValue(5);
-    expect(await plugin.getDeviceType()).toEqual({ok: true, value: 5});
+  it('reports a view that cannot close', async () => {
     mocked(PluginManager.closePluginView).mockRejectedValue(
       new Error('no view'),
     );
     expect((await plugin.closePluginView()).ok).toBe(false);
   });
-
-  it('stops listening to buttons', () => {
-    const remove = jest.fn();
-    mocked(PluginManager.registerButtonListener).mockReturnValue({remove});
-    const stop = plugin.onButtonPress(() => {});
-    stop();
-    expect(remove).toHaveBeenCalled();
-  });
 });
 
 describe('numeric answers (#23)', () => {
   it('fails instead of reporting NaN when the host answers nothing', async () => {
-    mocked(PluginManager.getDeviceType).mockResolvedValue(undefined);
-    expect((await plugin.getDeviceType()).ok).toBe(false);
     mocked(PluginManager.requestPermission).mockResolvedValue(undefined);
     expect(
       (await plugin.requestPermission(plugin.PERMISSION_INTERNET)).ok,

@@ -60,3 +60,23 @@ it('keeps the storage, search and library layers below the flow and the view (#5
   );
   expect(offenders).toEqual([]);
 });
+
+it('has no SDK wrapper that nothing calls (#54)', () => {
+  const callers = [...sources(join(ROOT, 'src')), 'App.tsx', 'index.js']
+    .filter(path => !/^src\/sdk\//.test(path))
+    .map(path => readFileSync(join(ROOT, path), 'utf8'))
+    .join('\n');
+  const wrappers = sources(join(ROOT, 'src', 'sdk'))
+    .filter(path => path !== 'src/sdk/result.ts')
+    .flatMap(path =>
+      [
+        ...readFileSync(join(ROOT, path), 'utf8').matchAll(
+          /export (?:async )?function (\w+)/g,
+        ),
+      ].map(match => match[1]),
+    );
+  expect(wrappers.length).toBeGreaterThan(0);
+  expect(
+    wrappers.filter(name => !new RegExp(`\\b${name}\\b`).test(callers)),
+  ).toEqual([]);
+});

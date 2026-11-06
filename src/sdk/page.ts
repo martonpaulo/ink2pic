@@ -19,15 +19,6 @@ export function getPageSize(
   return attempt(() => PluginFileAPI.getPageSize(notePath, page));
 }
 
-/** Needs an open note context; from a settings screen it fails with 102 (brief section 4.6). */
-export function insertElements(
-  notePath: string,
-  page: number,
-  elements: object[],
-): Promise<Result<unknown>> {
-  return attempt(() => PluginFileAPI.insertElements(notePath, page, elements));
-}
-
 /** `Element.TYPE_PICTURE` in sn-plugin-lib 0.2.3 (brief section 4.7). */
 export const PICTURE_TYPE = 200;
 

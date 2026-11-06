@@ -5,7 +5,3 @@ import {attempt, Result} from './result';
 export function insertImage(path: string): Promise<Result<boolean>> {
   return attempt(() => PluginNoteAPI.insertImage(path));
 }
-
-export function saveCurrentNote(): Promise<Result<boolean>> {
-  return attempt(() => PluginNoteAPI.saveCurrentNote());
-}

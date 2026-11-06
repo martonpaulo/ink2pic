@@ -18,11 +18,6 @@ function toNumber(raw: unknown): Result<number> {
     : fail(THROWN_CODE, `expected a number, got ${String(raw)}`);
 }
 
-/** `5` is the Manta (A5X2), per brief section 2. */
-export function getDeviceType(): Promise<Result<number>> {
-  return attempt(() => PluginManager.getDeviceType(), toNumber);
-}
-
 /** The host's answer: 0 denied, 1 allowed once, 2 always, -1 cancelled (brief section 3.6). */
 export function requestPermission(
   permission: string,
@@ -60,16 +55,4 @@ export function closePluginView(): Promise<Result<boolean>> {
     () => PluginManager.closePluginView(),
     raw => ok(Boolean(raw)),
   );
-}
-
-export type ButtonPress = {id: number};
-
-/** Calls `onPress` for every plugin button press; returns the function that stops listening. */
-export function onButtonPress(
-  onPress: (event: ButtonPress) => void,
-): () => void {
-  const subscription = PluginManager.registerButtonListener({
-    onButtonPress: event => onPress({id: event.id}),
-  });
-  return () => subscription.remove();
 }

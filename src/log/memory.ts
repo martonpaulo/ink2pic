@@ -31,7 +31,6 @@ const CLOSING_CALLS = [
   'closePluginView',
   'insertImage',
   'insertPageElements',
-  'insertElements',
   'requestPermission',
 ];
 
