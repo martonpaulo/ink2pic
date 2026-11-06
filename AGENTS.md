@@ -47,6 +47,9 @@ Before editing under a path, read the file its row names. A module with rules of
 - The agent cannot reach the Supernote. Each build sent to the owner carries a checklist of at most
   8 steps with expected results, and each report goes into `docs/device-tests.md`
   ([brief section 18](docs/brief.md#18-device-test-protocol)).
+- One device build per test round, holding everything ready to test, with one check card for all of
+  it; a new build goes out only after the owner answers the open one, never one build per issue
+  (owner, 2026-11-06).
 - Keep React Native 0.79.2, React 19.0.0 and `sn-plugin-lib` 0.2.3 exact: PluginHost fixes them.
 - TypeScript first; Java only for what JavaScript provably cannot do. Every `sn-plugin-lib` call goes
   through the wrappers in `src/sdk/`.
