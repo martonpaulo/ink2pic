@@ -33,6 +33,9 @@ public final class SafePathsTest {
   }
 
   public static void main(String[] args) {
+    // Shared storage is written in place: PluginHost counts a rename over a file as a delete (#62).
+    check(SafePaths.isShared(new java.io.File("/storage/emulated/0/MyStyle/Ink2Pic/library/library.json")), "MyStyle is shared");
+    check(!SafePaths.isShared(new java.io.File("/data/user/0/com.ratta.supernote.pluginhost/files/plugins/x/thumbs/a")), "the plugin folder is private");
     check(codeOfUrl("https://openclipart.org/image/400px/1").equals("ok"), "https accepted");
     check(codeOfUrl("HTTPS://openclipart.org/").equals("ok"), "scheme case ignored");
     check(codeOfUrl("http://openclipart.org/").equals("HTTPS_ONLY"), "http refused");

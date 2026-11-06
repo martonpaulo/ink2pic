@@ -39,6 +39,15 @@ public final class SafePaths {
     return new File(path);
   }
 
+  /**
+   * Shared storage, where PluginHost counts replacing or renaming a file as a delete, which needs
+   * FILE:DELETE (build 0.1.0 (13): SecurityException on library.json and the insert download).
+   */
+  public static boolean isShared(File target) {
+    String path = target.getAbsolutePath();
+    return path.startsWith("/storage/") || path.startsWith("/sdcard/");
+  }
+
   /** The temporary file a write goes to before it is renamed into place. */
   public static File partFile(File target) {
     return new File(target.getParentFile(), target.getName() + ".part");

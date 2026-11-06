@@ -63,10 +63,11 @@ describe('insertPicture (#12)', () => {
     // (brief section 6.6); the library keeps only the .png (#48).
     expect(native.downloadToFile.mock.calls[0].slice(0, 2)).toEqual([
       'https://openclipart.org/image/800px/340609',
-      '/storage/emulated/0/MyStyle/Ink2Pic/insert-download.png',
+      // Private: replacing a file in MyStyle needs FILE:DELETE (#62).
+      '/data/plugin/insert-download.png',
     ]);
     expect(image.prepareForEink.mock.calls[0].slice(0, 3)).toEqual([
-      '/storage/emulated/0/MyStyle/Ink2Pic/insert-download.png',
+      '/data/plugin/insert-download.png',
       path,
       640,
     ]);
@@ -128,15 +129,15 @@ describe('insertPicture (#12)', () => {
       Object.assign(new Error('bad'), {code: 'NOT_IMAGE'}),
     );
     const done = await insertPicture(result, 'soup');
-    expect(done).toEqual({
-      ok: true,
-      value: '/storage/emulated/0/MyStyle/Ink2Pic/insert-download.png',
-    });
-    // The temporary file is overwritten by the next insert: it is never a library picture (#48).
-    const saved = native.writeText.mock.calls.find(call =>
-      String(call[0]).endsWith('/library.json'),
-    );
-    expect(saved).toBeUndefined();
+    // Downloaded again into the library under its own name: the note app may not read the
+    // private folder, and a file in MyStyle is never replaced (#62).
+    const kept =
+      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.png';
+    expect(done).toEqual({ok: true, value: kept});
+    expect(native.downloadToFile.mock.calls.map(call => call[1])).toEqual([
+      '/data/plugin/insert-download.png',
+      kept,
+    ]);
   });
 
   it('inserts a picture already in the library from disk (#48)', async () => {

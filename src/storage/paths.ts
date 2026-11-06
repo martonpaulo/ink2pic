@@ -19,15 +19,15 @@ export function libraryDir(externalRoot = SHARED_ROOT): string {
 }
 
 /**
- * `<root>/MyStyle/Ink2Pic/insert-download.<extension>`: the raw download of an insert, in shared
- * storage because the note app may not read the private folder (brief section 6.6, #48). One
- * fixed name, overwritten by each insert, never recorded in the library and never deleted.
+ * `<plugin folder>/insert-download.<extension>`: the raw download of an insert, in the private
+ * folder, where replacing it needs no permission; PluginHost counts replacing a file in shared
+ * storage as a delete (#62). One fixed name, overwritten by each insert.
  */
 export function insertDownloadPath(
+  pluginDir: string,
   extension: string,
-  externalRoot = SHARED_ROOT,
 ): string {
-  return sharedDir(externalRoot, `insert-download.${extension}`);
+  return `${pluginDir}/insert-download.${extension}`;
 }
 
 /** A file name safe on the device: letters, digits, dot, dash and underscore only. */

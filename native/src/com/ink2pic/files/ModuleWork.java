@@ -48,6 +48,9 @@ final class ModuleWork {
     if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
       throw new IOException("cannot create folder " + parent);
     }
+    if (SafePaths.isShared(target)) {
+      return writeInPlace(target, input);
+    }
     File part = SafePaths.partFile(target);
     long total = 0;
     try (OutputStream output = new FileOutputStream(part)) {
@@ -71,6 +74,27 @@ final class ModuleWork {
     if (!part.renameTo(target)) {
       part.delete();
       throw new IOException("cannot rename " + part + " to " + target);
+    }
+    return total;
+  }
+
+  /**
+   * Writes straight into a file in shared storage: no temporary file, no rename, no delete, which
+   * PluginHost refuses without FILE:DELETE (#62). shortcut: a write cut off midway leaves a partial
+   * file, which the next write replaces; upgrade if a device shows such a file.
+   */
+  static long writeInPlace(File target, InputStream input) throws Exception {
+    long total = 0;
+    try (OutputStream output = new FileOutputStream(target, false)) {
+      byte[] buffer = new byte[BUFFER];
+      int read;
+      while ((read = input.read(buffer)) != -1) {
+        total += read;
+        if (total > SafePaths.MAX_DOWNLOAD_BYTES) {
+          throw new SafePaths.Refused("TOO_LARGE", "over " + SafePaths.MAX_DOWNLOAD_BYTES + " bytes");
+        }
+        output.write(buffer, 0, read);
+      }
     }
     return total;
   }

@@ -15,6 +15,7 @@ import {SearchResult, sourceId} from '../sources/types';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
 import {insertDownloadPath, libraryDir, safeFileName} from '../storage/paths';
+import {pluginFolder} from '../storage/session';
 import {atStep, Done} from './failure';
 import {LassoPlace, placeAtLasso} from './place';
 
@@ -35,14 +36,19 @@ type Saved = {
 };
 
 /**
- * Downloads the picture to the temporary file, then prepares it for e-ink into the library file.
- * When the preparation fails, the downloaded file is inserted as it is, is not recorded, since the
- * next insert overwrites it, and the failure is in the log.
+ * Downloads the picture to the private temporary file, then prepares it for e-ink into the library
+ * file. When the preparation fails, the picture is downloaded again straight into the library under
+ * its own name, because the note app may not read the private folder (brief section 6.6), and it
+ * is recorded like a prepared one; the failure is in the log (#62).
  */
 async function download(result: SearchResult): Promise<Result<Saved>> {
   const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
-  const raw = insertDownloadPath(imageExtension(url));
+  const dir = await pluginFolder();
+  if (!dir.ok) {
+    return dir;
+  }
+  const raw = insertDownloadPath(dir.value, imageExtension(url));
   const bytes = await logged(`downloadToFile(${url} -> ${raw})`, () =>
     downloadToFile(url, raw),
   );
@@ -52,9 +58,14 @@ async function download(result: SearchResult): Promise<Result<Saved>> {
   const prepared = await logged(`prepareForEink(${raw})`, () =>
     prepareForEink(raw, `${base}.png`, INSERT_WIDTH),
   );
-  return prepared.ok
-    ? ok({path: `${base}.png`, size: prepared.value, record: true})
-    : ok({path: raw, size: null, record: false});
+  if (prepared.ok) {
+    return ok({path: `${base}.png`, size: prepared.value, record: true});
+  }
+  const kept = `${base}.${imageExtension(url)}`;
+  const again = await logged(`downloadToFile(${url} -> ${kept})`, () =>
+    downloadToFile(url, kept),
+  );
+  return again.ok ? ok({path: kept, size: null, record: true}) : again;
 }
 
 /** A library picture, a search result already in the library, else a download. */
