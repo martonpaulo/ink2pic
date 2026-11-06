@@ -491,6 +491,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `search.empty` | No pictures found. Try a simpler English word. |
 | `search.recent` | Recent |
 | `nav.previous` / `nav.next` | ◀ / ▶ |
+| `nav.previousLabel` / `nav.nextLabel` | Previous page / Next page |
 | `insert.running` | Adding to your note… |
 | `error.offline` | No internet. Showing your library. |
 | `error.sourceDown` | One source did not answer. Showing the other one. |

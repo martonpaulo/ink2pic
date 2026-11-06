@@ -13,6 +13,8 @@ export const copy = {
   'search.recent': 'Recent',
   'nav.previous': '◀',
   'nav.next': '▶',
+  'nav.previousLabel': 'Previous page',
+  'nav.nextLabel': 'Next page',
   'insert.running': 'Adding to your note…',
   'error.offline': 'No internet. Showing your library.',
   'error.sourceDown': 'One source did not answer. Showing the other one.',
