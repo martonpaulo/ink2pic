@@ -15,7 +15,7 @@ import {sessionPaths} from './src/flow/session';
 import {rotateLogFile} from './src/log/file';
 import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
 import {log, logged} from './src/log/memory';
-import {needsOnboarding} from './src/onboarding/permissions';
+import {missingPermissions, PermissionNeed} from './src/onboarding/permissions';
 import {getLassoElements} from './src/sdk/lasso';
 import {
   LifeState,
@@ -36,7 +36,7 @@ const REPLAY_WINDOW_MS = 1500;
 type Screen =
   | {name: 'starting'}
   | {name: 'failed'}
-  | {name: 'onboarding'; buttonId: number}
+  | {name: 'onboarding'; buttonId: number; missing: PermissionNeed[]}
   | {
       name: 'search';
       query: string;
@@ -107,9 +107,10 @@ function App(): React.JSX.Element {
     if (mine !== generation.current) {
       return;
     }
-    if (await needsOnboarding()) {
+    const missing = await missingPermissions();
+    if (missing.length > 0) {
       log('onboarding: a permission is missing');
-      setScreen({name: 'onboarding', buttonId});
+      setScreen({name: 'onboarding', buttonId, missing});
       return;
     }
     await openSearch(buttonId);
@@ -206,6 +207,7 @@ function App(): React.JSX.Element {
     case 'onboarding':
       return (
         <Onboarding
+          missing={screen.missing}
           onDone={() => openSearch(screen.buttonId)}
           onClose={() => closePluginView()}
         />

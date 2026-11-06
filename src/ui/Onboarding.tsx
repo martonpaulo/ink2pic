@@ -5,7 +5,12 @@ import React, {useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Button} from './Button';
 import {ScreenTools} from './ScreenTools';
-import {Denied, requestMissing} from '../onboarding/permissions';
+import {
+  Denied,
+  PermissionNeed,
+  reasonsFor,
+  requestMissing,
+} from '../onboarding/permissions';
 import {copy} from './copy';
 import {metrics} from './metrics';
 
@@ -15,9 +20,15 @@ const CARDS = [
   copy['onboarding.3'],
 ] as const;
 
-export type OnboardingProps = {onDone: () => void; onClose: () => void};
+export type OnboardingProps = {
+  /** What the host reports as not granted: named before Start, not only after a denial. */
+  missing: readonly PermissionNeed[];
+  onDone: () => void;
+  onClose: () => void;
+};
 
 export function Onboarding({
+  missing,
   onDone,
   onClose,
 }: OnboardingProps): React.JSX.Element {
@@ -43,9 +54,11 @@ export function Onboarding({
           <Text style={styles.text}>{text}</Text>
         </View>
       ))}
-      {denied.map(need => (
-        <Text key={need.permission} style={styles.text}>
-          {need.reason}
+      {/* Before Start, what is missing (build 0.1.0 (11): a permission turned off later showed
+          only the cards); after a denial, what stayed denied. */}
+      {reasonsFor(denied.length > 0 ? denied : missing).map(reason => (
+        <Text key={reason} style={styles.text}>
+          {reason}
         </Text>
       ))}
       {denied.length > 0 && (

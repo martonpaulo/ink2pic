@@ -4,7 +4,7 @@ import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {PluginManager} from 'sn-plugin-lib';
 import {
   missingPermissions,
-  needsOnboarding,
+  PERMISSIONS,
   requestMissing,
 } from '../src/onboarding/permissions';
 import {copy} from '../src/ui/copy';
@@ -21,7 +21,7 @@ beforeEach(() => {
 describe('permissions', () => {
   it('needs nothing when all are granted', async () => {
     has.mockResolvedValue(1);
-    expect(await needsOnboarding()).toBe(false);
+    expect(await missingPermissions()).toEqual([]);
     expect((await requestMissing()).denied).toEqual([]);
     expect(request).not.toHaveBeenCalled();
   });
@@ -77,11 +77,11 @@ describe('permissions', () => {
 });
 
 describe('Onboarding', () => {
-  const render = (onDone = jest.fn()) => {
+  const render = (onDone = jest.fn(), missing = PERMISSIONS) => {
     let tree!: ReactTestRenderer;
     act(() => {
       tree = renderer.create(
-        <Onboarding onDone={onDone} onClose={jest.fn()} />,
+        <Onboarding missing={missing} onDone={onDone} onClose={jest.fn()} />,
       );
     });
     return tree;
@@ -132,5 +132,14 @@ describe('Onboarding', () => {
         copy['error.permission.settings'],
       ]),
     );
+  });
+
+  it('names a permission turned off later before Start (build 0.1.0 (11))', () => {
+    const internet = PERMISSIONS.filter(
+      n => n.permission === 'plugin.permission.INTERNET',
+    );
+    const shown = texts(render(jest.fn(), internet));
+    expect(shown).toContain(copy['error.permission.internet']);
+    expect(shown).not.toContain(copy['error.permission.files']);
   });
 });

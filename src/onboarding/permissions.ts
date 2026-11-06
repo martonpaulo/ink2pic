@@ -40,9 +40,9 @@ export async function missingPermissions(): Promise<PermissionNeed[]> {
   return missing;
 }
 
-/** Shown-once signal until the file writer (#11) can store a flag. */
-export async function needsOnboarding(): Promise<boolean> {
-  return (await missingPermissions()).length > 0;
+/** The reasons to show for these needs, each once (two file permissions share one). */
+export function reasonsFor(needs: readonly PermissionNeed[]): string[] {
+  return [...new Set(needs.map(need => need.reason))];
 }
 
 /**
