@@ -16,12 +16,12 @@
 - Product copy: English only, a product requirement; no other locale. Every user-facing string lives in `src/ui/copy.ts` ([brief section 8.10](docs/brief.md#810-user-facing-copy)).
 - Branch policy: work on `main` only, with no branch protection, because direct pushes to `main` are the workflow; create or switch branches only when the owner asks.
 - Commit policy: commit each coherent task automatically once it is complete and `npm run validate` passes; only the change's files, one concern per commit.
-- Push policy: push each validated commit to `origin/main` automatically, so a cloud session loses nothing.
-- Product versioning: SemVer; `version` in `package.json` is the canonical `versionName` (the build copies it into `PluginConfig.json`), starting at `0.1.0`. `versionCode` in `PluginConfig.json` goes up by one on every build sent to the device, so each test report maps to exact code. A tag, a `CHANGELOG.md` entry and a GitHub release with the `.snplg` happen only when the owner asks, through `project-release`.
+- Push policy: push each validated commit to `origin/main` automatically, so a cloud session loses nothing; a cloud session pushes `main` too, only for a `runs: cloud` issue whose gates all ran there (owner decision, 2026-11-06). Cloud setup command: `bash scripts/cloud-setup.sh` (a cloud run's start).
+- Product versioning: SemVer; `version` in `package.json` is the canonical `versionName` (the build copies it into `PluginConfig.json`), starting at `0.1.0`. `versionCode` in `PluginConfig.json` goes up by one on every build sent to the device, so each test report maps to exact code. Each build sent to the device for testing is a GitHub prerelease `v<versionName>-dev.<versionCode>` carrying `Ink2Pic.snplg`, made without asking (owner decision, 2026-11-06). A stable tag, a `CHANGELOG.md` entry and a stable GitHub release happen only when the owner asks, through `project-release`.
 - Merge policy: merge commits, the only method the repository allows; pull requests are rare under the `main`-only policy.
 - Commit subject: a commit made for an issue ends with `(#<issue number>)`, never the pull request's.
 - Delete branches after merge: enabled
-- Release, signing, and secret-storage policy: a release is a GitHub release carrying `Ink2Pic.snplg`, made only on the owner's request. No signing and no release secrets: the device installs unsigned plugin packages.
+- Release, signing, and secret-storage policy: a release is a GitHub release carrying `Ink2Pic.snplg`: a prerelease for each device test build, a stable release only on the owner's request. No signing and no release secrets: the device installs unsigned plugin packages.
 - Skills baseline revision: `0ee92a125a26bc6b81aec1d8e1dc1536f841d511`
 - Skills baseline applied: `2026-11-06`
 - Skills baseline divergence `package-manager` at `0ee92a125a26bc6b81aec1d8e1dc1536f841d511`: npm, not pnpm, because the Supernote template's `buildPlugin.sh` calls `npx` and scans a flat `node_modules` for native code (owner decision, 2026-11-06).
@@ -51,8 +51,8 @@ Before editing under a path, read the file its row names. A module with rules of
 - TypeScript first; Java only for what JavaScript provably cannot do. Every `sn-plugin-lib` call goes
   through the wrappers in `src/sdk/`.
 - Never change `pluginID` after the first build: the device would lose the plugin's library.
-- Running the template's `buildPlugin.sh` needs the owner's approval for its first run in a session
-  ([brief section 16.1](docs/brief.md#161-where-each-part-runs)).
+- The template's `buildPlugin.sh` may run without asking, locally and in a cloud session (owner
+  decision, 2026-11-06; [brief section 16.1](docs/brief.md#161-where-each-part-runs)).
 
 ## Agent skill paths
 
@@ -60,8 +60,8 @@ Before editing under a path, read the file its row names. A module with rules of
 - Research and plan: `docs/brief.md`
 - Decision log: `docs/decisions.md`, the only home of decision history
 - Device test reports: `docs/device-tests.md`, created with its first report
-- Handoffs: `.scratch/handoffs/handoff.md`
-- Prototypes: `.scratch/prototypes/`. Never create an empty artifact directory.
+- Cloud rules: `docs/cloud.md`
+- Handoffs: `.scratch/handoffs/handoff.md`; prototypes: `.scratch/prototypes/`. Never create an empty artifact directory.
 
 ## Instruction hierarchy and sources of truth
 

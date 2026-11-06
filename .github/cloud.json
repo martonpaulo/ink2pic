@@ -1,0 +1,7 @@
+{
+  "packages": [
+    "zip",
+    "openjdk-17-jdk-headless"
+  ],
+  "mac_paths": []
+}
