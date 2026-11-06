@@ -198,7 +198,7 @@ Key fields [CONFIRMED, template script and gorlix reference]:
 
 ### 3.7 Network behavior on device
 
-- `fetch()` works for HTTPS on device [REPORTED, apclark31 confirmed with the Todoist API].
+- `fetch()` works for HTTPS on device [CONFIRMED on the owner's Manta, build 0.1.0 (1): Openclipart and Commons answered HTTP 200 with `plugin.permission.INTERNET` granted, [device-tests](device-tests.md)].
 - **Cleartext HTTP is blocked.** PluginHost targets SDK 35 and declares no cleartext permission, so every `http://` request through `fetch` fails instantly with "Network request failed" on a Manta (Android 11) [REPORTED with source evidence, `LVEVAN/ink2task/plugin/src/utils/lanHttp.ts`]. This only matters for plain HTTP. Our sources are HTTPS, so this does not affect us [INFERENCE, high confidence].
 - `fetch('file:///...')` works for reading local files but returns status `0`, so `response.ok` is false. Ignore the status and read the body [REPORTED, apclark31].
 
@@ -238,7 +238,7 @@ Complete interface: `exists`, `getExternalDirPath`, `makeDir`, `getExportPath`, 
 
 - `getLassoElements()`, `getLassoElementTypeCounts()`, `getLassoRect()` returns `{left, top, right, bottom}`, `deleteLassoElements()`, `lassoElements(rect)`, `resizeLassoRect(rect)`.
 - `setLassoBoxState(state)`: `0` show, `1` hide, `2` completely remove.
-- `recognizeElements(elements, size)`: recognizes elements as text. **No language parameter.** Uses the device's active handwriting recognition language [CONFIRMED signature, behavior per language TO TEST].
+- `recognizeElements(elements, size)`: recognizes elements as text. **No language parameter.** Uses the device's active handwriting recognition language [CONFIRMED signature, behavior per language TO TEST]. With `size` set to the lasso rect size, every word failed with `117 Recognition failed` [CONFIRMED on the owner's Manta, build 0.1.0 (1)]. `LVEVAN/ink2task` and `j-raghavan/sn-dictionary` pass the note page size from `PluginFileAPI.getPageSize` [REPORTED, source read 2026-11-06]; build 0.1.0 (2) tests that.
 - `cancelRecognize()`.
 - `getCurrentFilePath()`, `getCurrentPageNum()`, `getPageDisplaySize()`, `reloadFile()`.
 - `insertSticker(path)` (`.sticker` file), `saveStickerByLasso(path)` (strokes and geometries only), `convertElement2Sticker({machineType, elements, stickerPath})`.
@@ -289,7 +289,7 @@ Complete interface: `exists`, `getExternalDirPath`, `makeDir`, `getExportPath`, 
 - MediaWiki Action API: `https://commons.wikimedia.org/w/api.php`.
 - Search files: `action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=<term>&gsrlimit=<n>&prop=imageinfo&iiprop=url|mime|size|extmetadata&iiurlwidth=<w>`. `thumburl` in the response is the scaled image [CONFIRMED pattern via public implementations, response not observed by us].
 - `gsrsearch` supports `filetype:bitmap` and `filetype:drawing` filters [INFERENCE from CirrusSearch keyword knowledge, TO TEST].
-- **User-Agent policy is enforced.** Requests without a descriptive User-Agent with contact info may get 403 or 429 [CONFIRMED, mediawiki.org Instant Commons page]. In React Native, set the `User-Agent` header on `fetch` [TO TEST that RN on device honors it]. Use `Ink2Pic/<versionName> (+https://github.com/martonpaulo/ink2pic)`. The repository is public, so the link resolves and serves as the contact the policy asks for. Keep the README and an issue tracker enabled so Wikimedia operators have a way to reach the owner.
+- **User-Agent policy is enforced.** Requests without a descriptive User-Agent with contact info may get 403 or 429 [CONFIRMED, mediawiki.org Instant Commons page]. In React Native, set the `User-Agent` header on `fetch` [TO TEST that RN on device honors it; build 0.1.0 (1) sent it and Commons answered HTTP 200 from the owner's network, but the header itself was not observed]. Use `Ink2Pic/<versionName> (+https://github.com/martonpaulo/ink2pic)`. The repository is public, so the link resolves and serves as the contact the policy asks for. Keep the README and an issue tracker enabled so Wikimedia operators have a way to reach the owner.
 - Keep `gsrlimit` small (12 to 18, enough for two or three result pages) and cache results, to stay polite [DEFAULT].
 - **Predefined thumbnail widths.** Since early 2026, Wikimedia image servers prefer predefined widths and strictly rate limit others. Steps: `20, 40, 60, 120, 250, 330, 500, 960, 1280, 1920, 3840` [CONFIRMED, mediawiki.org]. Use only these for `iiurlwidth`.
 - Licenses vary per file. Store `extmetadata.LicenseShortName` and attribution with each saved image.
@@ -432,7 +432,7 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 
 Layout metrics [DEFAULT, calibrate on device]:
 
-The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 ppi, so 1 mm is about 11.8 px [CONFIRMED arithmetic from official specs]. Whether React Native layout units in PluginHost map 1:1 to physical pixels or use a density scale is unknown [TO TEST in S0: log `PixelRatio.get()` and `Dimensions.get('window')`].
+The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 ppi, so 1 mm is about 11.8 px [CONFIRMED arithmetic from official specs]. React Native layout units in PluginHost are density-independent: `PixelRatio.get()` is 1.875 and `Dimensions.get('window')` is 1024 x 1365.33 [CONFIRMED on the owner's Manta, build 0.1.0 (1)]. So 1 mm is about 6.3 layout units; `src/ui/metrics.ts` converts with the runtime `PixelRatio`. The pixel column below stays in physical pixels.
 
 | Element | Physical target | Pixels at 1:1 |
 | --- | --- | --- |
@@ -445,7 +445,7 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 
 ### 8.5 Speed rules
 
-- Grid thumbnails sized for the tile, not the full image: Openclipart `/image/400px/<id>`, Commons width `330` or `500` [DEFAULT]. Only `200px` and `800px` were tested for Openclipart [CONFIRMED], so `400px` must be checked [TO TEST]. Full size only on tap.
+- Grid thumbnails sized for the tile, not the full image: Openclipart `/image/400px/<id>`, Commons width `330` or `500` [DEFAULT]. `400px` works: HTTP 200, `image/png`, 24,197 bytes for id 340609 [CONFIRMED on the owner's Manta, build 0.1.0 (1)]. Full size only on tap.
 - Query both sources **in parallel**, each with about a 5 s timeout. A slow source never blocks the other.
 - Cache search results and thumbnails on disk. A repeated search opens instantly and works offline.
 - Persist all state to files. Never depend on in-memory state between openings.
@@ -522,6 +522,12 @@ Permission request descriptions (`requestPermission(permission, desc)`) reuse th
 | **S5** | Can a Picture element (type 200) with `rect` be inserted at the lasso position via `insertElements`? | Reuse S2 | Image appears at the requested rect |
 
 S0, S1 and S3 can share one JS-only test plugin. Every spike result must be written back into this document.
+
+Results so far ([device-tests](device-tests.md)):
+
+- S1 passed on build 0.1.0 (1) [CONFIRMED].
+- S0 was inconclusive: `Object.keys(NativeModules)` returns no keys in PluginHost, which runs the new architecture. Build 0.1.0 (2) looks each candidate module up by name.
+- S3 failed with `117` because the build passed the lasso size; build 0.1.0 (2) passes the page size.
 
 Decision tree after the spikes:
 
