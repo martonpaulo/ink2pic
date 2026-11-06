@@ -9,10 +9,7 @@ import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +22,6 @@ import java.util.concurrent.Executors;
  */
 public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   private static final int TIMEOUT_MS = 15000;
-  private static final int BUFFER = 16 * 1024;
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
   public Ink2PicFilesModule(ReactApplicationContext context) {
@@ -37,56 +33,8 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     return "Ink2PicFiles";
   }
 
-  private interface Job {
-    Object run() throws Exception;
-  }
-
-  /** Runs off the React Native thread and settles the promise with a code on any failure. */
-  private void submit(Promise promise, Job job) {
-    worker.execute(() -> {
-      try {
-        promise.resolve(job.run());
-      } catch (SafePaths.Refused refused) {
-        promise.reject(refused.code, refused.getMessage());
-      } catch (Throwable error) {
-        // Throwable, not Exception: an Error such as NoClassDefFoundError left the promise
-        // unsettled and the plugin view waiting (build 0.1.0 (4), #11).
-        promise.reject("IO", error.getClass().getName() + ": " + error.getMessage());
-      }
-    });
-  }
-
-  /** Writes to `<target>.part`, then renames, so a failure never leaves half a file. */
-  private static long writeAtomically(File target, InputStream input) throws Exception {
-    File parent = target.getParentFile();
-    if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
-      throw new IOException("cannot create folder " + parent);
-    }
-    File part = SafePaths.partFile(target);
-    long total = 0;
-    try (OutputStream output = new FileOutputStream(part)) {
-      byte[] buffer = new byte[BUFFER];
-      int read;
-      while ((read = input.read(buffer)) != -1) {
-        total += read;
-        if (total > SafePaths.MAX_DOWNLOAD_BYTES) {
-          throw new SafePaths.Refused("TOO_LARGE", "over " + SafePaths.MAX_DOWNLOAD_BYTES + " bytes");
-        }
-        output.write(buffer, 0, read);
-      }
-    } catch (Exception error) {
-      part.delete();
-      throw error;
-    }
-    if (target.exists() && !target.delete()) {
-      part.delete();
-      throw new IOException("cannot replace " + target);
-    }
-    if (!part.renameTo(target)) {
-      part.delete();
-      throw new IOException("cannot rename " + part + " to " + target);
-    }
-    return total;
+  private void submit(Promise promise, ModuleWork.Job job) {
+    ModuleWork.submit(worker, promise, job);
   }
 
   @ReactMethod
@@ -110,7 +58,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
           throw new SafePaths.Refused("HTTP_" + status, "HTTP " + status + " for " + url);
         }
         try (InputStream input = connection.getInputStream()) {
-          return (double) writeAtomically(target, input);
+          return (double) ModuleWork.writeAtomically(target, input);
         }
       } finally {
         connection.disconnect();
@@ -123,7 +71,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     submit(promise, () -> {
       File target = SafePaths.checkPath(path);
       byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-      writeAtomically(target, new java.io.ByteArrayInputStream(bytes));
+      ModuleWork.writeAtomically(target, new java.io.ByteArrayInputStream(bytes));
       return null;
     });
   }
@@ -138,7 +86,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
       }
       try (InputStream input = new FileInputStream(target)) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] buffer = new byte[BUFFER];
+        byte[] buffer = new byte[ModuleWork.BUFFER];
         int read;
         while ((read = input.read(buffer)) != -1) {
           output.write(buffer, 0, read);

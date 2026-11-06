@@ -28,27 +28,32 @@ type NativeFiles = {
 /** Distinct from the SDK's numeric codes: the module rejects with a text code. */
 const MODULE_CODE = -2;
 
-function module(): NativeFiles | null {
-  return (NativeModules.Ink2PicFiles as NativeFiles | undefined) ?? null;
-}
-
-async function call<T>(
-  run: (files: NativeFiles) => Promise<T>,
+/**
+ * Calls one of the plugin's own native modules and maps a rejection to a Failure that keeps the
+ * module's text code; MISSING when PluginHost did not load the module.
+ */
+export async function callModule<M, T>(
+  name: string,
+  run: (native: M) => Promise<T>,
 ): Promise<Result<T>> {
-  const files = module();
-  if (!files) {
+  const native = (NativeModules[name] as M | undefined) ?? null;
+  if (!native) {
     return fail(
       MODULE_CODE,
-      'MISSING: Ink2PicFiles is not loaded; check reactPackages in PluginConfig.json',
+      `MISSING: ${name} is not loaded; check reactPackages in PluginConfig.json`,
     );
   }
   try {
-    return ok(await run(files));
+    return ok(await run(native));
   } catch (error) {
     const code = (error as {code?: string}).code ?? 'IO';
     const message = error instanceof Error ? error.message : String(error);
     return fail(MODULE_CODE, `${code}: ${message}`);
   }
+}
+
+function call<T>(run: (files: NativeFiles) => Promise<T>): Promise<Result<T>> {
+  return callModule('Ink2PicFiles', run);
 }
 
 /** Downloads `url` to `destPath` with the plugin's User-Agent; resolves the byte count. */

@@ -4,6 +4,7 @@ import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.uimanager.ViewManager;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -11,7 +12,8 @@ import java.util.List;
 public final class Ink2PicFilesPackage implements ReactPackage {
   @Override
   public List<NativeModule> createNativeModules(ReactApplicationContext context) {
-    return Collections.<NativeModule>singletonList(new Ink2PicFilesModule(context));
+    return Arrays.<NativeModule>asList(
+        new Ink2PicFilesModule(context), new Ink2PicImageModule(context));
   }
 
   @Override
