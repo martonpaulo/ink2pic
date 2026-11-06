@@ -8,6 +8,8 @@ import {SearchResult, SourceOutcome, sourceFailure} from './types';
 const ORIGIN = 'https://openclipart.org';
 /** Grid thumbnails sized for the tile (brief section 8.5). */
 const THUMB_WIDTH = 400;
+/** The width Openclipart serves for an insert: 640 px answers a redirect to it (#48). */
+export const OPENCLIPART_FULL_WIDTH = 800;
 const LICENSE = 'CC0 1.0';
 const ATTRIBUTION = 'Openclipart';
 

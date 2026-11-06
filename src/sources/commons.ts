@@ -21,7 +21,13 @@ const THROTTLE_CODES = new Set(['ratelimited', 'maxlag']);
 const FALLBACK_ATTRIBUTION = 'Wikimedia Commons';
 
 type Meta = Record<string, {value?: string} | undefined>;
-type ImageInfo = {thumburl?: string; mime?: string; extmetadata?: Meta};
+type ImageInfo = {
+  thumburl?: string;
+  mime?: string;
+  url?: string;
+  width?: number;
+  extmetadata?: Meta;
+};
 type Page = {
   pageid: number;
   title: string;
@@ -73,6 +79,29 @@ export function resizeThumb(thumb: string, width: number): string {
   );
 }
 
+/** The widest picture an insert asks for (brief section 7); 960 is a predefined width. */
+export const COMMONS_FULL_WIDTH = 960;
+/** Originals insertImage and the e-ink preparation read as they are (brief section 4.4). */
+const ORIGINAL_MIMES = new Set(['image/png', 'image/jpeg']);
+
+/**
+ * The picture at `width`, never wider than the original: a PNG or JPEG original no wider than the
+ * predefined width is taken as it is, since an upscaled thumbnail is larger and may be refused
+ * (#48). Any other original keeps its rendered thumbnail.
+ */
+export function fullImageUrl(
+  thumb: string,
+  width: number,
+  original: {url?: string; width?: number; mime?: string} = {},
+): string {
+  return original.url &&
+    original.width !== undefined &&
+    original.width <= nearestWidth(width) &&
+    ORIGINAL_MIMES.has(original.mime ?? '')
+    ? original.url
+    : resizeThumb(thumb, width);
+}
+
 function plainText(html: string): string {
   return html
     .replace(/<[^>]*>/g, '')
@@ -96,7 +125,7 @@ function toResult(page: Page): SearchResult | null {
     source: 'commons',
     title: page.title.replace(/^File:/, '').replace(/\.[^.]+$/, ''),
     thumbUrl: thumb,
-    fullUrl: width => resizeThumb(thumb, width),
+    fullUrl: width => fullImageUrl(thumb, width, info),
     license: plainText(meta.LicenseShortName?.value ?? '') || 'unknown',
     attribution,
     mime: info.mime,

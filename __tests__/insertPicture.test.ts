@@ -59,12 +59,14 @@ describe('insertPicture (#12)', () => {
       ok: true,
       value: path,
     });
+    // 800 px is what Openclipart serves: 640 px answers a redirect to it (#48).
+    // The download goes to one private temporary file; the library keeps only the .png (#48).
     expect(native.downloadToFile.mock.calls[0].slice(0, 2)).toEqual([
-      'https://openclipart.org/image/640px/340609',
-      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.source.png',
+      'https://openclipart.org/image/800px/340609',
+      '/data/plugin/insert-download.png',
     ]);
     expect(image.prepareForEink.mock.calls[0].slice(0, 3)).toEqual([
-      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.source.png',
+      '/data/plugin/insert-download.png',
       path,
       640,
     ]);
@@ -126,7 +128,47 @@ describe('insertPicture (#12)', () => {
       Object.assign(new Error('bad'), {code: 'NOT_IMAGE'}),
     );
     const done = await insertPicture(result, 'soup');
-    expect(done.ok && done.value).toMatch(/openclipart-340609\.source\.png$/);
+    expect(done).toEqual({ok: true, value: '/data/plugin/insert-download.png'});
+    // The temporary file is overwritten by the next insert: it is never a library picture (#48).
+    const saved = native.writeText.mock.calls.find(call =>
+      String(call[0]).endsWith('/library.json'),
+    );
+    expect(saved).toBeUndefined();
+  });
+
+  it('inserts a picture already in the library from disk (#48)', async () => {
+    const path =
+      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.png';
+    native.readText.mockImplementation(async (file: string) =>
+      file.endsWith('/library.json')
+        ? JSON.stringify({
+            version: 1,
+            recentSearches: [],
+            items: [
+              {
+                id: 'openclipart:340609',
+                source: 'openclipart',
+                sourceId: '340609',
+                sourceUrl: 'https://openclipart.org/image/800px/340609',
+                query: 'ladle',
+                license: 'CC0 1.0',
+                attribution: 'Openclipart',
+                savedAt: '2026-11-06T00:00:00.000Z',
+                path,
+                width: 640,
+                height: 593,
+              },
+            ],
+          })
+        : null,
+    );
+    expect(await insertPicture(result, 'soup')).toEqual({
+      ok: true,
+      value: path,
+    });
+    expect(native.downloadToFile).not.toHaveBeenCalled();
+    expect(image.prepareForEink).not.toHaveBeenCalled();
+    expect(PluginNoteAPI.insertImage).toHaveBeenCalledWith(path);
   });
 
   it('places the picture at the lasso, else falls back to insertImage (#20)', async () => {

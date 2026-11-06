@@ -379,7 +379,7 @@ Goal: the inserted image looks right on a 16-gray e-ink screen with no manual ad
 
 Pipeline, per selected image, performed in native code while saving:
 
-1. Download at the target size (do not download huge originals). Openclipart: pick the `/image/<w>px/` width. Commons: pick the closest predefined width.
+1. Download at the target size (do not download huge originals), never more pixels than the original, into one temporary file in the private folder; the library keeps only the prepared file, and a picture already in the library is inserted from disk ([#48](https://github.com/martonpaulo/ink2pic/issues/48)). Openclipart: `/image/800px/`, since `/image/640px/` answers a 302 to it [CONFIRMED 2026-11-06, curl]. Commons: the closest predefined width, 960, or the PNG or JPEG original when it is no wider.
 2. Decode with bounds first (`inJustDecodeBounds`), then power-of-two `inSampleSize`, with a memory cap. Pic2Note does this with caps of 4 MP for previews, 16 MP for exports, 8192 px per edge [REPORTED, `docs/image-loading.md`].
 3. Flatten transparency onto **white** (avoid dark or jagged edges from alpha) [TO TEST visually].
 4. Convert to grayscale with a contrast curve suited to e-ink.
