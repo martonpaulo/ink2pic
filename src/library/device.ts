@@ -6,12 +6,12 @@
  */
 import {log, logged} from '../log/memory';
 import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
-import {readText, writeText} from '../storage/files';
+import {listDir, readText, writeText} from '../storage/files';
 import {libraryDir} from '../storage/paths';
-import {pluginFolder} from '../storage/session';
 import {deviceStorage} from '../storage/text';
 import {addItem, addRecentSearch, emptyLibrary, serialize} from './library';
 import {loadLibrary, saveLibrary} from './store';
+import type {SourceName} from '../sources/types';
 import type {Library, LibraryItem} from './types';
 
 let current: Library | null = null;
@@ -22,37 +22,82 @@ let current: Library | null = null;
 let writable = false;
 
 const LIBRARY_FILE = 'library.json';
-/** The move from the private folder is checked once per session. */
-let moveChecked = false;
+/** The rebuild from the folder is checked once per session. */
+let rebuildChecked = false;
+/** A prepared picture: `<source>-<source id>.png`, as insertPicture names it. */
+const PICTURE_FILE = /^(openclipart|commons)-([^.]+)\.png$/;
+/** What the file name cannot tell about a picture from an older build. */
+const UNKNOWN = 'unknown';
+/** One second apart: rebuilt items keep the folder's order, which stands in for their dates. */
+const REBUILT_STEP_MS = 1000;
+const KNOWN_LICENSES: Record<
+  SourceName,
+  {license: string; attribution: string}
+> = {
+  openclipart: {license: 'CC0 1.0', attribution: 'Openclipart'},
+  commons: {license: UNKNOWN, attribution: 'Wikimedia Commons'},
+};
 
 async function libraryPath(): Promise<Result<string>> {
-  const dir = await pluginFolder();
-  if (!dir.ok) {
-    return dir;
-  }
   const shared = `${libraryDir()}/${LIBRARY_FILE}`;
-  if (!moveChecked) {
-    moveChecked = true;
-    await moveFromPrivate(`${dir.value}/${LIBRARY_FILE}`, shared);
+  if (!rebuildChecked) {
+    rebuildChecked = true;
+    await rebuildFromFolder(shared);
   }
   return ok(shared);
 }
 
 /**
- * Builds before 0.1.0 (13) kept library.json in the private folder: when the shared file does not
- * exist yet and the private one does, its text is copied over once (#41).
+ * The items a list of library file names stands for, oldest first as the folder lists them. Older
+ * builds kept library.json in the private folder, which an install empties: their pictures stay in
+ * MyStyle/Ink2Pic/library, so they are listed again from their names (#61).
  */
-async function moveFromPrivate(old: string, shared: string): Promise<void> {
+export function itemsFromFiles(
+  dir: string,
+  names: readonly string[],
+): LibraryItem[] {
+  return names.flatMap((name, index) => {
+    const match = PICTURE_FILE.exec(name);
+    if (!match) {
+      return [];
+    }
+    const source = match[1] as SourceName;
+    return [
+      {
+        id: `${source}:${match[2]}`,
+        source,
+        sourceId: match[2],
+        sourceUrl: '',
+        query: '',
+        ...KNOWN_LICENSES[source],
+        // The folder gives no dates: the order stands in for them.
+        savedAt: new Date(index * REBUILT_STEP_MS).toISOString(),
+        path: `${dir}/${name}`,
+        width: null,
+        height: null,
+      },
+    ];
+  });
+}
+
+/** Writes library.json from the pictures in the folder when the file does not exist (#61). */
+async function rebuildFromFolder(shared: string): Promise<void> {
   const existing = await readText(shared);
   if (!existing.ok || existing.value !== null) {
     return;
   }
-  const previous = await readText(old);
-  if (previous.ok && previous.value !== null) {
-    await logged(`move ${LIBRARY_FILE} to ${shared}`, () =>
-      writeText(shared, previous.value as string),
-    );
+  const names = await logged('listDir library', () => listDir(libraryDir()));
+  if (!names.ok || !names.value) {
+    return;
   }
+  const items = itemsFromFiles(libraryDir(), names.value);
+  if (items.length === 0) {
+    return;
+  }
+  const library = items.reduce(addItem, emptyLibrary());
+  await logged(`rebuild ${LIBRARY_FILE} from ${items.length} pictures`, () =>
+    writeText(shared, serialize(library)),
+  );
 }
 
 /** The library, loaded once; an unreadable file is reported, shown empty, and never overwritten. */
@@ -68,7 +113,8 @@ export async function getLibrary(): Promise<Library> {
   }
   const loaded = await logged('loadLibrary', () =>
     loadLibrary(deviceStorage, path.value).then(
-      parsed => (parsed.ok ? ok(parsed.library) : fail(THROWN_CODE, parsed.message)),
+      parsed =>
+        parsed.ok ? ok(parsed.library) : fail(THROWN_CODE, parsed.message),
       error => fail(THROWN_CODE, String(error)),
     ),
   );
@@ -108,5 +154,5 @@ export async function recordSearch(query: string): Promise<void> {
 export function resetLibraryForTests(): void {
   current = null;
   writable = false;
-  moveChecked = false;
+  rebuildChecked = false;
 }

@@ -33,6 +33,7 @@ const native = {
     files[path] = text;
     return null;
   }),
+  listDir: jest.fn().mockResolvedValue(null),
 };
 const result: SearchResult = {
   id: 'openclipart:1',
@@ -77,15 +78,32 @@ it('never overwrites a library file it could not read', async () => {
   expect(files[SHARED_LIBRARY]).toBe('{"version": 99}');
 });
 
-it('keeps the library beside the pictures, moving an old private one once (#41)', async () => {
-  const old = {version: 1, items: [], recentSearches: ['napoleon']};
-  files['/p/library.json'] = JSON.stringify(old);
-  expect((await getLibrary()).recentSearches).toEqual(['napoleon']);
-  await recordSearch('soup');
-  expect(JSON.parse(files[SHARED_LIBRARY]).recentSearches).toEqual([
-    'soup',
-    'napoleon',
+it('lists again the pictures an older build left, when library.json is missing (#61)', async () => {
+  const dir = '/storage/emulated/0/MyStyle/Ink2Pic/library';
+  native.listDir.mockResolvedValueOnce([
+    'openclipart-1.png',
+    'insert-download.png',
+    'commons-2.png',
+    'openclipart-3.source.png',
   ]);
+  const library = await getLibrary();
+  expect(library.items.map(item => [item.id, item.path, item.license])).toEqual(
+    [
+      ['commons:2', `${dir}/commons-2.png`, 'unknown'],
+      ['openclipart:1', `${dir}/openclipart-1.png`, 'CC0 1.0'],
+    ],
+  );
+  expect(JSON.parse(files[SHARED_LIBRARY]).items).toHaveLength(2);
+});
+
+it('keeps an existing library.json as it is, without listing the folder (#61)', async () => {
+  files[SHARED_LIBRARY] = JSON.stringify({
+    version: 1,
+    items: [],
+    recentSearches: ['napoleon'],
+  });
+  expect((await getLibrary()).recentSearches).toEqual(['napoleon']);
+  expect(native.listDir).not.toHaveBeenCalled();
 });
 
 it('does not fall back to insertImage after a placement timeout', async () => {

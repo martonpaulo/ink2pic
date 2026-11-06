@@ -155,11 +155,12 @@ function testNative() {
   const pure = ['SafePaths', 'EinkPixels', 'ThumbGate'].map(name =>
     path.join(root, `native/src/com/ink2pic/files/${name}.java`),
   );
-  run('javac', [
-    '--release', '8', '-encoding', 'UTF-8', '-Xlint:-options', '-d', classes,
-    ...pure, ...javaSources(path.join(root, 'native/tests')),
-  ]);
+  // Compile inside the try, so a compile error also removes the folder.
   try {
+    run('javac', [
+      '--release', '8', '-encoding', 'UTF-8', '-Xlint:-options', '-d', classes,
+      ...pure, ...javaSources(path.join(root, 'native/tests')),
+    ]);
     for (const test of ['SafePathsTest', 'EinkPixelsTest', 'ThumbGateTest']) {
       run('java', ['-cp', classes, `com.ink2pic.files.${test}`]);
     }
