@@ -49,17 +49,6 @@ const responseCalls: [string, jest.Mock, () => Promise<unknown>, unknown][] = [
     true,
   ],
   [
-    'insertText',
-    mocked(PluginNoteAPI.insertText),
-    () =>
-      note.insertText({
-        text: 'a',
-        rect: {left: 0, top: 0, right: 1, bottom: 1},
-        fontSize: 1,
-      }),
-    true,
-  ],
-  [
     'insertImage',
     mocked(PluginNoteAPI.insertImage),
     () => note.insertImage('/a.png'),

@@ -40,3 +40,13 @@ it('keeps every source file off FileUtils', () => {
   );
   expect(offenders.map(path => relative(root, path))).toEqual([]);
 });
+
+describe('the clean screen (#36)', () => {
+  it('never writes an error into the note', () => {
+    const source = readFileSync(
+      join(__dirname, '..', 'src', 'flow', 'crash.ts'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/insertText|sdk\/note/);
+  });
+});

@@ -1,13 +1,12 @@
 /**
  * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
  * search; the lasso button first turns the lassoed word into the query (#13). A tap on a result
- * inserts it (#12). Every step is logged; the starting screen shows the log live.
+ * inserts it (#12). Every step is logged; the log shows only behind the Log button (#36).
  *
  * @format
  */
 
 import React, {useEffect, useRef, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
 import {atStep, StepFailure} from './src/flow/failure';
 import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
@@ -26,11 +25,9 @@ import {
 } from './src/sdk/buttons';
 import {closePluginView} from './src/sdk/plugin';
 import type {SearchResult} from './src/sources/types';
-import {copy} from './src/ui/copy';
-import {LogView} from './src/ui/LogView';
-import {metrics} from './src/ui/metrics';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
+import {StartingScreen} from './src/ui/StartingScreen';
 
 type Screen =
   | {name: 'starting'}
@@ -201,23 +198,8 @@ function App(): React.JSX.Element {
         />
       );
     default:
-      return (
-        <View style={styles.screen}>
-          <Text style={styles.text}>{copy['app.starting']}</Text>
-          <LogView />
-        </View>
-      );
+      return <StartingScreen />;
   }
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: metrics.paper,
-    padding: metrics.gap,
-    gap: metrics.gap,
-  },
-  text: {fontSize: metrics.bodyFont, color: metrics.ink},
-});
 
 export default App;

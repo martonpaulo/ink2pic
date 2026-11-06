@@ -1,17 +1,13 @@
 /**
- * Any unhandled JS error is written where the owner sees it even when the plugin closes: into
- * the current page as a text box, and into MyStyle/Ink2Pic/logs/crash.log (build 0.1.0 (9)
- * closed with no trace, #13). The previous handler still runs afterwards.
+ * Any unhandled JS error is written to MyStyle/Ink2Pic/logs/crash.log, so it survives the plugin
+ * closing (build 0.1.0 (9) closed with no trace, #13). It is never written into the user's note
+ * (#36). The previous handler still runs afterwards.
  */
 import {log, logLines} from '../log/memory';
-import {insertText} from '../sdk/note';
 import {writeText} from '../storage/files';
 import {logsDir} from '../storage/paths';
 import {SHARED_ROOT} from './session';
 
-/** Where the report lands on a 1920 x 2560 Manta page. */
-const CRASH_RECT = {left: 120, top: 160, right: 1800, bottom: 2400};
-const CRASH_FONT_SIZE = 24;
 /** The last log lines carried in the report. */
 const CRASH_LOG_LINES = 30;
 const STACK_CHARS = 600;
@@ -50,7 +46,6 @@ export function catchCrashes(): void {
   utils.setGlobalHandler((error, isFatal) => {
     const text = crashReport(error, isFatal, logLines());
     log(text.split('\n')[0]);
-    insertText({text, rect: CRASH_RECT, fontSize: CRASH_FONT_SIZE});
     writeText(`${logsDir(SHARED_ROOT)}/crash.log`, text);
     previous(error, isFatal);
   });
