@@ -30,6 +30,7 @@ type NativeFiles = {
     headers: Record<string, string>,
   ) => Promise<number>;
   deleteFile: (path: string) => Promise<boolean>;
+  deleteLibrarySource: (path: string) => Promise<number>;
   writeText: (path: string, text: string) => Promise<null>;
   readText: (path: string) => Promise<string | null>;
   listDir: (path: string) => Promise<string[] | null>;
@@ -91,6 +92,14 @@ export function downloadThumbToFile(
 /** True when the file is gone afterwards, also when it never existed. */
 export function deleteFile(path: string): Promise<Result<boolean>> {
   return call(files => files.deleteFile(path));
+}
+
+/**
+ * Deletes a `.source` file older builds left in MyStyle/Ink2Pic/library; the module refuses any
+ * other path (#57). The bytes freed, 0 when the file did not exist.
+ */
+export function deleteLibrarySource(path: string): Promise<Result<number>> {
+  return call(files => files.deleteLibrarySource(path));
 }
 
 export function writeText(path: string, text: string): Promise<Result<null>> {

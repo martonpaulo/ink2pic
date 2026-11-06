@@ -32,6 +32,15 @@ public final class SafePathsTest {
     }
   }
 
+  private static String codeOfSource(String path) {
+    try {
+      SafePaths.checkLibrarySource(path);
+      return "ok";
+    } catch (SafePaths.Refused refused) {
+      return refused.code;
+    }
+  }
+
   public static void main(String[] args) {
     check(codeOfUrl("https://openclipart.org/image/400px/1").equals("ok"), "https accepted");
     check(codeOfUrl("HTTPS://openclipart.org/").equals("ok"), "scheme case ignored");
@@ -46,6 +55,18 @@ public final class SafePathsTest {
     check(codeOfPath("/storage/folder/").equals("BAD_PATH"), "folder refused");
     check(codeOfPath(null).equals("BAD_PATH"), "null path refused");
     check(SafePaths.partFile(new File("/a/b.png")).getPath().equals("/a/b.png.part"), "part file");
+    String library = "/storage/emulated/0/MyStyle/Ink2Pic/library/";
+    check(codeOfSource(library + "openclipart-42.source.png").equals("ok"), "library source");
+    check(codeOfSource(library + "commons-7.source.jpg").equals("ok"), "library source jpg");
+    check(codeOfSource(library + "openclipart-42.png").equals("NOT_LIBRARY_SOURCE"), "picture kept");
+    check(codeOfSource(library + "library.json").equals("NOT_LIBRARY_SOURCE"), "library.json kept");
+    check(codeOfSource(library + "a.source.png.part").equals("NOT_LIBRARY_SOURCE"), "part kept");
+    check(codeOfSource("/storage/emulated/0/MyStyle/Ink2Pic/logs/a.source.png")
+        .equals("NOT_LIBRARY_SOURCE"), "other folder refused");
+    check(codeOfSource("/storage/emulated/0/MyStyle/Other/library/a.source.png")
+        .equals("NOT_LIBRARY_SOURCE"), "other plugin refused");
+    check(codeOfSource("/library/a.source.png").equals("NOT_LIBRARY_SOURCE"), "short path refused");
+    check(codeOfSource(library + "../a.source.png").equals("BAD_PATH"), "dot-dot source refused");
     check(SafePaths.MAX_DOWNLOAD_BYTES == 20L * 1024 * 1024, "size cap");
     if (failures > 0) {
       System.err.println(failures + " failed");

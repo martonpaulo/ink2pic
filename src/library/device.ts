@@ -7,7 +7,12 @@
 import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
 import {fail, ok, Result} from '../sdk/result';
-import {readText, writeText} from '../storage/files';
+import {
+  deleteLibrarySource,
+  listDir,
+  readText,
+  writeText,
+} from '../storage/files';
 import {libraryDir} from '../storage/paths';
 import {addItem, addRecentSearch, emptyLibrary, serialize} from './library';
 import {loadLibrary, saveLibrary} from './store';
@@ -38,6 +43,10 @@ let current: Library | null = null;
 let writable = false;
 
 const LIBRARY_FILE = 'library.json';
+/** `<id>.source.<ext>`: the raw download builds 0.1.0 (10) to (13) kept beside each picture. */
+const OLD_SOURCE = /^[A-Za-z0-9_.-]+\.source\.[A-Za-z0-9]+$/;
+/** The removal of those files, started once per session after the library loads. */
+let oldSources: Promise<void> = Promise.resolve();
 /** The move from the private folder is checked once per session. */
 let moveChecked = false;
 
@@ -92,8 +101,47 @@ export async function getLibrary(): Promise<Library> {
   current = loaded.ok ? loaded.value : emptyLibrary();
   if (!loaded.ok) {
     log('library: not saved this session, so the file on the device is kept');
+  } else if (!current.sourcesRemoved) {
+    // Not awaited: the person's library and search never wait for it.
+    oldSources = removeOldSources(path.value.replace(/\/[^/]+$/, ''));
   }
   return current;
+}
+
+/**
+ * Removes the .source files older builds left in the library folder, once per install (#57): the
+ * flag is saved in library.json only when every delete succeeded, so a failure is tried again in
+ * the next session. A file the library names is kept, since an old insert may point to it.
+ */
+async function removeOldSources(dir: string): Promise<void> {
+  const names = await logged(`listDir ${dir}`, () => listDir(dir));
+  if (!names.ok) {
+    return;
+  }
+  const kept = new Set((await getLibrary()).items.map(item => item.path));
+  const paths = (names.value ?? [])
+    .filter(name => OLD_SOURCE.test(name))
+    .map(name => `${dir}/${name}`)
+    .filter(path => !kept.has(path));
+  let bytes = 0;
+  let failed = 0;
+  for (const path of paths) {
+    const freed = await deleteLibrarySource(path);
+    if (freed.ok) {
+      bytes += freed.value;
+    } else {
+      failed += 1;
+      log(`library: cannot delete ${path}: ${freed.message}`);
+    }
+  }
+  log(
+    `library: removed ${
+      paths.length - failed
+    } old .source files, ${bytes} bytes freed`,
+  );
+  if (failed === 0) {
+    await save({...(await getLibrary()), sourcesRemoved: true});
+  }
 }
 
 async function save(next: Library): Promise<void> {
@@ -121,7 +169,13 @@ export async function recordSearch(query: string): Promise<void> {
   await save(addRecentSearch(await getLibrary(), query));
 }
 
+/** The removal of the old .source files this session started, for tests. */
+export function oldSourcesRemovedForTests(): Promise<void> {
+  return oldSources;
+}
+
 export function resetLibraryForTests(): void {
+  oldSources = Promise.resolve();
   current = null;
   writable = false;
   moveChecked = false;

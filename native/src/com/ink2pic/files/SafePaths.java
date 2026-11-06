@@ -1,6 +1,7 @@
 package com.ink2pic.files;
 
 import java.io.File;
+import java.util.regex.Pattern;
 
 /** Rules for every URL and path the module touches. Plain Java, so JVM tests run it. */
 public final class SafePaths {
@@ -37,6 +38,30 @@ public final class SafePaths {
       }
     }
     return new File(path);
+  }
+
+  /** `<id>.source.<ext>`, the raw download builds 0.1.0 (10) to (13) kept beside each picture. */
+  private static final Pattern LIBRARY_SOURCE =
+      Pattern.compile("[A-Za-z0-9_.-]+\\.source\\.[A-Za-z0-9]+");
+
+  /**
+   * A `.source` file older builds left in MyStyle/Ink2Pic/library (#57): the only file
+   * deleteLibrarySource removes.
+   */
+  public static File checkLibrarySource(String path) throws Refused {
+    File file = checkPath(path);
+    File library = file.getParentFile();
+    File plugin = library == null ? null : library.getParentFile();
+    File style = plugin == null ? null : plugin.getParentFile();
+    if (style == null
+        || !library.getName().equals("library")
+        || !plugin.getName().equals("Ink2Pic")
+        || !style.getName().equals("MyStyle")
+        || !LIBRARY_SOURCE.matcher(file.getName()).matches()) {
+      throw new Refused(
+          "NOT_LIBRARY_SOURCE", "only MyStyle/Ink2Pic/library/*.source.* is deleted: " + path);
+    }
+    return file;
   }
 
   /** The temporary file a write goes to before it is renamed into place. */
