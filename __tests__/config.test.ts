@@ -11,6 +11,10 @@ describe('PluginConfig.json', () => {
     expect(pluginConfig.pluginKey).toBe('Ink2Pic');
   });
 
+  it('names its author, shown as «By:» in the plugin list (docs.supernote.com, first-plugin)', () => {
+    expect(pluginConfig.author).toBe('Marton Paulo');
+  });
+
   it('has a 16-character pluginID', () => {
     expect(pluginConfig.pluginID).toMatch(/^[a-z0-9]{16}$/);
   });
