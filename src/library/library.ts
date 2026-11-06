@@ -83,7 +83,6 @@ export function parseLibrary(text: string): ParsedLibrary {
     version?: unknown;
     items?: unknown;
     recentSearches?: unknown;
-    sourcesRemoved?: unknown;
   };
   if (root?.version !== LIBRARY_VERSION) {
     return {
@@ -100,15 +99,8 @@ export function parseLibrary(text: string): ParsedLibrary {
   ) {
     return {ok: false, message: 'the recent searches are malformed'};
   }
-  if (root.sourcesRemoved !== undefined && root.sourcesRemoved !== true) {
-    return {ok: false, message: 'the sourcesRemoved flag is malformed'};
-  }
   return {
     ok: true,
-    library: {
-      items: root.items,
-      recentSearches: root.recentSearches,
-      ...(root.sourcesRemoved && {sourcesRemoved: true}),
-    },
+    library: {items: root.items, recentSearches: root.recentSearches},
   };
 }

@@ -107,25 +107,6 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     });
   }
 
-  /**
-   * Deletes one `.source` file older builds left in the library (#57), refusing any other path;
-   * resolves the bytes freed, 0 when the file did not exist.
-   */
-  @ReactMethod
-  public void deleteLibrarySource(String path, Promise promise) {
-    submit(promise, () -> {
-      File target = SafePaths.checkLibrarySource(path);
-      if (!target.exists()) {
-        return 0.0;
-      }
-      long bytes = target.length();
-      if (!target.delete()) {
-        throw new SafePaths.Refused("IO", "cannot delete " + path);
-      }
-      return (double) bytes;
-    });
-  }
-
   @ReactMethod
   public void writeText(String path, String text, Promise promise) {
     submit(promise, () -> {

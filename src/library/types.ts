@@ -18,12 +18,7 @@ export type LibraryItem = {
   height: number | null;
 };
 
-export type Library = {
-  items: LibraryItem[];
-  recentSearches: string[];
-  /** True once the .source files of builds 0.1.0 (10) to (13) were removed (#57). */
-  sourcesRemoved?: boolean;
-};
+export type Library = {items: LibraryItem[]; recentSearches: string[]};
 
 /** Text files on the device; `readText` gives null when the file does not exist. */
 export type TextStorage = {

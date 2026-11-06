@@ -6,7 +6,6 @@ import {FileUtils, PluginManager} from 'sn-plugin-lib';
 import {resetSessionForTests} from '../src/flow/session';
 import {
   getLibrary,
-  oldSourcesRemovedForTests,
   recordSearch,
   resetLibraryForTests,
 } from '../src/library/device';
@@ -25,13 +24,8 @@ const native = {
     files[path] = text;
     return null;
   }),
-  listDir: jest.fn(async (_path: string): Promise<string[] | null> => []),
-  deleteLibrarySource: jest.fn(async (path: string) => {
-    delete files[path];
-    return 1000;
-  }),
+  listDir: jest.fn(async () => []),
 };
-const LIBRARY_DIR = '/storage/emulated/0/MyStyle/Ink2Pic/library';
 
 const item = (n: number): LibraryItem => ({
   id: `openclipart:${n}`,
@@ -67,12 +61,6 @@ const libraryWrites = () =>
   native.writeText.mock.calls.filter(call => call[0] === SHARED_LIBRARY);
 
 it('writes library.json only when the recent searches change', async () => {
-  files[SHARED_LIBRARY] = JSON.stringify({
-    version: LIBRARY_VERSION,
-    items: [],
-    recentSearches: [],
-    sourcesRemoved: true,
-  });
   await getLibrary();
   await recordSearch('soup');
   expect(libraryWrites()).toHaveLength(1);
@@ -119,54 +107,4 @@ it('keeps the Library page when the screen renders again', async () => {
   act(() => tree.root.findByType(TextInput).props.onChangeText('so'));
   expect(pageNumber()).toBe('2 / 2');
   act(() => tree.unmount());
-});
-
-describe('the .source files older builds left (#57)', () => {
-  const old = (name: string) => `${LIBRARY_DIR}/${name}`;
-  const inserted = {
-    ...item(9),
-    path: old('openclipart-9.source.png'),
-  };
-
-  beforeEach(() => {
-    files[SHARED_LIBRARY] = JSON.stringify({
-      version: LIBRARY_VERSION,
-      items: [inserted],
-      recentSearches: [],
-    });
-    native.listDir.mockResolvedValue([
-      'library.json',
-      'openclipart-1.png',
-      'openclipart-1.source.png',
-      'commons-7.source.jpg',
-      'openclipart-9.source.png',
-    ]);
-  });
-
-  it('removes them once per install, keeping a file the library names', async () => {
-    await getLibrary();
-    await oldSourcesRemovedForTests();
-    expect(native.listDir).toHaveBeenCalledWith(LIBRARY_DIR);
-    expect(native.deleteLibrarySource.mock.calls.map(call => call[0])).toEqual([
-      old('openclipart-1.source.png'),
-      old('commons-7.source.jpg'),
-    ]);
-    expect(JSON.parse(files[SHARED_LIBRARY]).sourcesRemoved).toBe(true);
-
-    resetLibraryForTests();
-    native.listDir.mockClear();
-    await getLibrary();
-    await oldSourcesRemovedForTests();
-    expect(native.listDir).not.toHaveBeenCalled();
-    expect(native.deleteLibrarySource).toHaveBeenCalledTimes(2);
-  });
-
-  it('tries again next session when a delete fails', async () => {
-    native.deleteLibrarySource.mockRejectedValueOnce(
-      Object.assign(new Error('denied'), {code: 'IO'}),
-    );
-    await getLibrary();
-    await oldSourcesRemovedForTests();
-    expect(JSON.parse(files[SHARED_LIBRARY]).sourcesRemoved).toBeUndefined();
-  });
 });

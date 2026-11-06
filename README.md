@@ -83,6 +83,9 @@ Ink2Pic needs. Choose **Always Allow**, or the device asks again each time you o
 Ink2Pic keeps every picture you insert. Tap **Library** to see them and tap one to insert it again.
 The Library also works with no internet, and shows your recent search words as buttons.
 
+Ink2Pic never deletes your files. Builds before 0.1.0 (13) also kept a `*.source.*` copy of each
+picture in `MyStyle/Ink2Pic/library/`; you can delete those copies with the file manager.
+
 ### Log
 
 Tap **Log** to see what Ink2Pic did, step by step. Ink2Pic also writes the log to files on the
