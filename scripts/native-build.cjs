@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Light native build without Gradle (brief section 6.3, issue #11), adapted from the pipeline of
- * Keplex/supernote-pic2note at 5a210f8 (MIT, see THIRD_PARTY_NOTICES.md): javac, D8 and aapt2
+ * Keplex/supernote-pic2note at 5a210f8 (MIT, see NOTICE.md): javac, D8 and aapt2
  * produce build/native/app.npk, an APK-format ZIP that PluginHost loads.
  *
  *   node scripts/native-build.cjs            build build/native/app.npk

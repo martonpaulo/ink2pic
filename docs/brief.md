@@ -823,7 +823,7 @@ Every build sent to the owner has a higher `versionCode` and a `versionName` tha
 | Commits | Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`), U.S. English. Commit only files that belong to the change |
 | This brief | Lives in the repository as `docs/brief.md` and is updated in the same commit as any decision or test result |
 | Device test reports | `docs/device-tests.md`, one entry per build (section 18.3) |
-| Notices | `THIRD_PARTY_NOTICES.md` for any reused code, for example Pic2Note's MIT build script |
+| Notices | `NOTICE.md` for any reused code, for example Pic2Note's MIT build script |
 | Public hygiene | No secrets, tokens, personal data, device serial numbers or private logs in commits. Device test screenshots go in the repository only after checking they show nothing personal. `.gitignore` covers `build/`, `node_modules/`, `android/.gradle`, local toolchains and logs |
 | README | Short English README: what Ink2Pic does, install steps (section 16.3), permissions it asks for and why, image sources and their licenses |
 
