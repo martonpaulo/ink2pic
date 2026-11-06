@@ -48,3 +48,6 @@ export function sourceFailure(
 ): SourceFailure {
   return {ok: false, kind, message};
 }
+
+/** Results per page: six large tiles (brief section 8.4). Sources size their requests by it (#60). */
+export const PAGE_SIZE = 6;

@@ -5,7 +5,7 @@
 import {apiFailure, fetchText, HttpDeps} from './http';
 import {SearchResult, SourceOutcome, sourceFailure} from './types';
 import {USER_AGENT} from '../config';
-import {PAGE_SIZE} from '../search/pages';
+import {PAGE_SIZE} from './types';
 
 const API = 'https://commons.wikimedia.org/w/api.php';
 const INFO_PARAMS = [

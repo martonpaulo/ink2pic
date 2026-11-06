@@ -1,5 +1,7 @@
-/** Results are shown six at a time, in a 2 x 3 grid (brief section 8.4). */
-export const PAGE_SIZE = 6;
+// The page size lives with the sources, which size their requests by it (#60).
+import {PAGE_SIZE} from '../sources/types';
+
+export {PAGE_SIZE};
 
 export function pageCount(total: number): number {
   return Math.max(1, Math.ceil(total / PAGE_SIZE));
