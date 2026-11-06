@@ -16,8 +16,7 @@ import {
 import {initPlugin, registerButton, startButtonQueue} from './src/sdk/buttons';
 import {copy} from './src/ui/copy';
 import {log, setAfterCall} from './src/log/memory';
-import {flushLogFile, openLogFile} from './src/log/file';
-import {SHARED_ROOT} from './src/flow/session';
+import {flushLogFile, openLogFile} from './src/storage/logFile';
 import {logsDir} from './src/storage/paths';
 import {catchCrashes} from './src/flow/crash';
 
@@ -25,7 +24,7 @@ import {catchCrashes} from './src/flow/crash';
 // file from the start, flushed after every call and before a call that can close the plugin, so
 // a plugin the host closes leaves its last line in MyStyle/Ink2Pic/logs/session.log (#13, #45).
 catchCrashes();
-openLogFile(logsDir(SHARED_ROOT));
+openLogFile(logsDir());
 setAfterCall(flushLogFile);
 
 AppRegistry.registerComponent(appName, () => App);

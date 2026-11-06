@@ -48,3 +48,15 @@ it('defines every negative failure code in src/sdk/result.ts only (#49, #54)', (
   );
   expect(offenders).toEqual([]);
 });
+
+it('keeps the storage, search and library layers below the flow and the view (#54)', () => {
+  const lower = /^src\/(log|sdk|storage|sources|search|library)\//;
+  const offenders = sources(join(ROOT, 'src')).filter(
+    path =>
+      lower.test(path) &&
+      /from ['"]\.\.\/(flow|onboarding|ui)\//.test(
+        readFileSync(join(ROOT, path), 'utf8'),
+      ),
+  );
+  expect(offenders).toEqual([]);
+});

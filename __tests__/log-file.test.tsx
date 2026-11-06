@@ -7,7 +7,7 @@ import {
   flushLogFile,
   openLogFile,
   startSession,
-} from '../src/log/file';
+} from '../src/storage/logFile';
 import {
   canClosePlugin,
   log,

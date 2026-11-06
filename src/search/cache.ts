@@ -12,7 +12,7 @@ import {
 } from '../sources/commons';
 import {imageUrl} from '../sources/openclipart';
 import type {SearchResult, SourceName} from '../sources/types';
-import type {TextStorage} from '../library/types';
+import type {TextStorage} from '../storage/text';
 import type {SearchOutcome, SourceStatus} from './search';
 
 /**

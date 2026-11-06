@@ -9,7 +9,7 @@ import {
   PluginNoteAPI,
 } from 'sn-plugin-lib';
 import {insertPicture} from '../src/flow/insertPicture';
-import {resetSessionForTests} from '../src/flow/session';
+import {resetSessionForTests} from '../src/storage/session';
 import {
   getLibrary,
   recordSearch,
@@ -19,7 +19,7 @@ import {
   closeLogFileForTests,
   openLogFile,
   startSession,
-} from '../src/log/file';
+} from '../src/storage/logFile';
 import type {Done} from '../src/flow/failure';
 import type {Source} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';

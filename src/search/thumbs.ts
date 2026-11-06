@@ -4,10 +4,10 @@
  * the grid renders the file (#46): before, the grid loaded the web URL and the file was
  * downloaded again afterwards, two requests per thumbnail.
  */
-import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
 import {deleteFile, downloadThumbToFile, listDir} from '../storage/files';
 import {safeFileName} from '../storage/paths';
+import {pluginFolder} from '../storage/session';
 import type {SearchResult} from '../sources/types';
 
 /** Most thumbnail files kept; the oldest is removed first. DEFAULT: about 100 KB each, 30 MB. */
@@ -82,15 +82,15 @@ async function listThumbs(pluginDir: string): Promise<Set<string> | null> {
  * null when there is no plugin folder or it cannot be listed (thumbnails then come from the web).
  */
 export async function prepareThumbs(): Promise<string | null> {
-  const paths = await sessionPaths();
-  if (!paths.ok) {
-    log(`thumbs: no plugin folder: ${paths.message}`);
+  const dir = await pluginFolder();
+  if (!dir.ok) {
+    log(`thumbs: no plugin folder: ${dir.message}`);
     return null;
   }
   if (!known) {
-    known = await listThumbs(paths.value.pluginDir);
+    known = await listThumbs(dir.value);
   }
-  return known ? paths.value.pluginDir : null;
+  return known ? dir.value : null;
 }
 
 /** Downloads started and not ended: each holds a place in the store while it runs. */

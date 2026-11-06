@@ -19,9 +19,3 @@ export type LibraryItem = {
 };
 
 export type Library = {items: LibraryItem[]; recentSearches: string[]};
-
-/** Text files on the device; `readText` gives null when the file does not exist. */
-export type TextStorage = {
-  readText: (path: string) => Promise<string | null>;
-  writeText: (path: string, text: string) => Promise<void>;
-};

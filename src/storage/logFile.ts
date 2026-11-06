@@ -3,8 +3,8 @@
  * The file is rewritten from the in-memory log at each flush, never on a timer (JS timers stop
  * while the view is closed, brief section 3.3); the previous session is kept as session.prev.log.
  */
-import {LOG_MAX_LINES, logLines, startLog} from './memory';
-import {readText, writeText} from '../storage/files';
+import {LOG_MAX_LINES, logLines, startLog} from '../log/memory';
+import {readText, writeText} from './files';
 
 /** Lines kept in the file: the in-memory cap, so a file holds what the screen log holds. */
 export const LOG_FILE_MAX_LINES = LOG_MAX_LINES;

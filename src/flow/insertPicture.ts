@@ -16,9 +16,9 @@ import type {SearchResult, SourceName} from '../sources/types';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
 import {libraryDir, safeFileName} from '../storage/paths';
+import {pluginFolder} from '../storage/session';
 import {atStep, Done} from './failure';
 import {LassoPlace, placeAtLasso} from './place';
-import {sessionPaths} from './session';
 
 /** About one third of the 1920 px page (brief section 7): the prepared picture's width. */
 export const INSERT_WIDTH = 640;
@@ -51,15 +51,13 @@ type Saved = {
  * next insert overwrites it, and the failure is in the log.
  */
 async function download(result: SearchResult): Promise<Result<Saved>> {
-  const paths = await sessionPaths();
-  if (!paths.ok) {
-    return paths;
+  const dir = await pluginFolder();
+  if (!dir.ok) {
+    return dir;
   }
   const url = result.fullUrl(FULL_WIDTH[result.source]);
-  const base = `${libraryDir(paths.value.root)}/${safeFileName(result.id)}`;
-  const raw = `${paths.value.pluginDir}/${DOWNLOAD_NAME}.${imageExtension(
-    url,
-  )}`;
+  const base = `${libraryDir()}/${safeFileName(result.id)}`;
+  const raw = `${dir.value}/${DOWNLOAD_NAME}.${imageExtension(url)}`;
   const bytes = await logged(`downloadToFile(${url} -> ${raw})`, () =>
     downloadToFile(url, raw),
   );

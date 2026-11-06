@@ -3,7 +3,7 @@ import React from 'react';
 import {NativeModules, Text, TextInput} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {FileUtils, PluginManager} from 'sn-plugin-lib';
-import {resetSessionForTests} from '../src/flow/session';
+import {resetSessionForTests} from '../src/storage/session';
 import {
   getLibrary,
   recordSearch,
@@ -11,7 +11,7 @@ import {
 } from '../src/library/device';
 import {LIBRARY_VERSION} from '../src/library/library';
 import type {LibraryItem} from '../src/library/types';
-import {closeLogFileForTests} from '../src/log/file';
+import {closeLogFileForTests} from '../src/storage/logFile';
 import {copy} from '../src/ui/copy';
 import {SearchScreen} from '../src/ui/SearchScreen';
 

@@ -8,7 +8,7 @@ import {
 import {fullImageUrl, resizeThumb} from '../src/sources/commons';
 import type {SearchOutcome} from '../src/search/search';
 import type {SearchResult} from '../src/sources/types';
-import type {TextStorage} from '../src/library/types';
+import type {TextStorage} from '../src/storage/text';
 
 const PATH = '/plugin/search-cache.json';
 const NOW = Date.UTC(2026, 10, 6, 12);

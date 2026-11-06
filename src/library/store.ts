@@ -1,5 +1,6 @@
 import {emptyLibrary, ParsedLibrary, parseLibrary, serialize} from './library';
-import type {Library, TextStorage} from './types';
+import type {TextStorage} from '../storage/text';
+import type {Library} from './types';
 
 /** A missing file is an empty library; a corrupt one is a failure the caller shows. */
 export async function loadLibrary(

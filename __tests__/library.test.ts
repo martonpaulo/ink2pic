@@ -8,7 +8,8 @@ import {
   serialize,
 } from '../src/library/library';
 import {loadLibrary, saveLibrary} from '../src/library/store';
-import type {LibraryItem, TextStorage} from '../src/library/types';
+import type {LibraryItem} from '../src/library/types';
+import type {TextStorage} from '../src/storage/text';
 
 const item = (n: number, query = 'soup'): LibraryItem => ({
   id: `openclipart:${n}`,

@@ -3,9 +3,9 @@
  * works offline. The cache lives in the private plugin folder; a cache problem is logged and the
  * search goes on, without waiting for the cache write.
  */
-import {sessionPaths} from '../flow/session';
-import {deviceStorage} from '../library/device';
 import {log} from '../log/memory';
+import {pluginFolder} from '../storage/session';
+import {deviceStorage} from '../storage/text';
 import {cachedSearch} from './cache';
 import {SearchOutcome, searchAll, Source} from './search';
 
@@ -14,16 +14,16 @@ export async function searchCached(
   sources: readonly Source[],
 ): Promise<SearchOutcome> {
   const run = (q: string) => searchAll(q, sources);
-  const paths = await sessionPaths();
-  if (!paths.ok) {
-    log(`search cache: no plugin folder: ${paths.message}`);
+  const dir = await pluginFolder();
+  if (!dir.ok) {
+    log(`search cache: no plugin folder: ${dir.message}`);
     return run(query);
   }
   const cached = await cachedSearch(
     query,
     run,
     deviceStorage,
-    `${paths.value.pluginDir}/search-cache.json`,
+    `${dir.value}/search-cache.json`,
     Date.now(),
   );
   if (cached.problem) {

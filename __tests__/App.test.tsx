@@ -9,7 +9,7 @@ import {
 } from 'sn-plugin-lib';
 import App from '../App';
 import {insertPicture} from '../src/flow/insertPicture';
-import {resetSessionForTests} from '../src/flow/session';
+import {resetSessionForTests} from '../src/storage/session';
 import {logLines} from '../src/log/memory';
 import {startButtonQueue} from '../src/sdk/buttons';
 import {copy} from '../src/ui/copy';

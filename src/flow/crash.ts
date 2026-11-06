@@ -6,7 +6,6 @@
 import {log, logLines} from '../log/memory';
 import {writeText} from '../storage/files';
 import {logsDir} from '../storage/paths';
-import {SHARED_ROOT} from './session';
 
 /** The last log lines carried in the report. */
 const CRASH_LOG_LINES = 30;
@@ -48,7 +47,7 @@ export function catchCrashes(): void {
   utils.setGlobalHandler((error, isFatal) => {
     const text = crashReport(error, isFatal, logLines());
     log(text.split('\n')[0]);
-    const written = writeText(`${logsDir(SHARED_ROOT)}/crash.log`, text);
+    const written = writeText(`${logsDir()}/crash.log`, text);
     if (!isFatal) {
       previous(error, isFatal);
       return;

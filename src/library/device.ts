@@ -4,31 +4,15 @@
  * Read once per session and saved after each change; a search that changes nothing writes nothing
  * (#46).
  */
-import {sessionPaths} from '../flow/session';
 import {log, logged} from '../log/memory';
 import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
 import {readText, writeText} from '../storage/files';
 import {libraryDir} from '../storage/paths';
+import {pluginFolder} from '../storage/session';
+import {deviceStorage} from '../storage/text';
 import {addItem, addRecentSearch, emptyLibrary, serialize} from './library';
 import {loadLibrary, saveLibrary} from './store';
-import type {Library, LibraryItem, TextStorage} from './types';
-
-/** Text files through the Ink2PicFiles module, for every store on the device (DRY). */
-export const deviceStorage: TextStorage = {
-  readText: async path => {
-    const text = await readText(path);
-    if (!text.ok) {
-      throw new Error(text.message);
-    }
-    return text.value;
-  },
-  writeText: async (path, text) => {
-    const written = await writeText(path, text);
-    if (!written.ok) {
-      throw new Error(written.message);
-    }
-  },
-};
+import type {Library, LibraryItem} from './types';
 
 let current: Library | null = null;
 /**
@@ -42,14 +26,14 @@ const LIBRARY_FILE = 'library.json';
 let moveChecked = false;
 
 async function libraryPath(): Promise<Result<string>> {
-  const paths = await sessionPaths();
-  if (!paths.ok) {
-    return paths;
+  const dir = await pluginFolder();
+  if (!dir.ok) {
+    return dir;
   }
-  const shared = `${libraryDir(paths.value.root)}/${LIBRARY_FILE}`;
+  const shared = `${libraryDir()}/${LIBRARY_FILE}`;
   if (!moveChecked) {
     moveChecked = true;
-    await moveFromPrivate(`${paths.value.pluginDir}/${LIBRARY_FILE}`, shared);
+    await moveFromPrivate(`${dir.value}/${LIBRARY_FILE}`, shared);
   }
   return ok(shared);
 }

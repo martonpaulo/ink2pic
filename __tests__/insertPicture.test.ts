@@ -1,9 +1,9 @@
 import {NativeModules} from 'react-native';
 import {FileUtils, PluginCommAPI, PluginNoteAPI} from 'sn-plugin-lib';
 import {imageExtension, insertPicture} from '../src/flow/insertPicture';
-import {resetSessionForTests} from '../src/flow/session';
+import {resetSessionForTests} from '../src/storage/session';
 import {resetLibraryForTests} from '../src/library/device';
-import {closeLogFileForTests} from '../src/log/file';
+import {closeLogFileForTests} from '../src/storage/logFile';
 import {PluginManager} from 'sn-plugin-lib';
 import type {SearchResult} from '../src/sources/types';
 

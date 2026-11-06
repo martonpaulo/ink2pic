@@ -1,7 +1,7 @@
 import {NativeModules} from 'react-native';
 import {FileUtils, PluginManager} from 'sn-plugin-lib';
-import {resetSessionForTests} from '../src/flow/session';
-import {closeLogFileForTests} from '../src/log/file';
+import {resetSessionForTests} from '../src/storage/session';
+import {closeLogFileForTests} from '../src/storage/logFile';
 import {searchCached} from '../src/search/device';
 import type {Source} from '../src/search/search';
 
