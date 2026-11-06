@@ -62,6 +62,17 @@ export function searchUrl(
   return `${API}?${params.join('&')}`;
 }
 
+/** Thumb names are `<n>px-<name>`, or `page<k>-<n>px-` and `lossy-page<k>-<n>px-` for paged files. */
+const THUMB_WIDTH_PART = /\/((?:lossy-)?page\d+-)?\d+px-/;
+
+export function resizeThumb(thumb: string, width: number): string {
+  return thumb.replace(
+    THUMB_WIDTH_PART,
+    (_match, page: string | undefined) =>
+      `/${page ?? ''}${nearestWidth(width)}px-`,
+  );
+}
+
 function plainText(html: string): string {
   return html
     .replace(/<[^>]*>/g, '')
@@ -85,7 +96,7 @@ function toResult(page: Page): SearchResult | null {
     source: 'commons',
     title: page.title.replace(/^File:/, '').replace(/\.[^.]+$/, ''),
     thumbUrl: thumb,
-    fullUrl: width => thumb.replace(/\/\d+px-/, `/${nearestWidth(width)}px-`),
+    fullUrl: width => resizeThumb(thumb, width),
     license: plainText(meta.LicenseShortName?.value ?? '') || 'unknown',
     attribution,
     mime: info.mime,

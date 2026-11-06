@@ -4,6 +4,7 @@ import {
   COMMONS_WIDTHS,
   nearestWidth,
   parseSearchResponse,
+  resizeThumb,
   searchCommons,
   searchUrl,
 } from '../src/sources/commons';
@@ -112,5 +113,21 @@ describe('non-object bodies (#23)', () => {
       kind: 'parse',
       message: 'the response is not a JSON object',
     });
+  });
+});
+
+describe('resizeThumb (#24)', () => {
+  it('keeps the page prefix of a paged file', () => {
+    const base =
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Example.pdf';
+    expect(resizeThumb(`${base}/page1-330px-Example.pdf.jpg`, 700)).toBe(
+      `${base}/page1-960px-Example.pdf.jpg`,
+    );
+    expect(resizeThumb(`${base}/lossy-page2-330px-Example.pdf.jpg`, 1)).toBe(
+      `${base}/lossy-page2-20px-Example.pdf.jpg`,
+    );
+    expect(resizeThumb(`${base}/330px-Example.png`, 500)).toBe(
+      `${base}/500px-Example.png`,
+    );
   });
 });

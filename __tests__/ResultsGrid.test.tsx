@@ -6,7 +6,7 @@ import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import {pageCount, pageOf} from '../src/search/pages';
 import type {SearchResult} from '../src/sources/types';
 import {copy} from '../src/ui/copy';
-import {ResultsGrid} from '../src/ui/ResultsGrid';
+import {ResultsGrid, THUMB_TIMEOUT_MS} from '../src/ui/ResultsGrid';
 
 const result = (n: number): SearchResult => ({
   id: `openclipart:${n}`,
@@ -19,6 +19,11 @@ const result = (n: number): SearchResult => ({
 });
 const many = (count: number) =>
   Array.from({length: count}, (_, i) => result(i + 1));
+
+const mounted: ReactTestRenderer[] = [];
+afterEach(() => {
+  act(() => mounted.splice(0).forEach(tree => tree.unmount()));
+});
 
 function render(props: Partial<React.ComponentProps<typeof ResultsGrid>> = {}) {
   let tree!: ReactTestRenderer;
@@ -33,6 +38,7 @@ function render(props: Partial<React.ComponentProps<typeof ResultsGrid>> = {}) {
       />,
     );
   });
+  mounted.push(tree);
   return tree;
 }
 
@@ -151,5 +157,40 @@ describe('ResultsGrid', () => {
     expect(texts(render({results: [], sourceDown: true}))).toEqual([
       copy['error.sourceDown'],
     ]);
+  });
+
+  it('shows a page whose thumbnails never answer, with those tiles failed (#24)', () => {
+    jest.useFakeTimers();
+    try {
+      const tree = render();
+      act(() => tree.root.findAllByType(Image)[0].props.onLoad());
+      expect(
+        tree.root.findByProps({testID: 'grid'}).props
+          .accessibilityElementsHidden,
+      ).toBe(true);
+      act(() => jest.advanceTimersByTime(THUMB_TIMEOUT_MS));
+      expect(
+        tree.root.findByProps({testID: 'grid'}).props
+          .accessibilityElementsHidden,
+      ).toBe(false);
+      expect(tree.root.findAllByType(Image)).toHaveLength(1);
+      expect(texts(tree)).toEqual(
+        expect.arrayContaining(['Picture 2', 'Picture 6']),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the title of a tile whose thumbnail failed (#24)', () => {
+    const tree = render();
+    act(() => tree.root.findAllByType(Image)[2].props.onError());
+    expect(texts(tree)).toContain('Picture 3');
+  });
+
+  it('sends the plugin User-Agent with each thumbnail (#24)', () => {
+    const tree = render();
+    const source = tree.root.findAllByType(Image)[0].props.source;
+    expect(source.headers['User-Agent']).toMatch(/^Ink2Pic\//);
   });
 });

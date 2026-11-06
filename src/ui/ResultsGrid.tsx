@@ -2,12 +2,17 @@
  * Search results as pages of six large tiles, for e-ink (brief section 8.4): no scrolling, no
  * animation, and each page shown once, when all its thumbnails have loaded or failed.
  */
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
+import {USER_AGENT} from '../config';
 import {pageCount, pageOf} from '../search/pages';
 import type {SearchResult} from '../sources/types';
 import {copy} from './copy';
 import {metrics} from './metrics';
+
+/** A page shows at the latest after this, with unanswered thumbnails marked failed (#24). */
+export const THUMB_TIMEOUT_MS = 8000;
+const THUMB_HEADERS = {'User-Agent': USER_AGENT};
 
 export type ResultsGridProps = {
   results: SearchResult[];
@@ -33,9 +38,36 @@ export function ResultsGrid({
   const pages = pageCount(results.length);
   const visible = useMemo(() => pageOf(results, page), [results, page]);
 
+  const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
+
+  // The page timer reads the latest settled ids, not the ones of the render that started it.
+  const settledNow = useRef(settled);
+  settledNow.current = settled;
+
   const settle = (id: string) =>
     setSettled(previous => new Set(previous).add(id));
+  const fail = (id: string) => {
+    setFailed(previous => new Set(previous).add(id));
+    settle(id);
+  };
   const ready = visible.every(result => settled.has(result.id));
+
+  // A thumbnail that never answers must not hide the page: React Native's Image has no timeout.
+  useEffect(() => {
+    if (ready) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      for (const result of visible) {
+        if (!settledNow.current.has(result.id)) {
+          fail(result.id);
+        }
+      }
+    }, THUMB_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+    // The timer restarts per page, not per settled tile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, ready]);
 
   if (searching) {
     return <Text style={styles.message}>{copy['search.running']}</Text>;
@@ -66,14 +98,18 @@ export function ResultsGrid({
             accessibilityLabel={result.title}
             style={styles.tile}
             onPress={() => onPick(result)}>
-            <Image
-              source={{uri: result.thumbUrl}}
-              style={styles.image}
-              resizeMode="contain"
-              fadeDuration={0}
-              onLoad={() => settle(result.id)}
-              onError={() => settle(result.id)}
-            />
+            {failed.has(result.id) ? (
+              <Text style={styles.failedTitle}>{result.title}</Text>
+            ) : (
+              <Image
+                source={{uri: result.thumbUrl, headers: THUMB_HEADERS}}
+                style={styles.image}
+                resizeMode="contain"
+                fadeDuration={0}
+                onLoad={() => settle(result.id)}
+                onError={() => fail(result.id)}
+              />
+            )}
           </Pressable>
         ))}
       </View>
@@ -139,6 +175,11 @@ const styles = StyleSheet.create({
     backgroundColor: metrics.paper,
   },
   image: {flex: 1},
+  failedTitle: {
+    fontSize: metrics.bodyFont,
+    color: metrics.ink,
+    margin: metrics.gap,
+  },
   nav: {
     flexDirection: 'row',
     alignItems: 'center',

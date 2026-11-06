@@ -10,8 +10,8 @@ const SKIP = new Set([
   '.scratch',
   '__mocks__',
 ]);
-/** The only files allowed to import the SDK: the wrappers, the entry point and tests, which drive its mock. */
-const ALLOWED = [/^src\/sdk\//, /^index\.js$/, /^__tests__\//];
+/** The only files allowed to import the SDK: the wrappers and tests, which drive its mock. */
+const ALLOWED = [/^src\/sdk\//, /^__tests__\//];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap(name => {
@@ -26,7 +26,7 @@ function sources(dir: string): string[] {
   });
 }
 
-it('imports sn-plugin-lib only from src/sdk/ and index.js', () => {
+it('imports sn-plugin-lib only from src/sdk/', () => {
   const offenders = sources(ROOT).filter(
     path =>
       !ALLOWED.some(rule => rule.test(path)) &&
