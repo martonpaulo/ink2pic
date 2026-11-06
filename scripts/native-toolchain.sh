@@ -35,7 +35,13 @@ fi
 fetch https://maven-central.storage-download.googleapis.com/maven2/com/facebook/react/react-android/0.79.2/react-android-0.79.2-release.aar \
   731432c6e8b55133710e3dd982933f59fc3f9048 react-android.aar
 [[ -f "$dir/react-android.jar" ]] || unzip -p "$dir/react-android.aar" classes.jar > "$dir/react-android.jar"
+# Compile-only: React Android's classes carry Kotlin annotations; without the Kotlin standard
+# library javac warns «unknown enum constant AnnotationRetention.RUNTIME» (#32). PluginHost
+# provides it at run time, so it is never packaged.
+fetch https://maven-central.storage-download.googleapis.com/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.0.21/kotlin-stdlib-2.0.21.jar \
+  618b539767b4899b4660a83006e052b63f1db551 kotlin-stdlib.jar
 
 echo "INK2PIC_BUILD_TOOLS=$build_tools"
 echo "INK2PIC_ANDROID_JAR=$platform/android.jar"
 echo "INK2PIC_REACT_JAR=$dir/react-android.jar"
+echo "INK2PIC_KOTLIN_JAR=$dir/kotlin-stdlib.jar"

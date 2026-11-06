@@ -40,6 +40,7 @@ function tools() {
   const result = {
     androidJar: values.INK2PIC_ANDROID_JAR,
     reactJar: values.INK2PIC_REACT_JAR,
+    kotlinJar: values.INK2PIC_KOTLIN_JAR,
     d8: path.join(values.INK2PIC_BUILD_TOOLS || '', 'lib/d8.jar'),
     aapt2: path.join(values.INK2PIC_BUILD_TOOLS || '', 'aapt2'),
   };
@@ -92,8 +93,9 @@ function buildNative() {
   fs.mkdirSync(classes, {recursive: true});
   fs.mkdirSync(stage, {recursive: true});
   run('javac', [
-    '--release', '8', '-encoding', 'UTF-8', '-Xlint:-options',
-    '-cp', [t.androidJar, t.reactJar].join(path.delimiter),
+    // -Werror: a new javac warning fails the build (#32).
+    '--release', '8', '-encoding', 'UTF-8', '-Xlint:-options', '-Werror',
+    '-cp', [t.androidJar, t.reactJar, t.kotlinJar].join(path.delimiter),
     '-d', classes, ...javaSources(path.join(root, 'native/src')),
   ]);
   const jar = path.join(out, 'files.jar');
