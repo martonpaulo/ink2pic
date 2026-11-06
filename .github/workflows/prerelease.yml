@@ -9,7 +9,8 @@ on:
   push:
     tags: ['v*-dev.*']
     branches: [main]
-    paths: [PluginConfig.json]
+    # A notes fix retries a release whose run failed; an existing tag is skipped.
+    paths: [PluginConfig.json, 'docs/releases/**']
 
 permissions:
   contents: read
