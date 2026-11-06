@@ -9,6 +9,16 @@ import {rankForEink} from './rank';
 export type Source = {
   name: string;
   search: (query: string) => Promise<SourceOutcome>;
+  /**
+   * Requests the source makes in a row, 1 by default: each gets the whole timeout, so a slow
+   * second request never drops what the first one found (#43).
+   */
+  requests?: number;
+  /**
+   * Adds pictures to the other sources (Wikidata, #43): its failure is no «source down» note and
+   * does not keep the search out of the cache.
+   */
+  supplement?: true;
 };
 
 export type SourceStatus =
@@ -67,7 +77,9 @@ export async function searchAll(
   {timeoutMs = SOURCE_TIMEOUT_MS} = {},
 ): Promise<SearchOutcome> {
   const outcomes = await Promise.all(
-    sources.map(source => withTimeout(source, query, timeoutMs)),
+    sources.map(source =>
+      withTimeout(source, query, timeoutMs * (source.requests ?? 1)),
+    ),
   );
   const statuses: Record<string, SourceStatus> = {};
   sources.forEach((source, i) => {
@@ -78,10 +90,11 @@ export async function searchAll(
     query,
   );
   const failed = outcomes.filter(o => !o.ok).length;
+  const mainFailed = outcomes.some((o, i) => !o.ok && !sources[i].supplement);
   return {
     results,
     statuses,
-    sourceDown: failed > 0 && failed < sources.length,
+    sourceDown: mainFailed && failed < sources.length,
     allFailed: failed === sources.length,
   };
 }

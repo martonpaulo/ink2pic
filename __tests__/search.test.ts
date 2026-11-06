@@ -1,5 +1,9 @@
+import {readFileSync} from 'fs';
+import {join} from 'path';
+import {cachedSearch} from '../src/search/cache';
 import {searchAll, Source} from '../src/search/search';
 import {defaultSources} from '../src/search/sources';
+import type {FetchLike} from '../src/sources/http';
 import type {SearchResult, SourceOutcome} from '../src/sources/types';
 
 const result = (id: string): SearchResult => ({
@@ -119,5 +123,94 @@ describe('a failure beside an empty answer (#23)', () => {
     expect(outcome.results).toEqual([]);
     expect(outcome.sourceDown).toBe(true);
     expect(outcome.allFailed).toBe(false);
+  });
+});
+
+describe('sources of two requests and the supplement (#43)', () => {
+  const soupDrawings = readFileSync(
+    join(__dirname, 'fixtures', 'commons-soup.json'),
+    'utf8',
+  );
+  /** Commons drawings answer after 4 s; the plain search never does, until its abort. */
+  function slowSecondFetch(): FetchLike {
+    return (url, {signal}) =>
+      new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')));
+        if (url.includes('commons') && url.includes('filetype%3Adrawing')) {
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                status: 200,
+                text: () => Promise.resolve(soupDrawings),
+              }),
+            4000,
+          );
+        } else if (!url.includes('commons')) {
+          reject(new Error('offline'));
+        }
+      });
+  }
+
+  it('keeps the drawings Commons had when its second request runs out', async () => {
+    jest.useFakeTimers();
+    const pending = searchAll('soup', defaultSources(slowSecondFetch()));
+    // 4 s for the drawings, then the plain search's own 5 s limit.
+    await jest.advanceTimersByTimeAsync(9500);
+    const outcome = await pending;
+    // The fixture's two pictures; its audio file is left out.
+    expect(outcome.statuses.commons).toEqual({state: 'ok', count: 2});
+  });
+
+  it('gives each request of a source its own budget', async () => {
+    jest.useFakeTimers();
+    const twoRequests: Source = {
+      name: 'b',
+      requests: 2,
+      search: () =>
+        new Promise(resolve =>
+          setTimeout(() => resolve({ok: true, results: [result('b1')]}), 7000),
+        ),
+    };
+    const pending = searchAll('soup', [twoRequests], {timeoutMs: 5000});
+    await jest.advanceTimersByTimeAsync(7000);
+    expect((await pending).statuses.b).toEqual({state: 'ok', count: 1});
+  });
+
+  it('a supplement failing is no source down, and the search is still cached', async () => {
+    const sources: Source[] = [
+      answering('a', {ok: true, results: [result('a1')]}),
+      {
+        ...answering('w', {ok: false, kind: 'network', message: 'refused'}),
+        supplement: true,
+      },
+    ];
+    const outcome = await searchAll('soup', sources);
+    expect(outcome.sourceDown).toBe(false);
+    expect(outcome.allFailed).toBe(false);
+    const files: Record<string, string> = {};
+    const cached = await cachedSearch(
+      'soup',
+      query => searchAll(query, sources),
+      {
+        readText: async path => files[path] ?? null,
+        writeText: async (path, text) => {
+          files[path] = text;
+        },
+      },
+      '/plugin/search-cache.json',
+      Date.UTC(2026, 10, 6),
+    );
+    expect(await cached.saved).toBeNull();
+  });
+
+  it('Commons and Wikidata make two requests; Wikidata only adds pictures', () => {
+    const byName = Object.fromEntries(
+      defaultSources(jest.fn()).map(source => [source.name, source]),
+    );
+    expect(byName.commons.requests).toBe(2);
+    expect(byName.wikidata.requests).toBe(2);
+    expect(byName.wikidata.supplement).toBe(true);
+    expect(byName.openclipart.supplement).toBeUndefined();
   });
 });
