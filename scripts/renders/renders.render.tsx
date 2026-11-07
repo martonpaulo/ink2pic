@@ -1,9 +1,9 @@
 /**
  * Renders every screen as the Manta shows it, 1920 x 2560 px in 16 grey levels, to
  * .scratch/renders/<screen>.png, and fails on any e-ink rule break (brief section 8.4, #80):
- * text contrast under the floor, a target under the touch target, text outside its box, or
- * animation. Run with `npm run renders` before each device build; RENDER_SCALE=1 renders
- * 1024 x 1365 px pictures for a quick look. Uses the Chromium installed with Playwright.
+ * text contrast under the floor, a target under the touch target, text under the minimum font
+ * size (#85), text outside its box, or animation. Run with `npm run renders` before each device
+ * build; RENDER_SCALE=1 renders 1024 x 1365 px pictures for a quick look. Uses the Chromium installed with Playwright.
  */
 import fs from 'fs';
 import path from 'path';
@@ -78,7 +78,7 @@ it('renders every screen and finds no e-ink rule break (#80)', async () => {
     const contrast = await page.evaluate<ContrastResult>(CONTRAST);
     report[screen.name] = [
       ...animationBreaks(json),
-      ...breaksOf(measured, metrics.touchTarget),
+      ...breaksOf(measured, metrics),
       ...contrast.failures.map(
         f => `contrast ${f.ratio}:1 under ${f.required}:1 for «${f.text ?? f.kind}»`,
       ),

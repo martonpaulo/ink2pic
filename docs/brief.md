@@ -536,6 +536,9 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 | Grid tile (2 columns x 3 rows) | about 75 x 60 mm | about 880 x 720 px |
 | Gap between tiles | 3 mm | about 35 px |
 | Body text | about 3.5 mm cap height | font size near 40 px |
+| Minimum text | font size 3 mm: no text a person must read is smaller, and every screen text is at the body size or larger ([#85](https://github.com/martonpaulo/ink2pic/issues/85)) | about 35 px |
+
+The minimum is the Supernote's own system text: the note title in the bottom bar of [`0.1.0-3-host.jpg`](device-tests/0.1.0-3-host.jpg) has a 12 px cap height in the 900 x 1200 screenshot, so about 26 px or 2.2 mm on the screen, which is a font size near 3 mm with Roboto's 0.71 cap height [INFERENCE from a device screenshot]. That the Settings screen is readable at this size is [TO TEST] in the next device round.
 | Border width | 0.3 mm | 3 to 4 px |
 
 ### 8.5 Speed rules
@@ -1090,7 +1093,7 @@ The `init` command was run successfully during research with the name `ImageSpik
 - Capture fixtures before writing parsers: save at least two real Openclipart search pages (one with many results, one with none) and two Commons API responses.
 - JVM tests for the native image pipeline if it exists.
 - A build that produces an installable `.snplg` is the final gate. Unit tests cannot prove device behavior.
-- `npm run renders` renders every screen state as the Manta shows it, 1920 x 2560 px in 16 grey levels, to `.scratch/renders/<screen>.png`, from the real components with synthetic fixture data, and fails on an e-ink rule break of section 8.4: text contrast under 4.5:1 (3:1 for large text, interface standard rule 3) after the 16-level quantization, a target under the 10 mm touch target, text outside its box or the screen, a spinner or a fading picture ([#80](https://github.com/martonpaulo/ink2pic/issues/80)). It runs the components under `react-test-renderer` and lays them out in the Chromium installed with Playwright, so it adds no dependency; Chromium's flexbox and a stand-in font replace Yoga and the device font, so a render is a preview, never proof. It takes about 5 s, but CI has no Chromium, so it stays out of `npm run validate`: the agent runs it before each device build. A new screen is one line in `scripts/renders/screens.tsx`. ESLint refuses `Animated`, `LayoutAnimation` and `ActivityIndicator` from `react-native` in `npm run validate`.
+- `npm run renders` renders every screen state as the Manta shows it, 1920 x 2560 px in 16 grey levels, to `.scratch/renders/<screen>.png`, from the real components with synthetic fixture data, and fails on an e-ink rule break of section 8.4: text contrast under 4.5:1 (3:1 for large text, interface standard rule 3) after the 16-level quantization, a target under the 10 mm touch target, text under the 3 mm minimum font size ([#85](https://github.com/martonpaulo/ink2pic/issues/85)), text outside its box or the screen, a spinner or a fading picture ([#80](https://github.com/martonpaulo/ink2pic/issues/80)). It runs the components under `react-test-renderer` and lays them out in the Chromium installed with Playwright, so it adds no dependency; Chromium's flexbox and a stand-in font replace Yoga and the device font, so a render is a preview, never proof. It takes about 5 s, but CI has no Chromium, so it stays out of `npm run validate`: the agent runs it before each device build. A new screen is one line in `scripts/renders/screens.tsx`. ESLint refuses `Animated`, `LayoutAnimation` and `ActivityIndicator` from `react-native` in `npm run validate`.
 - Keep SDK calls behind the wrappers in `src/sdk` so tests can mock them and undocumented behavior stays in one place.
 
 ---

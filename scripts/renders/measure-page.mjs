@@ -51,9 +51,16 @@ export function measurePage() {
           box: boxOf(e.getBoundingClientRect()),
         });
       }
+      // The smallest size of the text and the nested texts inside it, in layout units.
+      const fontSize = Math.min(
+        ...[el, ...el.querySelectorAll('.inner')].map(e =>
+          parseFloat(getComputedStyle(e).fontSize),
+        ),
+      );
       return {
         name: nameOf(el),
         text: (el.textContent ?? '').trim(),
+        fontSize,
         glyphs: boxOf(range.getBoundingClientRect()),
         within,
       };

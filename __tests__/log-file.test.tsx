@@ -164,6 +164,8 @@ it('shows the newest lines, newest at the bottom', () => {
   const text = String(tree.root.findByProps({testID: 'log'}).props.children);
   const shown = text.split('\n');
   expect(shown).toHaveLength(LOG_VIEW_LINES);
-  expect(shown[shown.length - 1]).toMatch(/line 49$/);
+  expect(shown[shown.length - 1]).toMatch(
+    new RegExp(`line ${LOG_VIEW_LINES + 9}$`),
+  );
   act(() => tree.unmount());
 });

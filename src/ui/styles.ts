@@ -14,7 +14,6 @@ export const shared = StyleSheet.create({
   outline: {borderWidth: metrics.border, borderColor: metrics.ink},
   /** A row of controls. */
   row: {flexDirection: 'row', alignItems: 'center', gap: metrics.controlGap},
-  textSmall: {fontSize: metrics.fontSmall, color: metrics.ink},
   text: {fontSize: metrics.fontBody, color: metrics.ink},
   textLarge: {fontSize: metrics.fontLarge, color: metrics.ink},
 });

@@ -120,7 +120,7 @@ export function SettingsScreen({
           <View style={[shared.row, styles.languages]}>
             <View style={styles.grow}>
               <Text style={shared.text}>{copy['settings.languages']}</Text>
-              <Text style={shared.textSmall}>
+              <Text style={shared.text}>
                 {settings.languages.map(languageName).join(', ')}
               </Text>
             </View>
@@ -132,7 +132,7 @@ export function SettingsScreen({
           </View>
           <ChoiceRow name="size" settings={settings} onChange={onChange} />
           <ChoiceRow name="placement" settings={settings} onChange={onChange} />
-          <Text style={shared.textSmall}>{copy['settings.placementNote']}</Text>
+          <Text style={shared.text}>{copy['settings.placementNote']}</Text>
           <ChoiceRow name="style" settings={settings} onChange={onChange} />
           <Option label={copy['settings.sources']}>
             {SOURCE_NAMES.map(name => {

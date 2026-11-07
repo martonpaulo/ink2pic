@@ -1,5 +1,5 @@
 import {animationBreaks, css, eInkColor, toHtml} from '../scripts/renders/html';
-import {breaksOf, Box, Measured} from '../scripts/renders/rules';
+import {breaksOf, Box, Limits, Measured} from '../scripts/renders/rules';
 
 const box = (left: number, top: number, right: number, bottom: number): Box => ({
   left,
@@ -8,6 +8,7 @@ const box = (left: number, top: number, right: number, bottom: number): Box => (
   bottom,
 });
 const screen = {name: 'the screen', box: box(0, 0, 1024, 1365)};
+const limits: Limits = {touchTarget: 63, minFont: 19};
 const measured = (over: Partial<Measured>): Measured => ({
   targets: [],
   texts: [],
@@ -63,9 +64,9 @@ describe('renders: the e-ink rules (#80)', () => {
       breaksOf(
         measured({
           targets: [{name: 'Close', width: 63, height: 75.6}],
-          texts: [{name: 'Close', text: 'Close', glyphs: box(10, 10, 60, 30), within: [screen]}],
+          texts: [{name: 'Close', text: 'Close', fontSize: 21, glyphs: box(10, 10, 60, 30), within: [screen]}],
         }),
-        63,
+        limits,
       ),
     ).toEqual([]);
   });
@@ -79,7 +80,7 @@ describe('renders: the e-ink rules (#80)', () => {
             {name: 'Search', width: 120, height: 50},
           ],
         }),
-        63,
+        limits,
       ),
     ).toEqual([
       'target «◀» is 40 x 75 units, under 63',
@@ -93,15 +94,28 @@ describe('renders: the e-ink rules (#80)', () => {
       breaksOf(
         measured({
           texts: [
-            {name: 'a', text: 'Close the view', glyphs: box(905, 20, 1010, 40), within: [button, screen]},
-            {name: 'b', text: 'Wide', glyphs: box(-30, 20, 40, 40), within: [screen]},
+            {name: 'a', text: 'Close the view', fontSize: 21, glyphs: box(905, 20, 1010, 40), within: [button, screen]},
+            {name: 'b', text: 'Wide', fontSize: 21, glyphs: box(-30, 20, 40, 40), within: [screen]},
           ],
         }),
-        63,
+        limits,
       ),
     ).toEqual([
       'text «Close the view» runs outside «Close»',
       'text «Wide» runs outside the screen',
     ]);
+  });
+
+  it('fails text under the minimum font size, and passes it at the minimum (#85)', () => {
+    const text = (name: string, fontSize: number) => ({
+      name,
+      text: name,
+      fontSize,
+      glyphs: box(10, 10, 60, 30),
+      within: [screen],
+    });
+    expect(
+      breaksOf(measured({texts: [text('IN USE', 10.5), text('Search', 19)]}), limits),
+    ).toEqual(['text «IN USE» is 10.5 units, under 19']);
   });
 });

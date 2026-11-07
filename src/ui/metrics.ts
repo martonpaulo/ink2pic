@@ -20,8 +20,13 @@ const SPACE_MM = 3;
 const BORDER_MM = 0.3;
 /** The body font size, near 40 px; the brief's about 3.5 mm cap height describes this size. */
 const BODY_FONT_SIZE_MM = 3.4;
+/**
+ * The smallest font size on screen: the Supernote's own system text, the note title in the bottom
+ * bar, measured at about 2.2 mm cap height in a device screenshot (brief section 8.4, #85).
+ * Text a person must read is never smaller; `npm run renders` fails a screen that is.
+ */
+const MIN_FONT_SIZE_MM = 3;
 /** The type ramp, as multiples of the body font size. */
-const SMALL_FONT_RATIO = 0.5;
 const LARGE_FONT_RATIO = 2;
 /** The line height of the status line, as a multiple of its font size. */
 const LINE_HEIGHT_RATIO = 1.3;
@@ -57,7 +62,7 @@ export const metrics = {
   /** Between the tiles of the results grid. */
   tileGap: space,
 
-  fontSmall: bodyFont * SMALL_FONT_RATIO,
+  minFont: mm(MIN_FONT_SIZE_MM),
   fontBody: bodyFont,
   fontLarge: bodyFont * LARGE_FONT_RATIO,
   bodyLineHeight: Math.round(bodyFont * LINE_HEIGHT_RATIO),

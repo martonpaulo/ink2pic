@@ -111,7 +111,7 @@ export function LanguagesScreen({
       ) : (
         <>
           <Text style={shared.text}>{copy['languages.hint']}</Text>
-          <Text accessibilityRole="header" style={shared.textSmall}>
+          <Text accessibilityRole="header" style={shared.text}>
             {copy['languages.inUse']}
           </Text>
           {languages.map((code, index) => (
@@ -140,7 +140,7 @@ export function LanguagesScreen({
             </View>
           ))}
           {addableLanguages(languages).length > 0 && (
-            <Text accessibilityRole="header" style={shared.textSmall}>
+            <Text accessibilityRole="header" style={shared.text}>
               {copy['languages.addSection']}
             </Text>
           )}
