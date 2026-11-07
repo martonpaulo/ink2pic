@@ -156,6 +156,9 @@ const LINE_ART = {
   edgeBox: 0.6,
   colours: 12,
   objectShare: 0.12,
+  fragments: 0.05,
+  darkest: 0,
+  faintLines: false,
   ms: 2,
 };
 /** The size of a downloaded picture and of a thumbnail, before any preparation. */
@@ -884,11 +887,17 @@ export class PluginHost {
         },
       },
       Ink2PicImage: {
+        // The five parameters of Ink2PicImageModule.prepareForEink; a contour keeps the size.
         prepareForEink: async (
           src: string,
           dest: string,
           width: number,
+          format: string,
+          _contour: boolean,
         ) => {
+          if (format !== 'png' && format !== 'jpg') {
+            throw moduleError('BAD_FORMAT', `format must be png or jpg: ${format}`);
+          }
           const source = this.image(src);
           const out = Math.min(width, source.width);
           const size = {

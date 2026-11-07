@@ -43,8 +43,11 @@ const FILE_PREFIX = 'file://';
 const CONTOUR_SUFFIX = '.contour.png';
 /** A faint picture's darkened thumbnail (#81): not a contour drawing, so it inserts darkened too. */
 const DARKENED_SUFFIX = '.dark.png';
-/** Thumbnails come at 330 and 400 px; never scaled up. */
-const CONTOUR_THUMB_WIDTH = 400;
+/**
+ * Thumbnails come at 330 and 400 px; never scaled up. `EinkPixels.MEASURE_WIDTH` holds it too;
+ * dry-check.json's twins name this one the owner, native/tests/twins.json the value.
+ */
+export const MEASURE_WIDTH = 400;
 const DIGITS = 2;
 
 export type MeasuredPages = {
@@ -154,7 +157,7 @@ async function measureFile(
   const converted = await deps.analyzer.toContour(
     path,
     dest,
-    CONTOUR_THUMB_WIDTH,
+    MEASURE_WIDTH,
   );
   if (!converted.ok) {
     // Shown and inserted as it is: the grid never shows what is not inserted.
@@ -195,7 +198,7 @@ async function darkenFile(
   }
   const path = uri.slice(FILE_PREFIX.length);
   const dest = `${thumbPath(pluginDir, result)}${DARKENED_SUFFIX}`;
-  const darkened = await deps.analyzer.darken(path, dest, CONTOUR_THUMB_WIDTH);
+  const darkened = await deps.analyzer.darken(path, dest, MEASURE_WIDTH);
   if (!darkened.ok) {
     log(`darken ${result.id}: ${darkened.message}`);
     return asFound(m);

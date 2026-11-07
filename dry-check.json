@@ -21,6 +21,31 @@
    "__tests__": 5
   }
  },
+ "twins": {
+  "rules": [
+   {
+    "rule": "clean border: from this white share of the frame the picture stands on paper",
+    "owner": "src/search-core/measures.ts",
+    "other": "native/src/com/ink2pic/files/EinkPixels.java",
+    "pattern": "CLEAN_BORDER = 0\\.85",
+    "golden": "native/tests/twins.json"
+   },
+   {
+    "rule": "measure width: the thumbnail width the measures and the drawings are taken at",
+    "owner": "src/flow/measure.ts",
+    "other": "native/src/com/ink2pic/files/EinkPixels.java",
+    "pattern": "MEASURE_WIDTH = 400",
+    "golden": "native/tests/twins.json"
+   },
+   {
+    "rule": "Measures fields: the bridge contract of measureThumb",
+    "owner": "src/search-core/measures.ts",
+    "other": "native/src/com/ink2pic/files/ThumbMeasures.java",
+    "pattern": "\\bobjectShare\\b",
+    "golden": "native/tests/twins.json"
+   }
+  ]
+ },
  "documents": {
   "files": [
    "**/*.md"

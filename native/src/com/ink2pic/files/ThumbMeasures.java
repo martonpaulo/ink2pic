@@ -5,7 +5,7 @@ package com.ink2pic.files;
  * research D on iconic pictures, #66): plain Java on unpremultiplied ARGB pixels, no Android
  * types, so JVM tests run it and another project can reuse it. Each pixel is flattened on white
  * with the luma of {@link EinkPixels#luminance}. The measures are features only: the classes and
- * the score that read them live in one place, `src/search/measures.ts`.
+ * the score that read them live in one place, `src/search-core/measures.ts`.
  *
  * Cost: four passes over the pixels and three arrays the size of the picture's width and height;
  * besides the gray values (one int per pixel), one boolean per pixel for the fragment pass and a

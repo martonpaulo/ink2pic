@@ -161,7 +161,7 @@ function testNative() {
       '--release', '8', '-encoding', 'UTF-8', '-Xlint:-options', '-d', classes,
       ...pure, ...javaSources(path.join(root, 'native/tests')),
     ]);
-    for (const test of ['SafePathsTest', 'EinkPixelsTest', 'ThumbGateTest', 'ThumbMeasuresTest', 'ContourTest', 'DecolorTest', 'PerceptualHashTest', 'PngTailTest', 'WorkersTest']) {
+    for (const test of ['SafePathsTest', 'EinkPixelsTest', 'ThumbGateTest', 'ThumbMeasuresTest', 'ContourTest', 'DecolorTest', 'PerceptualHashTest', 'PngTailTest', 'WorkersTest', 'TwinsTest']) {
       run('java', ['-cp', classes, `com.ink2pic.files.${test}`]);
     }
   } finally {

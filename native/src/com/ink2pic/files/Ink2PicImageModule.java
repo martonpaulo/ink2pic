@@ -93,7 +93,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   }
 
   /**
-   * The thumbnail's pixel measures (#66): features only; `src/search/measures.ts` reads them.
+   * The thumbnail's pixel measures (#66): features only; `src/search-core/measures.ts` reads them.
    * Resolves {width, height, mean, ..., ms}, `ms` the decode and measure time for the device log.
    */
   @ReactMethod

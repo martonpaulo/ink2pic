@@ -25,8 +25,8 @@ import javax.imageio.ImageIO;
  * the first argument, names the Java that made it. An unreadable file gets an {@code error}.
  */
 public final class LabPixels {
-  /** `MEASURE_WIDTH` and `CONTOUR_THUMB_WIDTH` of the device: thumbnails are never scaled up. */
-  private static final int WIDTH = 400;
+  /** The device's measure width: thumbnails are never scaled up. */
+  private static final int WIDTH = EinkPixels.MEASURE_WIDTH;
 
   private LabPixels() {}
 

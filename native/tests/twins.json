@@ -1,0 +1,33 @@
+{
+ "about": "Rules the Java and the TypeScript both hold (#100): dry-check.json names each one's owner; TwinsTest.java and __tests__/twins.test.ts read this file.",
+ "cleanBorder": 0.85,
+ "measureWidth": 400,
+ "measures": [
+  "width",
+  "height",
+  "mean",
+  "dark",
+  "white",
+  "mid",
+  "border",
+  "borderMedian",
+  "ink",
+  "inkLeft",
+  "inkTop",
+  "inkWidth",
+  "inkHeight",
+  "bands",
+  "lineAspect",
+  "thickness",
+  "edge",
+  "edgeBox",
+  "colours",
+  "objectShare",
+  "hash",
+  "fragments",
+  "darkest",
+  "faintLines",
+  "ms"
+ ],
+ "notFields": ["hash", "ms"]
+}
