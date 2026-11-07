@@ -8,7 +8,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
 import {libraryResults} from '../library/asResults';
-import {getLibrary} from '../library/device';
+import {getLibrary, libraryUnreadable} from '../library/device';
 import type {Library} from '../library/types';
 import {Done, failureText, StepFailure} from '../flow/failure';
 import {
@@ -36,6 +36,10 @@ import {shared} from './styles';
 import {ToolBar} from './ToolBar';
 
 type View_ = 'results' | 'library' | 'log';
+const UNREADABLE_COPY = {
+  rebuilt: 'library.unreadableRebuilt',
+  kept: 'library.unreadableKept',
+} as const;
 
 export type StatusLineInput = {
   /** A set message: an insert, a failure, the offline sentence. */
@@ -133,6 +137,8 @@ export function SearchScreen({
   // One list per set of items: a new array on each render sent a Library page back to page 1
   // (#46); a new recent search keeps the items, so it keeps the page.
   const libraryItems = library?.items;
+  // Read once the library is loaded: loading is what finds the file unreadable (#104).
+  const unreadable = library ? libraryUnreadable() : null;
   const libraryList = useMemo(
     () => (libraryItems ? libraryResults(libraryItems) : []),
     [libraryItems],
@@ -299,6 +305,9 @@ export function SearchScreen({
       {view === 'log' && <LogView />}
       {view === 'library' && (
         <View style={styles.fill}>
+          {unreadable && (
+            <Text style={shared.text}>{copy[UNREADABLE_COPY[unreadable]]}</Text>
+          )}
           {library && library.recentSearches.length > 0 && (
             <View style={[shared.row, styles.recent]}>
               <Text style={shared.text}>{copy['search.recent']}</Text>

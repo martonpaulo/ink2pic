@@ -14,12 +14,14 @@ import {
 } from '../src/search-core';
 import {thumbUri} from '../src/search/thumbs';
 import {
+  DOWNLOAD_PARALLEL,
   downloadAllSymbols,
   missingMegabytes,
   resetSymbolsForTests,
   savedSymbolPath,
   symbolFile,
   symbolPath,
+  STOP_AFTER_FAILURES,
   symbolsStatus,
 } from '../src/symbols/store';
 import {USER_AGENT} from '../src/config';
@@ -148,8 +150,11 @@ describe('offline symbols (#91)', () => {
     expect(cut.complete).toBe(false);
     expect(cut.saved).toBeGreaterThanOrEqual(100);
     expect(cut.saved).toBeLessThan(total);
-    // It stops at the first failure: at most one failed request per worker.
-    expect(pictureRequests(host).length).toBeLessThanOrEqual(cut.saved + 3);
+    // It stops after a few failures in a row: no request for each of the 1,447 (#104).
+    expect(cut.stopped).toBe(true);
+    expect(pictureRequests(host).length).toBeLessThanOrEqual(
+      cut.saved + STOP_AFTER_FAILURES + DOWNLOAD_PARALLEL,
+    );
 
     // Each cut-off file stays on the device, but no new session counts it as saved.
     const partial = [...host.files.entries()].filter(([, e]) => e.truncated);
@@ -159,7 +164,13 @@ describe('offline symbols (#91)', () => {
     expect(await symbolsStatus()).toEqual({total, saved: cut.saved});
     const before = pictureRequests(host).length;
     const resumed = await downloadAllSymbols(() => {});
-    expect(resumed).toEqual({total, saved: total, complete: true});
+    expect(resumed).toEqual({
+      total,
+      saved: total,
+      complete: true,
+      failed: 0,
+      stopped: false,
+    });
     // Only the missing ones are asked for, each once, with the plugin's User-Agent.
     expect(pictureRequests(host).length - before).toBe(total - cut.saved);
     const calls = host.calls.filter(c => c.name === 'downloadThumbToFile');
@@ -169,6 +180,22 @@ describe('offline symbols (#91)', () => {
       ),
     ).toBe(true);
     expect(await symbolsStatus()).toEqual({total, saved: total});
+  });
+
+  it('skips a symbol that always fails and finishes the rest (#104)', async () => {
+    const host = started();
+    const total = symbolHexes().length;
+    const [broken] = symbolHexes();
+    host.failing.set(openmojiPictureUrl(broken), 404);
+    const end = await downloadAllSymbols(() => {});
+    expect(end).toEqual({
+      total,
+      saved: total - 1,
+      complete: false,
+      failed: 1,
+      stopped: false,
+    });
+    expect(await symbolsStatus()).toEqual({total, saved: total - 1});
   });
 
   // Last: its failed searches open the sources' breaker for the rest of the file.

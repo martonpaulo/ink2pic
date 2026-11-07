@@ -8,6 +8,7 @@
 import {Clock, systemClock} from './clock';
 import {isSourceName, storedOriginal} from './registry';
 import type {SearchOutcome, SourceStatus} from './search';
+import {networkDown} from './state';
 import type {SearchResult} from './types';
 
 /** Text files where the cache lives; `readText` gives null when the file does not exist. */
@@ -260,8 +261,9 @@ export async function cachedSearch(
     };
   }
   const outcome = await run(query);
-  if (hit && outcome.allFailed) {
-    // Every source failed: an expired answer is better than none, and says it is old.
+  if (hit && (outcome.allFailed || networkDown(outcome))) {
+    // No source that needs the network answered: an expired answer is better than none, and says
+    // it is old. OpenMoji answers offline from its index, so `allFailed` alone never holds (#104).
     return {
       outcome: {...hit.outcome, results: [...hit.outcome.results], stale: true},
       freshness: 'stale',

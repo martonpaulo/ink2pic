@@ -19,6 +19,7 @@ import {
 import {
   downloadAllSymbols,
   missingMegabytes,
+  SymbolsDownload,
   symbolsStatus,
   SymbolsStatus,
 } from '../symbols/store';
@@ -103,6 +104,17 @@ function fill(key: CopyKey, values: Record<string, number>): string {
   );
 }
 
+/** The line at the end of «Download symbols»: done, stopped by the network, or some failed (#104). */
+function symbolsEnd(end: SymbolsDownload): string {
+  if (end.complete) {
+    return copy['settings.symbolsDone'];
+  }
+  const {saved, total, failed} = end;
+  return end.stopped || failed === 0
+    ? fill('settings.symbolsStopped', {saved, total})
+    : fill('settings.symbolsFailed', {saved, total, failed});
+}
+
 function ChoiceRow<K extends ChoiceKey>({
   name,
   settings,
@@ -181,11 +193,7 @@ export function SettingsScreen({
     const end = await symbols.download(progress);
     setSymbolsNow(end);
     setBottom('none');
-    setSymbolsLine(
-      end.complete
-        ? copy['settings.symbolsDone']
-        : fill('settings.symbolsStopped', {saved: end.saved, total: end.total}),
-    );
+    setSymbolsLine(symbolsEnd(end));
   };
   const confirm = async () => {
     if (bottom === 'symbols') {

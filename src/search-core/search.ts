@@ -75,12 +75,13 @@ function withTimeout(
       }),
     );
   });
+  // A thrown error is a fault in the adapter's code: a fetch failure arrives as an outcome (#104).
   const answered = source.search(query, ctx).catch(
-    (error: unknown): SourceOutcome => ({
-      ok: false,
-      kind: 'network',
-      message: error instanceof Error ? error.message : String(error),
-    }),
+    (error: unknown): SourceOutcome => {
+      const message = error instanceof Error ? error.message : String(error);
+      ctx.log(`search: ${source.name} threw: ${message}`);
+      return {ok: false, kind: 'fault', message};
+    },
   );
   return Promise.race([answered, expired]).finally(cancel);
 }

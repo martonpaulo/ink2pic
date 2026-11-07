@@ -12,6 +12,7 @@ import {insertPicture} from '../src/flow/insertPicture';
 import {resetSessionForTests} from '../src/storage/session';
 import {
   getLibrary,
+  libraryUnreadable,
   recordSearch,
   resetLibraryForTests,
 } from '../src/library/device';
@@ -71,9 +72,29 @@ afterEach(() => jest.useRealTimers());
 const SHARED_LIBRARY =
   '/storage/emulated/0/MyStyle/Ink2Pic/library/library.json';
 
-it('never overwrites a library file it could not read', async () => {
+it('keeps an unreadable library file aside before it rebuilds it (#104)', async () => {
+  const dir = '/storage/emulated/0/MyStyle/Ink2Pic/library';
   files[SHARED_LIBRARY] = '{"version": 99}';
+  native.listDir.mockResolvedValueOnce(['openclipart-1.png']);
+  expect((await getLibrary()).items.map(item => item.id)).toEqual([
+    'openclipart:1',
+  ]);
+  expect(libraryUnreadable()).toBe('rebuilt');
+  const aside = Object.keys(files).filter(path =>
+    path.startsWith(`${dir}/library.unreadable-`),
+  );
+  expect(aside).toHaveLength(1);
+  expect(files[aside[0]]).toBe('{"version": 99}');
+  await recordSearch('soup');
+  expect(JSON.parse(files[SHARED_LIBRARY]).recentSearches).toEqual(['soup']);
+  expect(native.writeText.mock.calls[0][0]).toBe(aside[0]);
+});
+
+it('never overwrites a library file whose copy could not be written (#33, #104)', async () => {
+  files[SHARED_LIBRARY] = '{"version": 99}';
+  native.writeText.mockRejectedValueOnce(new Error('disk full'));
   expect((await getLibrary()).items).toEqual([]);
+  expect(libraryUnreadable()).toBe('kept');
   await recordSearch('soup');
   expect(files[SHARED_LIBRARY]).toBe('{"version": 99}');
 });

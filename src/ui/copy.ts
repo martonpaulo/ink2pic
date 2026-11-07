@@ -73,6 +73,11 @@ export const copy = {
   // Outside the brief's table: the empty Library tab with no network (#98).
   'library.emptyOffline':
     'No saved pictures yet. Connect to Wi-Fi, then search again.',
+  // Outside the brief's table: the Library tab after an unreadable library.json (#104).
+  'library.unreadableRebuilt':
+    'The library list was unreadable, so it is rebuilt from the saved pictures. The old file is kept in MyStyle/Ink2Pic/library/.',
+  'library.unreadableKept':
+    'The library list is unreadable. It is kept as it is, and nothing is saved to it until Ink2Pic opens again.',
   // The Languages screen, from the plugin's Settings entry (#68).
   'languages.title': 'Languages',
   'languages.hint': 'The first language is tried first.',
@@ -136,6 +141,8 @@ export const copy = {
   'settings.symbolsDone': 'Every symbol is saved for offline use.',
   'settings.symbolsStopped':
     'The download stopped at {saved} of {total}. Check the Wi-Fi, then download again to go on.',
+  'settings.symbolsFailed':
+    '{saved} of {total} symbols are saved. {failed} could not be downloaded; download again to try them once more.',
   'settings.clear': 'Clear library list',
   'settings.clearQuestion':
     'Clear the library list and recent searches? The picture files stay in MyStyle/Ink2Pic/library/.',

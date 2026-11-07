@@ -183,34 +183,66 @@ export function missingMegabytes(status: SymbolsStatus): number {
 }
 
 /**
+ * Failed downloads in a row, with no symbol saved between them, that stop «Download symbols»: the
+ * network is gone, not one symbol. DEFAULT, no device measurement yet.
+ */
+export const STOP_AFTER_FAILURES = 10;
+
+/**
+ * The end of «Download symbols»: `failed` symbols were skipped (#104); `stopped` when
+ * `STOP_AFTER_FAILURES` failed in a row and the rest was not tried.
+ */
+export type SymbolsDownload = SymbolsStatus & {
+  complete: boolean;
+  failed: number;
+  stopped: boolean;
+};
+
+/**
  * Downloads every missing symbol, `DOWNLOAD_PARALLEL` at a time, reporting the saved count after
- * each. It stops at the first failure, so no network means one failed request per worker, not
- * 1,447; a new run resumes from the files already saved. Never rejects.
+ * each. A symbol that fails is skipped, logged and counted, and the rest go on (#104); after
+ * `STOP_AFTER_FAILURES` failures in a row it stops, so no network means a few failed requests, not
+ * 1,447. A new run resumes from the files already saved and tries the failed ones again. Never
+ * rejects.
  */
 export async function downloadAllSymbols(
   onProgress: (status: SymbolsStatus) => void,
-): Promise<SymbolsStatus & {complete: boolean}> {
+): Promise<SymbolsDownload> {
   const known = await savedSymbols();
   const all = symbolHexes();
   const missing = all.filter(hex => !known.has(hex));
   let done = all.length - missing.length;
-  let failed = false;
+  const failed: string[] = [];
+  let inARow = 0;
   let next = 0;
   log(`symbols: downloading ${missing.length} of ${all.length}`);
   const worker = async () => {
-    while (!failed && next < missing.length) {
+    while (inARow < STOP_AFTER_FAILURES && next < missing.length) {
       const hex = missing[next++];
       if (await save(hex).catch(() => false)) {
+        inARow = 0;
         done += 1;
         onProgress({total: all.length, saved: done});
       } else {
-        failed = true;
+        inARow += 1;
+        failed.push(hex);
+        log(`symbols: ${hex} failed; skipped`);
       }
     }
   };
   await Promise.all(Array.from({length: DOWNLOAD_PARALLEL}, worker));
-  log(`symbols: ${done} of ${all.length} saved${failed ? ', stopped' : ''}`);
-  return {total: all.length, saved: done, complete: done === all.length};
+  const stopped = next < missing.length;
+  log(
+    `symbols: ${done} of ${all.length} saved, ${failed.length} failed` +
+      (stopped ? `, stopped after ${STOP_AFTER_FAILURES} in a row` : ''),
+  );
+  return {
+    total: all.length,
+    saved: done,
+    complete: done === all.length,
+    failed: failed.length,
+    stopped,
+  };
 }
 
 export function resetSymbolsForTests(): void {

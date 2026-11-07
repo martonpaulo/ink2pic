@@ -137,14 +137,23 @@ it('asks before Reset all', async () => {
   expect(onChange).toHaveBeenCalledWith({type: 'reset', system: null});
 });
 
-/** Offline symbols with `saved` of 1,447 on the device; the download stops at `stopAt`. */
-function fakeSymbols(saved: number, stopAt: number): SymbolsControl {
+/**
+ * Offline symbols with `saved` of 1,447 on the device; the download ends at `stopAt`, stopped by
+ * the network unless `failed` symbols were skipped and the rest finished.
+ */
+function fakeSymbols(saved: number, stopAt: number, failed = 0): SymbolsControl {
   const total = 1447;
   return {
     status: async () => ({total, saved}),
     download: async onProgress => {
       onProgress({total, saved: saved + 1});
-      return {total, saved: stopAt, complete: stopAt === total};
+      return {
+        total,
+        saved: stopAt,
+        complete: stopAt === total,
+        failed: failed || (stopAt === total ? 0 : 3),
+        stopped: failed === 0,
+      };
     },
   };
 }
@@ -169,6 +178,20 @@ it('states the size of the symbols before downloading them (#91)', async () => {
   expect(texts(tree)).toContain(copy['settings.symbolsDone']);
   expect(texts(tree)).toContain(
     'Offline symbols: 1,447 of 1,447',
+  );
+});
+
+it('reports how many symbols failed when the rest finished (#104)', async () => {
+  const {tree, press} = screen(
+    defaultSettings(null),
+    true,
+    fakeSymbols(0, 1445, 2),
+  );
+  await settled();
+  await press(copy['settings.symbolsDownload']);
+  await press(copy['settings.symbolsConfirm']);
+  expect(texts(tree)).toContain(
+    '1,445 of 1,447 symbols are saved. 2 could not be downloaded; download again to try them once more.',
   );
 });
 

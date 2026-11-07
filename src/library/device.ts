@@ -20,8 +20,12 @@ let current: Library | null = null;
  * saved over a file that may still hold the owner's pictures (review of build 0.1.0 (8), #33).
  */
 let writable = false;
+/** True once library.json was found unreadable this session: the Library page says so (#104). */
+let unreadable = false;
 
 const LIBRARY_FILE = 'library.json';
+/** Where an unreadable library.json is kept, beside it: `library.unreadable-<ms>.json` (#104). */
+const UNREADABLE_PREFIX = 'library.unreadable-';
 /** The rebuild from the folder is checked once per session. */
 let rebuildChecked = false;
 /** A prepared picture: `<source>-<source id>.png`, as insertPicture names it. */
@@ -82,29 +86,76 @@ export function itemsFromFiles(
   });
 }
 
+/** The library the pictures in the folder stand for; empty when the folder cannot be listed. */
+async function libraryFromFolder(): Promise<Library> {
+  const names = await logged('listDir library', () => listDir(libraryDir()));
+  const items =
+    names.ok && names.value ? itemsFromFiles(libraryDir(), names.value) : [];
+  return items.reduce(addItem, emptyLibrary());
+}
+
 /** Writes library.json from the pictures in the folder when the file does not exist (#61). */
 async function rebuildFromFolder(shared: string): Promise<void> {
   const existing = await readText(shared);
   if (!existing.ok || existing.value !== null) {
     return;
   }
-  const names = await logged('listDir library', () => listDir(libraryDir()));
-  if (!names.ok || !names.value) {
+  const library = await libraryFromFolder();
+  if (library.items.length === 0) {
     return;
   }
-  const items = itemsFromFiles(libraryDir(), names.value);
-  if (items.length === 0) {
-    return;
-  }
-  const library = items.reduce(addItem, emptyLibrary());
-  await logged(`rebuild ${LIBRARY_FILE} from ${items.length} pictures`, () =>
-    writeText(shared, serialize(library)),
+  await logged(
+    `rebuild ${LIBRARY_FILE} from ${library.items.length} pictures`,
+    () => writeText(shared, serialize(library)),
   );
 }
 
-/** The library, loaded once; an unreadable file is reported, shown empty, and never overwritten. */
+/**
+ * An unreadable library.json (#104): its text is first written beside it under another name, in
+ * place and with no delete (#62), then library.json is rebuilt from the folder. When the copy
+ * cannot be written, nothing is saved this session, so the file on the device is kept.
+ */
+async function recoverUnreadable(shared: string): Promise<Library> {
+  writable = false;
+  const text = await logged(`read unreadable ${LIBRARY_FILE}`, () =>
+    readText(shared),
+  );
+  if (!text.ok || text.value === null) {
+    return emptyLibrary();
+  }
+  const aside = `${libraryDir()}/${UNREADABLE_PREFIX}${Date.now()}.json`;
+  const kept = await logged(`keep unreadable ${LIBRARY_FILE} as ${aside}`, () =>
+    writeText(aside, text.value as string),
+  );
+  if (!kept.ok) {
+    return emptyLibrary();
+  }
+  const library = await libraryFromFolder();
+  const rebuilt = await logged(
+    `rebuild ${LIBRARY_FILE} from ${library.items.length} pictures`,
+    () => writeText(shared, serialize(library)),
+  );
+  writable = rebuilt.ok;
+  return library;
+}
+
+/**
+ * Whether library.json was unreadable this session, for the Library page (#104): `rebuilt` from
+ * the folder with the old file kept aside, `kept` as it is when its copy could not be written.
+ */
+export function libraryUnreadable(): 'rebuilt' | 'kept' | null {
+  if (!unreadable) {
+    return null;
+  }
+  return writable ? 'rebuilt' : 'kept';
+}
+
+/**
+ * The library, loaded once. An unreadable file is reported, kept aside and rebuilt from the
+ * folder; it is never overwritten before its copy is written (#104).
+ */
 export async function getLibrary(): Promise<Library> {
-  if (current && writable) {
+  if (current && (writable || unreadable)) {
     return current;
   }
   const path = await libraryPath();
@@ -120,9 +171,14 @@ export async function getLibrary(): Promise<Library> {
       error => fail(THROWN_CODE, String(error)),
     ),
   );
-  writable = loaded.ok;
-  current = loaded.ok ? loaded.value : emptyLibrary();
-  if (!loaded.ok) {
+  if (loaded.ok) {
+    writable = true;
+    current = loaded.value;
+    return current;
+  }
+  unreadable = true;
+  current = await recoverUnreadable(path.value);
+  if (!writable) {
     log('library: not saved this session, so the file on the device is kept');
   }
   return current;
@@ -173,6 +229,7 @@ export async function clearLibrary(): Promise<boolean> {
   if (written.ok) {
     current = emptyLibrary();
     writable = true;
+    unreadable = false;
   }
   return written.ok;
 }
@@ -180,5 +237,6 @@ export async function clearLibrary(): Promise<boolean> {
 export function resetLibraryForTests(): void {
   current = null;
   writable = false;
+  unreadable = false;
   rebuildChecked = false;
 }

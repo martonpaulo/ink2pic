@@ -112,6 +112,28 @@ it('keeps the Library page when the screen renders again', async () => {
   act(() => tree.unmount());
 });
 
+it('says on the Library page that library.json was unreadable (#104)', async () => {
+  files[SHARED_LIBRARY] = 'not json';
+  let tree!: ReactTestRenderer;
+  await act(async () => {
+    tree = renderer.create(
+      <SearchScreen
+        initialQuery=""
+        lassoFailure={null}
+        onPick={jest.fn()}
+        onClose={jest.fn()}
+        sources={[]}
+      />,
+    );
+  });
+  const texts = tree.root
+    .findAllByType(Text)
+    .map(text => text.props.children);
+  expect(texts).toContain(copy['library.unreadableRebuilt']);
+  expect(native.deleteFile).not.toHaveBeenCalled();
+  act(() => tree.unmount());
+});
+
 it('clears the list and the recent searches, never a file (#70)', async () => {
   const {clearLibrary, recordInsert} = jest.requireActual(
     '../src/library/device',

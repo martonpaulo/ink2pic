@@ -102,7 +102,7 @@ const search = (word: string, sources: SourceAdapter[]) =>
   );
 
 /** 47 of the 1,447 symbols saved; a download stops at 300 (#91). */
-const SYMBOLS: SymbolsControl = {status: async () => ({total: 1447, saved: 47}), download: async () => ({total: 1447, saved: 300, complete: false})};
+const SYMBOLS: SymbolsControl = {status: async () => ({total: 1447, saved: 47}), download: async () => ({total: 1447, saved: 300, complete: false, failed: 3, stopped: true})};
 const settingsScreen = (settings: Settings = defaultSettings(null)) =>
   mount(<SettingsScreen settings={settings} onChange={() => {}} onLanguages={() => {}} onClear={async () => true} onClose={() => {}} symbols={SYMBOLS} />);
 const languagesScreen = (languages: LanguageCode[]) =>

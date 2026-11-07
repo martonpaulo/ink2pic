@@ -232,7 +232,7 @@ export class PluginHost {
   readonly folders = new Set<string>();
   readonly requests: string[] = [];
   online = true;
-  /** Hosts that answer this HTTP status, for one failing source. */
+  /** Hosts, or exact URLs, that answer this HTTP status, for one failing source or file. */
   readonly failing = new Map<string, number>();
   /**
    * Hosts whose downloads are cut off midway, leaving half the file written in place (#91):
@@ -603,7 +603,7 @@ export class PluginHost {
     if (!this.online || this.granted(PERMISSION.internet) === GRANT.denied) {
       throw moduleError('IO', `Unable to resolve host "${hostOf(url)}"`);
     }
-    const status = this.failing.get(hostOf(url));
+    const status = this.failing.get(url) ?? this.failing.get(hostOf(url));
     if (status !== undefined) {
       throw moduleError(`HTTP_${status}`, `HTTP ${status} for ${url}`);
     }

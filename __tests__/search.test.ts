@@ -76,9 +76,24 @@ describe('searchAll', () => {
     expect(outcome.sourceDown).toBe(false);
     expect(outcome.statuses.b).toEqual({
       state: 'failed',
-      kind: 'network',
+      kind: 'fault',
       message: 'boom',
     });
+  });
+
+  it('a thrown adapter error is a logged fault, never offline (#104)', async () => {
+    const log = jest.fn();
+    const fault: SourceAdapter = {
+      name: 'commons',
+      search: () => Promise.reject(new TypeError('x is undefined')),
+    };
+    const outcome = await searchAll('soup', [fault, fault], {
+      ctx: {...createContext({fetch: jest.fn(), userAgent: '', languages: []}), log},
+      correct: false,
+    });
+    expect(outcome.statuses.commons).toMatchObject({kind: 'fault'});
+    expect(searchState(outcome).kind).toBe('failed');
+    expect(log).toHaveBeenCalledWith('search: commons threw: x is undefined');
   });
 
   it('tells an empty answer from a failure', async () => {
@@ -227,6 +242,47 @@ describe('sources of two requests and the supplement (#43)', () => {
       },
     );
     expect(await cached.saved).toBeNull();
+  });
+
+  it('offline, a search cached a week ago shows stale, though OpenMoji answers (#104)', async () => {
+    jest.useFakeTimers();
+    const files: Record<string, string> = {};
+    const storage = {
+      readText: async (path: string) => files[path] ?? null,
+      writeText: async (path: string, text: string) => {
+        files[path] = text;
+      },
+    };
+    const then = Date.UTC(2026, 10, 1, 12);
+    const week = 7 * 24 * 60 * 60 * 1000;
+    const options = (now: number) => ({
+      storage,
+      path: '/plugin/search-cache.json',
+      clock: {...systemClock, now: () => now},
+    });
+    const online = await cachedSearch(
+      'soup',
+      async () => ({
+        results: [result('a1')],
+        statuses: {openclipart: {state: 'ok', count: 1}},
+        sourceDown: false,
+        allFailed: false,
+      }),
+      options(then),
+    );
+    await online.saved;
+    const fetch = jest.fn().mockRejectedValue(new Error('Network request failed'));
+    const pending = cachedSearch(
+      'soup',
+      query => searchAll(query, DEFAULT_ADAPTERS, withFetch(fetch)),
+      options(then + week),
+    );
+    await jest.advanceTimersByTimeAsync(30000);
+    const offline = await pending;
+    expect(fetch).toHaveBeenCalled();
+    expect(offline.freshness).toBe('stale');
+    expect(searchState(offline.outcome).kind).toBe('stale');
+    expect(offline.outcome.results.map(x => x.id)).toEqual(['a1']);
   });
 
   it('Commons makes two requests, Wikidata one per language and two more; Wikidata only adds pictures', () => {

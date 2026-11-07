@@ -49,7 +49,9 @@ export type FailureKind =
   | 'timeout'
   | 'http'
   | 'throttled'
-  | 'parse';
+  | 'parse'
+  /** The adapter's own code threw: a fault, never the network (#104). */
+  | 'fault';
 
 /** A failure; `message` is detail for the log, never shown. */
 export type Failure = {ok: false; kind: FailureKind; message: string};
