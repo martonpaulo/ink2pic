@@ -358,6 +358,18 @@ Measured on 2026-11-06 with the live APIs from the cloud session, by a scratch s
 
 Typical picture first: 12 of 19 words before, 18 of 19 after (Napoleon counted by its drawing); simple drawings on page 1 for the 17 objects: 63 of 102 before, 98 of 102 after. Still open: the Esperanto flag first and Napoleon's portrait both depend on Wikidata, and the judgement reads titles only, so a title such as `Clock group` counts as a drawing that nobody has seen [TO TEST on the device].
 
+### 5.6 Adult and explicit pictures
+
+Adult and explicit pictures never show, from any source, with no setting to turn the filter off ([#69](https://github.com/martonpaulo/ink2pic/issues/69), owner, 2026-11-06). `src/search-core/filters/adult.ts` holds the rule and its word lists; it reads only what the sources already return, with no request per result:
+
+1. Words are whole words, lowercased, accents removed: «Sexton», «Essex» and «nudibranch» stay. The lists hold English, Portuguese, Spanish, French, German, Italian and Dutch words (nude, nudity, naked, sex, porn, genital, erotic, topless, nua, desnudo, nue, nackt, naakt and their forms), word starts that are adult in every word (porn, erotic, genital, masturb, hentai) and a few phrases (human breasts, fan service, explicit medical). Left out on purpose, for their false positives: «nu» (the Greek letter, Vietnamese «nữ»), «nudo» (Spanish knot), «breast», «nipple», «erection», «xxx» (a Roman numeral).
+2. Every result's title is checked in the search pipeline, after the sources answer and before the ranking, so a new source is covered with no change.
+3. Commons also sends each file's categories in the same request (`Categories` in `iiextmetadatafilter`) [CONFIRMED 2026-11-07, live: «nude filetype:drawing» returned categories such as «Nude people in art», «Ecchi», «Fan service»]; a file is left out while its response is read, so it never counts toward the six drawings. The categories add a few hundred bytes per file to the response.
+4. Openclipart's search page carries no adult flag or tag, only the title [INFERENCE from the fixture page]; Openverse's `mature` flag applies if Openverse is ever added.
+5. The search cache version went to 3, so no cached search shows a picture the filter now leaves out.
+
+Measured on 2026-11-07 on two live Commons responses (the session IP was throttled for the rest): «nude filetype:drawing» kept 4 of 18 files, «body filetype:drawing» 17 of 18 (the one left out is a nude couple diagram, an accepted false positive). One kept file is an erotic illustration whose categories name only its book: a picture with no adult word anywhere still shows [TO TEST: the probe words body, woman, breast, man, girl in the search lab and on the device].
+
 ### 5.3 Rejected sources
 
 | Source | Reason |

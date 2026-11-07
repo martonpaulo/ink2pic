@@ -9,6 +9,7 @@ settings screen: every default is fixed, with its reason ([#51](https://github.c
 | The handwritten word | Kept on the page; the picture goes just below it | Fixed: the handwriting is the person's note ([#39](https://github.com/martonpaulo/ink2pic/issues/39)) |
 | Results per page | Six large tiles, two columns | Fixed: e-ink tap targets and one refresh per page (brief section 8.4) |
 | Picture sources | Openclipart and Wikimedia Commons, together | Fixed: keyless sources only (docs/product.md) |
+| Adult and explicit pictures | Left out of every search, from every source | Fixed: the owner asked for a filter that is always on ([#69](https://github.com/martonpaulo/ink2pic/issues/69), brief section 5.6) |
 | Inserted width | About one third of the page (640 px) | Fixed until the device calibration in brief section 7 |
 | Recent searches | The last 8 words | Fixed: brief section 8.6 |
 | Library | Every inserted picture, kept in `MyStyle/Ink2Pic/library` | Fixed: the person deletes files with the file manager |
