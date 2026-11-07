@@ -5,7 +5,7 @@
  * and another project can supply; `pixelScorer` is one more `Scorer` of the ranker.
  */
 import {readIntent} from './query';
-import {DEFAULT_SCORERS, intentFor, Scorer, total} from './rank';
+import {DEFAULT_SCORERS, intentFor, PHOTO_SCORERS, Scorer, total} from './rank';
 import {PAGE_SIZE, SearchResult} from './types';
 
 /** What an analyzer call gives: the value, or why there is none, for the log. */
@@ -365,12 +365,14 @@ function isLeft(
  * order. A canonical Wikidata picture keeps its index (brief section 5.5, rule 4), unless it is
  * shown near-black. A blank or near-black thumbnail goes to the end of the list; the next result fills its place. Later
  * results keep their order. `converted` names the pictures shown as their contour drawing.
+ * `photos` is the person's «Photos too» style (#70): the same scorers as the search then (#92).
  */
 export function reorderByMeasures(
   results: readonly SearchResult[],
   measures: ReadonlyMap<string, Measures>,
   query = '',
   converted: ReadonlySet<string> = new Set(),
+  photos = false,
 ): SearchResult[] {
   if (measures.size === 0) {
     return [...results];
@@ -384,7 +386,10 @@ export function reorderByMeasures(
     .map((result, order) => ({
       result,
       order,
-      score: total(result, intent, [...DEFAULT_SCORERS, pixels]),
+      score: total(result, intent, [
+        ...(photos ? PHOTO_SCORERS : DEFAULT_SCORERS),
+        pixels,
+      ]),
     }))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map(entry => entry.result);

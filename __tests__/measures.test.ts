@@ -289,6 +289,21 @@ describe('reorderByMeasures (#66)', () => {
     ).toEqual(['cat', 'other']);
   });
 
+  it('ranks a photo as a drawing in the measured order under «Photos too» (#70, #92)', () => {
+    const list = [result('photo', 'Cat photo'), result('plain', 'Cat')];
+    const measures = new Map([
+      ['photo', outline],
+      ['plain', outline],
+    ]);
+    expect(ids(reorderByMeasures(list, measures, 'cat'))).toEqual([
+      'plain',
+      'photo',
+    ]);
+    expect(
+      ids(reorderByMeasures(list, measures, 'cat', new Set(), true)),
+    ).toEqual(['photo', 'plain']);
+  });
+
   it('puts a contour drawing after a picture shown as found, text and faint lines last (#83)', () => {
     const list = [
       result('poster', 'Cat'),

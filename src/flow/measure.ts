@@ -76,6 +76,8 @@ export type MeasureDeps = {
   limitMs: number;
   /** The person's «All contour» style (#70): every measured thumbnail becomes a contour drawing. */
   allContour?: () => Promise<boolean>;
+  /** The person's «Photos too» style (#70): the measured order ranks photos as drawings (#92). */
+  photos?: () => Promise<boolean>;
 };
 
 const DEVICE: MeasureDeps = {
@@ -83,6 +85,7 @@ const DEVICE: MeasureDeps = {
   thumb: thumbUri,
   limitMs: MEASURE_LIMIT_MS,
   allContour: async () => (await getSettings()).style === 'contour',
+  photos: async () => (await getSettings()).style === 'photos',
 };
 
 const LATER: MeasureDeps = {...DEVICE, limitMs: LATER_MEASURE_LIMIT_MS};
@@ -249,6 +252,7 @@ export async function measureFirstPages(
   const started = Date.now();
   const found = new Map<string, Measured>();
   const contourAll = (await deps.allContour?.()) ?? false;
+  const photos = (await deps.photos?.()) ?? false;
   const firstPages = results.slice(0, MEASURED_RESULTS);
   const uris = firstPages.map(result => deps.thumb(result, thumbDir));
   let returned = false;
@@ -292,7 +296,7 @@ export async function measureFirstPages(
   const converted = new Set(
     [...contourThumbs].filter(([, uri]) => isContourUri(uri)).map(([id]) => id),
   );
-  const ordered = reorderByMeasures(results, used, query, converted);
+  const ordered = reorderByMeasures(results, used, query, converted, photos);
   const distinct = dropNearDuplicates(ordered, used);
   if (distinct.length < ordered.length) {
     log(`pixels: ${ordered.length - distinct.length} near-duplicates left out`);
