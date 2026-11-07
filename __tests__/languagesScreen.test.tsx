@@ -101,6 +101,25 @@ describe('LanguagesScreen (#68)', () => {
     }
   });
 
+  it('ignores a second Remove within the repeat time, but keeps a later one (#97)', () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(10_000);
+    const {tree, onChange} = screen(['zh', 'en', 'es']);
+    const press = (label: string) =>
+      act(() =>
+        buttons(tree)
+          .find(b => b.label === label)
+          ?.press(),
+      );
+    press('Remove 中文 (Chinese)');
+    now.mockReturnValue(10_300);
+    press('Remove English');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    now.mockReturnValue(10_700);
+    press('Remove English');
+    expect(onChange).toHaveBeenCalledTimes(2);
+    now.mockRestore();
+  });
+
   it('sends each tap as one step', () => {
     const {tree, onChange} = screen(['zh', 'en']);
     act(() =>

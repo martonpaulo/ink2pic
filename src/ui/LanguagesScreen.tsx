@@ -4,13 +4,14 @@
  * Save button. On e-ink: no drag, no animation, and the buttons of every row in fixed columns, an
  * empty slot where a row has no ↑ or ↓, so a tap redraws the rows in place.
  */
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {
   addableLanguages,
   LanguageCode,
   LanguagesAction,
 } from '../settings/languages';
+import {REPEAT_REMOVE_MS} from '../config';
 import {Button} from './Button';
 import {copy, CopyKey} from './copy';
 import {LogView} from './LogView';
@@ -86,7 +87,19 @@ export function LanguagesScreen({
 }: LanguagesScreenProps): React.JSX.Element {
   const [showLog, setShowLog] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const lastRemove = useRef(-Infinity);
   const last = languages.length - 1;
+  // Remove only: a second one within REPEAT_REMOVE_MS is a double tap on the row that slid up (#97).
+  const change: typeof onChange = step => {
+    if (step.type === 'remove') {
+      const now = Date.now();
+      if (now - lastRemove.current < REPEAT_REMOVE_MS) {
+        return;
+      }
+      lastRemove.current = now;
+    }
+    onChange(step);
+  };
   return (
     <Screen>
       <ToolBar
@@ -118,19 +131,19 @@ export function LanguagesScreen({
               <RowButton
                 type="up"
                 code={code}
-                onChange={onChange}
+                onChange={change}
                 shown={index > 0}
               />
               <RowButton
                 type="down"
                 code={code}
-                onChange={onChange}
+                onChange={change}
                 shown={index < last}
               />
               <RowButton
                 type="remove"
                 code={code}
-                onChange={onChange}
+                onChange={change}
                 disabled={languages.length === 1}
               />
             </View>
@@ -149,7 +162,7 @@ export function LanguagesScreen({
               <Text style={[shared.text, styles.name]}>
                 {languageName(code)}
               </Text>
-              <RowButton type="add" code={code} onChange={onChange} />
+              <RowButton type="add" code={code} onChange={change} />
             </View>
           ))}
           {/* Apart from the rows, at the bottom; the question takes the button's place. */}

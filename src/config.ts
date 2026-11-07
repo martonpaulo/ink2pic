@@ -10,3 +10,9 @@ export const USER_AGENT = `Ink2Pic/${version} (+${REPOSITORY_URL})`;
  * 16, which the owner tests them on; false once the spike ends (brief section 8.11).
  */
 export const PROBE_CONTROLS = true;
+
+/**
+ * A second Remove within this time is taken as an accidental double tap on the slow e-ink redraw
+ * and ignored: the next row slides under the finger (#97). Moves and adds keep every tap.
+ */
+export const REPEAT_REMOVE_MS = 600;
