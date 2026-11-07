@@ -92,7 +92,8 @@ export function LanguagesScreen({
       <ToolBar
         logShown={showLog}
         onLog={() => setShowLog(!showLog)}
-        onClose={onClose}>
+        onClose={onClose}
+        title={copy['languages.title']}>
         {onBack && (
           <Button
             label={copy['settings.back']}
@@ -100,11 +101,6 @@ export function LanguagesScreen({
             onPress={onBack}
           />
         )}
-        <Text
-          accessibilityRole="header"
-          style={[shared.textLarge, styles.title]}>
-          {copy['languages.title']}
-        </Text>
       </ToolBar>
       {showLog ? (
         <LogView />
@@ -115,7 +111,7 @@ export function LanguagesScreen({
             {copy['languages.inUse']}
           </Text>
           {languages.map((code, index) => (
-            <View key={code} style={[shared.row, styles.row]}>
+            <View key={code} style={[shared.row, shared.listRow]}>
               <Text style={[shared.text, styles.name]}>
                 {`${index + 1}. ${languageName(code)}`}
               </Text>
@@ -149,7 +145,7 @@ export function LanguagesScreen({
             </Text>
           )}
           {addableLanguages(languages).map(code => (
-            <View key={code} style={[shared.row, styles.row]}>
+            <View key={code} style={[shared.row, shared.listRow]}>
               <Text style={[shared.text, styles.name]}>
                 {languageName(code)}
               </Text>
@@ -159,7 +155,7 @@ export function LanguagesScreen({
           {/* Apart from the rows, at the bottom; the question takes the button's place. */}
           <View style={styles.spacer} />
           {confirming ? (
-            <View style={[shared.row, styles.reset]}>
+            <View style={shared.actions}>
               <Text style={[shared.text, styles.name]}>
                 {copy['languages.resetQuestion']}
               </Text>
@@ -176,7 +172,7 @@ export function LanguagesScreen({
               />
             </View>
           ) : (
-            <View style={[shared.row, styles.reset]}>
+            <View style={shared.actions}>
               <Button
                 label={copy['languages.reset']}
                 onPress={() => setConfirming(true)}
@@ -190,16 +186,7 @@ export function LanguagesScreen({
 }
 
 const styles = StyleSheet.create({
-  title: {flex: 1},
-  row: {
-    minHeight: metrics.touchTarget,
-    paddingVertical: metrics.rowPadding,
-    borderBottomWidth: metrics.border,
-    borderStyle: 'dotted',
-    borderColor: metrics.ink,
-  },
   name: {flex: 1},
   cell: {width: metrics.rowButtonWidth},
   spacer: {flex: 1},
-  reset: {justifyContent: 'flex-end'},
 });

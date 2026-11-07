@@ -18,7 +18,7 @@ const ROW_BUTTON_WIDTH_MM = 22;
 /** The one spacing step every spacing role starts from [DEFAULT, calibrate on device]. */
 const SPACE_MM = 3;
 const BORDER_MM = 0.3;
-/** The body font size, near 40 px; the brief's about 3.5 mm cap height describes this size. */
+/** The body font size, near 40 px: about 2.4 mm cap height with Roboto's 0.71 cap height. */
 const BODY_FONT_SIZE_MM = 3.4;
 /**
  * The smallest font size on screen: the Supernote's own system text, the note title in the bottom
@@ -65,7 +65,7 @@ export const metrics = {
   minFont: mm(MIN_FONT_SIZE_MM),
   fontBody: bodyFont,
   fontLarge: bodyFont * LARGE_FONT_RATIO,
-  bodyLineHeight: Math.round(bodyFont * LINE_HEIGHT_RATIO),
+  statusLineHeight: Math.round(bodyFont * LINE_HEIGHT_RATIO),
 
   ink: '#000000',
   paper: '#ffffff',

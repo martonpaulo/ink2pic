@@ -540,11 +540,11 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 | Primary buttons (◀ ▶, Search, tabs) | 12 to 14 mm tall | about 140 to 165 px |
 | Grid tile (2 columns x 3 rows) | about 75 x 60 mm | about 880 x 720 px |
 | Gap between tiles | 3 mm | about 35 px |
-| Body text | about 3.5 mm cap height | font size near 40 px |
+| Body text | font size 3.4 mm, about 2.4 mm cap height with Roboto's 0.71 cap height | font size near 40 px |
 | Minimum text | font size 3 mm: no text a person must read is smaller, and every screen text is at the body size or larger ([#85](https://github.com/martonpaulo/ink2pic/issues/85)) | about 35 px |
+| Border width | 0.3 mm | 3 to 4 px |
 
 The minimum is the Supernote's own system text: the note title in the bottom bar of [`0.1.0-3-host.jpg`](device-tests/0.1.0-3-host.jpg) has a 12 px cap height in the 900 x 1200 screenshot, so about 26 px or 2.2 mm on the screen, which is a font size near 3 mm with Roboto's 0.71 cap height [INFERENCE from a device screenshot]. That the Settings screen is readable at this size is [TO TEST] in the next device round.
-| Border width | 0.3 mm | 3 to 4 px |
 
 ### 8.5 Speed rules
 

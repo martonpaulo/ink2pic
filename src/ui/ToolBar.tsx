@@ -3,7 +3,7 @@
  * the trailing edge, so the person can always read the log and leave, even when a step hangs (#36).
  */
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {Button} from './Button';
 import {copy} from './copy';
 import {shared} from './styles';
@@ -13,7 +13,9 @@ export type ToolBarProps = {
   logShown: boolean;
   onLog: () => void;
   onClose: () => void;
-  /** The screen's own controls, before Log and Close. */
+  /** The screen's title, a header after the screen's own controls; it takes the free width. */
+  title?: string;
+  /** The screen's own controls, before the title, Log and Close. */
   children?: React.ReactNode;
 };
 
@@ -21,11 +23,19 @@ export function ToolBar({
   logShown,
   onLog,
   onClose,
+  title,
   children,
 }: ToolBarProps): React.JSX.Element {
   return (
-    <View style={[shared.row, styles.bar]}>
+    <View style={shared.actions}>
       {children}
+      {title !== undefined && (
+        <Text
+          accessibilityRole="header"
+          style={[shared.textLarge, styles.title]}>
+          {title}
+        </Text>
+      )}
       <Button label={copy['action.log']} selected={logShown} onPress={onLog} />
       <Button label={copy['action.close']} onPress={onClose} />
     </View>
@@ -33,5 +43,5 @@ export function ToolBar({
 }
 
 const styles = StyleSheet.create({
-  bar: {justifyContent: 'flex-end'},
+  title: {flex: 1},
 });

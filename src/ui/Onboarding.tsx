@@ -4,7 +4,7 @@
  * system Settings and dialogs (#50).
  */
 import React, {useRef, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
 import {Button} from './Button';
 import {ScreenTools} from './ScreenTools';
 import {
@@ -14,7 +14,6 @@ import {
   requestMissing,
 } from '../onboarding/permissions';
 import {copy} from './copy';
-import {metrics} from './metrics';
 import {Screen} from './Screen';
 import {shared} from './styles';
 
@@ -62,7 +61,7 @@ export function Onboarding({
     <Screen>
       <ScreenTools onClose={onClose} />
       {STEPS.map((text, i) => (
-        <View key={text} style={[shared.row, styles.row]} accessible>
+        <View key={text} style={[shared.row, shared.listRow]} accessible>
           <Text style={shared.textLarge}>{i + 1}</Text>
           <Text style={shared.text}>{text}</Text>
         </View>
@@ -78,7 +77,7 @@ export function Onboarding({
         <Text style={shared.text}>{copy['error.permission.settings']}</Text>
       )}
       {/* At the trailing edge, as OK in the system dialogs, not a black band across the page. */}
-      <View style={styles.actions}>
+      <View style={shared.actions}>
         <Button
           label={copy['onboarding.start']}
           primary
@@ -89,13 +88,3 @@ export function Onboarding({
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    paddingVertical: metrics.rowPadding,
-    borderBottomWidth: metrics.border,
-    borderStyle: 'dotted',
-    borderColor: metrics.ink,
-  },
-  actions: {alignItems: 'flex-end'},
-});

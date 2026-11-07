@@ -183,11 +183,11 @@ export function ResultsGrid({
 
   // The area stays empty: the status line says the state's sentence (#98).
   if (note === 'searching' || note === 'empty') {
-    return <View testID="grid-area" style={styles.screen} />;
+    return <View testID="grid-area" style={styles.frame} />;
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.frame}>
       <View style={styles.area}>
         <View
           testID="grid"
@@ -252,7 +252,7 @@ export function ResultsGrid({
 const styles = StyleSheet.create({
   // The grid takes the height left by the field and the page buttons, so the buttons are
   // always on screen (build 0.1.0 (6): fixed-size tiles pushed them under the Log button).
-  screen: {flex: 1, alignSelf: 'stretch', backgroundColor: metrics.paper},
+  frame: {flex: 1, alignSelf: 'stretch'},
   area: {flex: 1},
   grid: {flex: 1, gap: metrics.tileGap},
   row: {flex: 1, flexDirection: 'row', gap: metrics.tileGap},

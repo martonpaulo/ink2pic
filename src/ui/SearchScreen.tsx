@@ -285,7 +285,7 @@ export function SearchScreen({
       <View testID="status-row" style={shared.row}>
         <Text
           testID="status"
-          style={[shared.text, styles.status]}
+          style={[shared.text, shared.statusLine, styles.status]}
           accessibilityLiveRegion="polite">
           {line}
         </Text>
@@ -336,12 +336,7 @@ const styles = StyleSheet.create({
     minHeight: metrics.controlHeight,
     paddingHorizontal: metrics.controlPadding,
   },
-  // Two lines reserved: the longest failure sentences wrap once on the Manta.
-  status: {
-    flex: 1,
-    lineHeight: metrics.bodyLineHeight,
-    minHeight: metrics.bodyLineHeight * 2,
-  },
+  status: {flex: 1},
   fill: {flex: 1, gap: metrics.sectionGap},
   recent: {flexWrap: 'wrap'},
 });

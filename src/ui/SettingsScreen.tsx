@@ -204,18 +204,14 @@ export function SettingsScreen({
       <ToolBar
         logShown={showLog}
         onLog={() => setShowLog(!showLog)}
-        onClose={onClose}>
-        <Text
-          accessibilityRole="header"
-          style={[shared.textLarge, styles.title]}>
-          {copy['settings.title']}
-        </Text>
-      </ToolBar>
+        onClose={onClose}
+        title={copy['settings.title']}
+      />
       {showLog ? (
         <LogView />
       ) : (
         <>
-          <View style={[shared.row, styles.languages]}>
+          <View style={[shared.row, shared.listRow]}>
             <View style={styles.grow}>
               <Text style={shared.text}>{copy['settings.languages']}</Text>
               <Text style={shared.text}>
@@ -260,7 +256,7 @@ export function SettingsScreen({
             ))}
           </Option>
           {/* One row, label and action side by side: a second line would push the actions off. */}
-          <View style={shared.row}>
+          <View style={[shared.row, shared.listRow]}>
             <Text style={[shared.text, styles.grow]}>
               {symbolsNow
                 ? fill('settings.symbols', symbolsNow)
@@ -274,10 +270,10 @@ export function SettingsScreen({
           </View>
           <View style={styles.grow} />
           {/* Reserved: a question or a result never moves the options above. */}
-          <Text style={[shared.text, styles.bottomText]}>
+          <Text style={[shared.text, shared.statusLine]}>
             {symbolsLine ?? BOTTOM_TEXT[bottom]}
           </Text>
-          <View style={[shared.row, styles.actions]}>
+          <View style={shared.actions}>
             {asking ? (
               <>
                 <Button
@@ -319,16 +315,7 @@ export function SettingsScreen({
 }
 
 const styles = StyleSheet.create({
-  title: {flex: 1},
   grow: {flex: 1},
-  option: {gap: metrics.controlGap},
-  languages: {
-    minHeight: metrics.touchTarget,
-    paddingBottom: metrics.rowPadding,
-    borderBottomWidth: metrics.border,
-    borderStyle: 'dotted',
-    borderColor: metrics.ink,
-  },
-  bottomText: {minHeight: metrics.bodyLineHeight * 2},
-  actions: {justifyContent: 'flex-end'},
+  /** The option's label above its row of values. */
+  option: {gap: metrics.rowPadding},
 });
