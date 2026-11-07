@@ -76,7 +76,7 @@ the screen's rule; a change to that rule changes the copy too.
 
 | File | What it holds |
 | :--- | :--- |
-| `cases.json` | The catalogue: each query's `id`, `category`, `query` and `expect`, what a good page 1 holds. |
+| `cases.json` | The catalogue: each query's `id`, `category`, `query` and `expect`, what a good page 1 holds. A `line` case holds a written line instead: its words are chosen as Lasso last word chooses them, with the titles check's request counted, then searched; `query` is the words it should choose ([#87](https://github.com/martonpaulo/ink2pic/issues/87)). |
 | `out/<run>/results.json` | Not committed, since a picture title can read as private data to the commit scanner. Pages 1 and 2 of each query: id, source, title, MIME type, thumbnail URL, canonical flag and score, with each source's status and the screen's line. |
 | `out/baseline/` | The first run, at 82c29a4, before the search core: `judgment.json`, `metrics.json` and `faults.json`. |
 | `out/<run>/judgment.json` | A person's verdict per query, written by hand (below). |

@@ -41,6 +41,7 @@ Every failure is a `Failure` with a typed `kind` (`network`, `timeout`, `http`, 
 - `fetcher.ts`: the only network path, with the User-Agent and the per-request timeout.
 - `clock.ts`: the injected clock and log.
 - `query.ts`: the query pipeline stages.
+- `phrase.ts`: the words of a written line to search, by one Wikipedia titles check; the Wikidata lookup reuses its article ([#87](https://github.com/martonpaulo/ink2pic/issues/87)).
 - `filters/adult.ts`: the adult filter, always on: whole-word lists over titles and Commons categories ([#69](https://github.com/martonpaulo/ink2pic/issues/69)).
 - `rank.ts`: the scorers and the ranker.
 - `search.ts`: the parallel search with its per-source budget.

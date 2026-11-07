@@ -5,10 +5,12 @@ import {
   isClosedLoop,
   LASSO_MIN_SHARE,
   lineMeasures,
+  lineWords,
   padToPage,
   PageStroke,
   Point,
   Rect,
+  selectLastWords,
   selectWord,
   wordInCircle,
 } from '../src/flow/selectWord';
@@ -169,6 +171,50 @@ describe('the last word, by position (#75)', () => {
 
   it('chooses nothing when nothing was written', () => {
     expect(selectWord([], page, NORMAL)).toBeNull();
+  });
+});
+
+describe('the last line up to the last word (#87)', () => {
+  /** The stroke numbers `handwrite` gives each word of `text` on a line of its own. */
+  function wordNums(text: string): number[][] {
+    const words = text.split(' ');
+    return words.map((_, i) => {
+      const start = handwrite(words.slice(0, i).join(' '), 0).length;
+      const end = handwrite(words.slice(0, i + 1).join(' '), 0).length;
+      return Array.from({length: end - start}, (__, k) => 1 + start + k);
+    });
+  }
+  const sorted = (words: number[][] | undefined) =>
+    (words ?? []).map(word => [...word].sort((a, b) => a - b));
+
+  it.each([
+    'Quem foi Miguel de Cervantes',
+    'Who was Ada Lovelace',
+    'Quién fue Simón Bolívar',
+  ])('splits «%s» into its words, marks with their letters', text => {
+    const {strokes} = phrase(text);
+    expect(sorted(lineWords(strokes, NORMAL)?.words)).toEqual(wordNums(text));
+  });
+
+  it('stops at the line above and ends with the same last word as selectWord', () => {
+    const {strokes, lines} = phrase('ontem eu viajei', 'até a China');
+    const line = lineWords(strokes, NORMAL);
+    expect(line?.words).toHaveLength(3);
+    expect(sorted(line?.words).pop()).toEqual(lastWordNums(lines, 'até a China'));
+    expect(selectLastWords(strokes, line!, 1, page)?.rect).toEqual(
+      selectWord(strokes, page, NORMAL)?.rect,
+    );
+  });
+
+  it('lassoes the last three words of «Quem foi Miguel de Cervantes» and not «foi»', () => {
+    const {strokes} = phrase('Quem foi Miguel de Cervantes');
+    const line = lineWords(strokes, NORMAL)!;
+    const three = selectLastWords(strokes, line, 3, page)!;
+    expect(three.rule).toBe('last words');
+    expect(three.strokes).toBe(line.words.slice(-3).flat().length);
+    const foi = strokes.filter(s => line.words[1].includes(s.num));
+    const foiRight = Math.max(...foi.flatMap(s => s.points.map(p => p.x)));
+    expect(three.rect.left).toBeGreaterThan(foiRight);
   });
 });
 

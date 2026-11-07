@@ -166,4 +166,45 @@ describe('journeys (#78)', () => {
     expect(j.host.granted(PERMISSION.internet)).toBe(GRANT.always);
     expect(query(j)).toBe('');
   });
+
+  it('Lasso last word on «Quem foi Miguel de Cervantes», then Insert picture: the name is searched with no extra lookup (#87)', async () => {
+    journey = startJourney();
+    const j = journey;
+    const line = ['Quem', 'foi', 'Miguel', 'de', 'Cervantes'];
+    const placed = line.map((text, i) =>
+      j.host.write(text, {left: 100 + i * 220, top: 400, right: 260 + i * 220, bottom: 460}),
+    );
+    const {lassoLastWord} = require('../src/flow/penProbe');
+    expect(await lassoLastWord()).toBeNull();
+    // The lasso covers «Miguel de Cervantes», never «Quem foi».
+    expect(j.host.lassoed().map(e => e.text)).toEqual(['Miguel', 'de', 'Cervantes']);
+    // The whole line is recognised with the page size (117 otherwise).
+    expect(j.host.called('recognizeElements')).toHaveLength(1);
+    const lookups = () => j.host.requests.filter(url => url.includes('.wikipedia.org'));
+    expect(lookups()).toHaveLength(1);
+    expect(lookups()[0]).toContain('titles=');
+    await j.press(INSERT_BUTTON_ID);
+    await j.settle(() => j.host.pictures().length > 0);
+    const text = j.log().join('\n');
+    expect(text).toMatch(/search "Miguel de Cervantes"/);
+    // One Wikipedia request in all, as a one-word search makes; no second recognition.
+    expect(lookups()).toHaveLength(1);
+    expect(j.host.called('recognizeElements')).toHaveLength(1);
+    const [picture] = j.host.pictures();
+    expect(picture.rect.top).toBeGreaterThan(placed[2].rect.bottom);
+    expect(picture.rect.left).toBe(placed[2].rect.left);
+  });
+
+  it('Lasso last word on «ontem eu viajei até a China» lassoes «China» alone, with no titles check (#87)', async () => {
+    journey = startJourney();
+    const j = journey;
+    const line = ['ontem', 'eu', 'viajei', 'até', 'a', 'China'];
+    line.forEach((text, i) =>
+      j.host.write(text, {left: 100 + i * 220, top: 400, right: 260 + i * 220, bottom: 460}),
+    );
+    const {lassoLastWord} = require('../src/flow/penProbe');
+    expect(await lassoLastWord()).toBeNull();
+    expect(j.host.lassoed().map(e => e.text)).toEqual(['China']);
+    expect(j.host.requests.filter(url => url.includes('titles=') && url.includes('wikipedia'))).toEqual([]);
+  });
 });

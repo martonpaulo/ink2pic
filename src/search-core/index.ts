@@ -8,6 +8,8 @@ export {
   symbolHexes,
 } from './adapters/openmoji';
 export {wikidataAdapter} from './adapters/wikidata';
+export {forgetKnownHit, resolvePhrase} from './phrase';
+export type {PhraseChoice} from './phrase';
 export {createBreaker} from './breaker';
 export type {Breaker} from './breaker';
 export {cachedSearch} from './cache';

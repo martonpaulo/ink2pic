@@ -207,7 +207,8 @@ function fixtureFor(url: string): string | null {
     return url.includes('titles=') ? 'commons-files.json' : 'commons-soup.json';
   }
   if (host.endsWith('.wikipedia.org')) {
-    return 'wikipedia-hit.json';
+    // A written line's titles check (#87), else the lookup's search.
+    return url.includes('titles=') ? 'wikipedia-titles.json' : 'wikipedia-hit.json';
   }
   if (host === 'www.wikidata.org') {
     return 'wikidata-entity.json';

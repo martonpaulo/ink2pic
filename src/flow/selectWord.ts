@@ -21,7 +21,7 @@ export type PageSize = {width: number; height: number};
 /** One stroke of the page: its numInPage, the page's writing order, and its sample points. */
 export type PageStroke = {num: number; points: Point[]};
 
-export type WordRule = 'circle' | 'last word';
+export type WordRule = 'circle' | 'last word' | 'last words';
 
 /** What the rule made of one stroke: a letter on the line, a mark above it, or another line. */
 export type StrokePart = 'letter' | 'mark' | 'other line';
@@ -265,6 +265,14 @@ function newestLine(measured: Measured[]): {
   return {line: measured.slice(first), band: bandOf(letters), end};
 }
 
+/** The newest line split into words, left to right, up to the word of the newest letter (#87). */
+export type LineWords = {
+  /** Each word's strokes by numInPage, marks included; the last one is the last word. */
+  words: number[][];
+  verdicts: StrokeVerdict[];
+  measures: LineMeasures;
+};
+
 /**
  * The last word by position: the newest line's letters grouped into words by the line's own word
  * gap; the word of the newest letter, with each mark that lies nearer to it than to another word.
@@ -273,6 +281,24 @@ export function lastWord(
   strokes: PageStroke[],
   spacing: number,
 ): {kept: number[]; verdicts: StrokeVerdict[]; measures: LineMeasures} | null {
+  const line = lineWords(strokes, spacing);
+  return line === null
+    ? null
+    : {
+        kept: line.words[line.words.length - 1],
+        verdicts: line.verdicts,
+        measures: line.measures,
+      };
+}
+
+/**
+ * The newest line's words up to the last word (#87): the same grouping, with each mark given to
+ * the word it lies nearest, within the word gap.
+ */
+export function lineWords(
+  strokes: PageStroke[],
+  spacing: number,
+): LineWords | null {
   const measured = measure(strokes);
   if (measured.length === 0) {
     return null;
@@ -300,16 +326,17 @@ export function lastWord(
   });
   const newest = Math.max(...(letters.length ? letters : line).map(s => s.num));
   const chosen = words.findIndex(word => word.some(s => s.num === newest));
-  const kept = new Set(words[chosen].map(stroke => stroke.num));
+  const owned = words.map(word => word.map(stroke => stroke.num));
   for (const mark of marks) {
     const distances = words.map(word =>
       horizontalGap(mark.rect, boundsOfAll(word)),
     );
     const nearest = distances.indexOf(Math.min(...distances));
-    if (nearest === chosen && distances[nearest] < measures.wordGap) {
-      kept.add(mark.num);
+    if (distances[nearest] < measures.wordGap) {
+      owned[nearest].push(mark.num);
     }
   }
+  const kept = new Set(owned[chosen]);
   const verdicts: StrokeVerdict[] = [
     ...(end ? [{num: end.num, rect: end.rect, part: 'other line' as const, kept: false}] : []),
     ...line.map((stroke, i) => ({
@@ -319,7 +346,7 @@ export function lastWord(
       kept: kept.has(stroke.num),
     })),
   ];
-  return {kept: [...kept], verdicts, measures};
+  return {words: owned.slice(0, chosen + 1), verdicts, measures};
 }
 
 /**
@@ -425,4 +452,21 @@ export function selectWord(
         word.measures,
         page,
       );
+}
+
+/** The lasso for the line's last `count` words (#87); every word when `count` is larger. */
+export function selectLastWords(
+  strokes: PageStroke[],
+  line: LineWords,
+  count: number,
+  page: PageSize,
+): WordChoice | null {
+  return choice(
+    count > 1 ? 'last words' : 'last word',
+    measure(strokes),
+    line.words.slice(-count).flat(),
+    line.verdicts,
+    line.measures,
+    page,
+  );
 }

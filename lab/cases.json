@@ -551,6 +551,41 @@
    "category": "plural",
    "query": "leaves",
    "expect": "leaf drawings first"
+  },
+  {
+   "id": "line-cervantes",
+   "category": "line",
+   "line": "Quem foi Miguel de Cervantes",
+   "query": "Miguel de Cervantes",
+   "expect": "the line chooses «Miguel de Cervantes»; a portrait of Cervantes first"
+  },
+  {
+   "id": "line-banana",
+   "category": "line",
+   "line": "Eu comi uma banana",
+   "query": "banana",
+   "expect": "the line chooses «banana»; a single banana drawing first"
+  },
+  {
+   "id": "line-china",
+   "category": "line",
+   "line": "ontem eu viajei até a China",
+   "query": "China",
+   "expect": "the line chooses «China»; the flag or a map of China first"
+  },
+  {
+   "id": "line-lovelace",
+   "category": "line",
+   "line": "Who was Ada Lovelace",
+   "query": "Ada Lovelace",
+   "expect": "the line chooses «Ada Lovelace»; a portrait of Ada Lovelace first"
+  },
+  {
+   "id": "line-bolivar",
+   "category": "line",
+   "line": "Quién fue Simón Bolívar",
+   "query": "Simón Bolívar",
+   "expect": "the line chooses «Simón Bolívar»; a portrait of Bolívar first"
   }
  ]
 }

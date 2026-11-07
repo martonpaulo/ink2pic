@@ -1,0 +1,18 @@
+{
+  "_fixture": "shape of a titles check (action=query, titles=A|B|C, redirects=1, pageprops|pageimages, formatversion=2) as the MediaWiki API documents it; values synthetic (#87)",
+  "batchcomplete": true,
+  "query": {
+    "normalized": [{"fromencoded": false, "from": "de Cervantes", "to": "De Cervantes"}],
+    "redirects": [{"from": "Cervantes", "to": "Miguel de Cervantes"}],
+    "pages": [
+      {
+        "pageid": 1001,
+        "ns": 0,
+        "title": "Miguel de Cervantes",
+        "pageprops": {"wikibase_item": "Q100"},
+        "pageimage": "Example_portrait.jpg"
+      },
+      {"ns": 0, "title": "Foi Miguel de Cervantes", "missing": true}
+    ]
+  }
+}

@@ -730,6 +730,26 @@ word gap is about 33 px. Every stroke of the chosen line is logged with its `num
 whether it was kept, so the next device round can be replayed
 ([#79](https://github.com/martonpaulo/ink2pic/issues/79)).
 
+A written line searches the whole name at its end, else the last word
+([#87](https://github.com/martonpaulo/ink2pic/issues/87), `src/search-core/phrase.ts`): «Quem foi
+Miguel de Cervantes» searches «Miguel de Cervantes», «Eu comi uma banana» searches «banana».
+
+1. The same grouping gives the line's words up to the last word. With two or more, that whole
+   span is lassoed and recognised with `recognizeElements` at the page size [TO TEST, section 10.5].
+   A recognition whose word count differs from the grouping's keeps the last word alone.
+2. The question words it opens with are cut, from one small list per query language in
+   `src/search-core/query.ts` (en, pt, es, zh): «quem foi», «who was», «qué es», «谁是».
+3. The trailing groups, longest first and at most 4 words, are checked as Wikipedia titles in ONE
+   request (`titles=A|B|C&redirects=1`) in the first lookup language. A group of two words or
+   more is tried only when it starts with a capital letter, so «uma banana» and «a China» never
+   are [INFERENCE: the recognition keeps the capital]. The first group that is an article with a
+   Wikidata item wins, else the last word.
+4. The words that won are lassoed again and remembered: Insert picture or Find picture on that
+   lasso searches them with no second recognition, and the Wikidata lookup
+   ([#71](https://github.com/martonpaulo/ink2pic/issues/71)) takes the article the check found
+   instead of asking again. A line costs the same Wikipedia requests as a one-word search; one
+   more only when it has a group that may be a name and none of its groups is an article.
+
 Probe pen and page and Lasso last word are spike controls in the Log view, shown while
 `PROBE_CONTROLS` in `src/config.ts` is true: true for build 16, where the owner tests them, and
 false once the [#75](https://github.com/martonpaulo/ink2pic/issues/75) spike ends. While the probe
@@ -956,6 +976,16 @@ Open on the device, each logged so the session log answers it:
   missing permission opens the view's onboarding. Whether `showPluginView()` opens the view from
   a button listener is TO TEST too. If the press never arrives, build 17 goes back to
   `showType: 1`. «Find picture» keeps its view.
+- `recognizeElements` over a whole written line [TO TEST]
+  ([#87](https://github.com/martonpaulo/ink2pic/issues/87)): S3 recognised single words only. Lasso last word lassoes the line up to its last word
+  and recognises it with the page size (117 with any other size, S3), logged as `probe phrase:
+  recognised "…"`; the device shows whether the words come back in writing order, one space
+  apart, with their capitals and accents, and whether the lassoed elements recognise like the
+  person's own lasso. The official docs at `docs.supernote.com` do not describe
+  `recognizeElements` (every page `llms.txt` lists, read on 2026-11-07); the call is known from
+  the sn-plugin-lib 0.2.3 types and S3. Also TO TEST: whether `getLassoRect` after
+  `lassoElements(rect)` lies inside that rect, which Insert picture checks before it reuses the
+  chosen words.
 
 ## 11. Risks
 

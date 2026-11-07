@@ -10,6 +10,7 @@
  */
 import type {SourceAdapter, SourceContext} from '../adapter';
 import {apiFailure} from '../fetcher';
+import {knownHit} from '../phrase';
 import {lookupLanguages, normalise, readIntent, words} from '../query';
 import {Failure, SourceOutcome, sourceFailure} from '../types';
 import {commonsFiles, commonsSearch} from './commons';
@@ -375,6 +376,11 @@ async function logoItem(
 async function lookup(query: string, ctx: SourceContext): Promise<WikiOutcome> {
   let suggestion: string | undefined;
   for (const language of lookupLanguages(query, ctx.languages)) {
+    // A written line's check already found this article (#87): no request again.
+    const known = knownHit(query, language);
+    if (known) {
+      return {ok: true, hit: known};
+    }
     const response = await ctx.fetch(wikipediaUrl(query, language), {
       'Api-User-Agent': ctx.userAgent,
     });

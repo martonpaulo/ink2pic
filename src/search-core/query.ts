@@ -128,3 +128,75 @@ export function fallbackQueries(query: string): string[] {
   );
   return longest ? [longest] : [];
 }
+
+/**
+ * The question and filler words a written line may open with, per query language (#87): «Quem
+ * foi Miguel de Cervantes» asks for «Miguel de Cervantes». Longest first is not needed: every
+ * phrase that matches the line's start is tried, and the longest one is cut.
+ */
+export const QUESTION_WORDS: Readonly<Record<string, readonly string[]>> = {
+  en: [
+    'who was', 'who is', 'who were', 'who are', "who's",
+    'what was', 'what is', 'what are', 'what were', "what's",
+    'where is', 'where was', 'where are', 'tell me about', 'show me',
+  ],
+  pt: [
+    'quem foi', 'quem é', 'quem era', 'quem são', 'quem foram',
+    'o que é', 'o que são', 'o que era', 'que é', 'qual é',
+    'onde fica', 'onde é', 'onde está', 'me mostre',
+  ],
+  es: [
+    'quién fue', 'quien fue', 'quién es', 'quien es', 'quién era', 'quien era',
+    'qué es', 'que es', 'qué son', 'que son', 'cuál es', 'cual es',
+    'dónde está', 'donde esta', 'dónde queda', 'donde queda', 'muéstrame',
+  ],
+  zh: ['谁是', '什么是', '哪里是', '介绍一下'],
+};
+
+/** The line without the question words it opens with, in the given languages (#87). */
+export function stripQuestion(
+  line: string,
+  languages: readonly string[],
+): string {
+  let rest = normalise(line);
+  const phrases = languages.flatMap(lang => QUESTION_WORDS[lang] ?? []);
+  for (;;) {
+    const lower = rest.toLocaleLowerCase();
+    const cut = phrases
+      .filter(
+        phrase =>
+          lower.startsWith(phrase) &&
+          (HAN.test(phrase) || !/[\p{L}\p{N}]/u.test(lower[phrase.length] ?? '')),
+      )
+      .reduce((longest, phrase) => Math.max(longest, phrase.length), 0);
+    if (cut === 0) {
+      return rest;
+    }
+    rest = normalise(rest.slice(cut));
+  }
+}
+
+/** The longest word group of a line that is tried as one name (#87). */
+export const MAX_PHRASE_WORDS = 4;
+
+/**
+ * The line's trailing word groups, longest first, ending with the last word (#87): «Miguel de
+ * Cervantes», then «Cervantes». A group of two words or more starts with a capital letter, so
+ * «de Cervantes», «uma banana» and «a China» are never tried. shortcut: the capital marks a name
+ * only in scripts with case, and only when the recognition keeps it; read the device logs when a
+ * name is missed.
+ */
+export function trailingGroups(line: string): string[] {
+  const tokens = normalise(line)
+    .split(' ')
+    .map(token => normalise(token))
+    .filter(Boolean);
+  const groups: string[] = [];
+  for (let n = Math.min(tokens.length, MAX_PHRASE_WORDS); n > 1; n--) {
+    const group = tokens.slice(-n);
+    if (/^\p{Lu}/u.test(group[0])) {
+      groups.push(group.join(' '));
+    }
+  }
+  return tokens.length > 0 ? [...groups, tokens[tokens.length - 1]] : [];
+}

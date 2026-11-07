@@ -170,8 +170,17 @@ export async function runCases(
   const out = [];
   for (const [index, item] of cases.entries()) {
     const started = Date.now();
-    const {outcome, named, attempt, requests, retryAfter, waited} =
-      await searchCase(item.query, faults, log);
+    // A written line (#87): its words are chosen as Lasso last word chooses them, then searched.
+    const lineStats = {requests: 0, retryAfter: 0};
+    const chosen = item.line
+      ? await core.resolvePhrase(item.line, context(cachedFetch(lineStats)))
+      : null;
+    if (chosen && chosen.query !== item.query) {
+      log(`  line "${item.line}" chose "${chosen.query}", not "${item.query}"`);
+    }
+    const searched = await searchCase(chosen?.query ?? item.query, faults, log);
+    const {outcome, named, attempt, retryAfter, waited} = searched;
+    const requests = searched.requests + lineStats.requests;
     // The device's order: pages 1 and 2 re-sorted by their pixels before page 1 shows (#81).
     const {results, shown} = await pixelOrder(
       outcome.results,
@@ -182,6 +191,7 @@ export async function runCases(
     );
     out.push({
       ...item,
+      ...(chosen && {chosenQuery: chosen.query}),
       statuses: outcome.statuses,
       sourceDown: outcome.sourceDown,
       allFailed: outcome.allFailed,
