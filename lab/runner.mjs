@@ -30,7 +30,7 @@ const HTTP_SERVER_ERROR = 500;
 /** What a source answers that is not its usual page or JSON: a captive portal, an outage page. */
 const MALFORMED_BODY = '<html><body>Service unavailable</body></html>';
 
-const {core, rank, config, copy} = product();
+const {core, config, copy} = product();
 export const SOURCE_NAMES = core.DEFAULT_ADAPTERS.map(adapter => adapter.name);
 /**
  * shortcut: the device's query languages, copied from src/search/device.ts, which imports the
@@ -108,7 +108,7 @@ function tile(result, query, shown) {
     mime: result.mime ?? null,
     thumb: result.thumbUrl,
     canonical: result.canonical === true,
-    score: result.canonical ? null : rank.einkScore(result, query),
+    score: result.canonical ? null : core.einkScore(result, query),
     pixels: pixels ?? null,
   };
 }

@@ -33,15 +33,12 @@ const require = createRequire(import.meta.url);
 require('./ts-hook.cjs');
 
 /**
- * The product's own modules, the same files the app bundles: the search core through its public
- * API, and its ranker for each result's score, which the API does not export.
+ * The product's own modules, the same files the app bundles: the search core only through its
+ * public API, `index.ts` (#100).
  */
 export function product() {
   return {
     core: require('../src/search-core/index.ts'),
-    rank: require('../src/search-core/rank.ts'),
-    measures: require('../src/search-core/measures.ts'),
-    duplicates: require('../src/search-core/duplicates.ts'),
     config: require('../src/config.ts'),
     copy: require('../src/ui/copy.ts'),
   };
