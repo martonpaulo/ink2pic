@@ -6,6 +6,9 @@ import {
   isQueryArticle,
   claimsUrl,
   logoCandidatesUrl,
+  logoCategorySearch,
+  notablePersonUrl,
+  parseNotablePerson,
   parseEntityResponse,
   parseLogoItem,
   parseWikipediaResponse,
@@ -276,7 +279,7 @@ describe('logos of organisations and brands (#81)', () => {
   const entity = (claims: Record<string, unknown[]>) =>
     JSON.stringify({entities: {Q1: {claims}}});
 
-  it('leads with the logo of an organisation, known by its class or its headquarters', () => {
+  it('leads with the logo of an organisation or a brand, with no list of classes', () => {
     const company = entity({
       P31: [claim('P31', {id: 'Q4830453'})],
       P154: [claim('P154', 'Example company logo.svg')],
@@ -295,9 +298,23 @@ describe('logos of organisations and brands (#81)', () => {
     });
   });
 
-  it('never leads with the logo of a thing or a person', () => {
+  it('leads with a brand logo whose class no list names: Coca-Cola is a drink brand (#92)', () => {
+    const brand = entity({
+      P31: [claim('P31', {id: 'Q114392939'}), claim('P31', {id: 'Q167270'})],
+      P279: [claim('P279', {id: 'Q134041'})],
+      P154: [claim('P154', 'Example cola logo.svg')],
+      P18: [claim('P18', 'Example cola bottle.jpg')],
+    });
+    expect(parseEntityResponse(brand)).toMatchObject({
+      leadingLogo: 'Example cola logo.svg',
+    });
+  });
+
+  it('never leads with the logo of a place or a person', () => {
+    // A place is known by its coordinates (P625), with no list of place classes (#92).
     const city = entity({
       P31: [claim('P31', {id: 'Q515'})],
+      P625: [claim('P625', {latitude: 1, longitude: 2})],
       P154: [claim('P154', 'Example city logo.svg')],
     });
     const outcome = parseEntityResponse(city);
@@ -386,5 +403,98 @@ describe('logos of organisations and brands (#81)', () => {
       ok: true,
       hit: {title: 'apple', item: 'Q312', disambiguation: false},
     });
+  });
+
+  it('leads an organisation with no logo with its Commons logos category (#92)', async () => {
+    const page = JSON.stringify({
+      batchcomplete: true,
+      query: {
+        pages: [
+          {
+            title: 'Example Institute',
+            index: 1,
+            pageprops: {wikibase_item: 'Q834650'},
+          },
+        ],
+      },
+    });
+    const institute = entity({
+      P31: [claim('P31', {id: 'Q163740'})],
+      P159: [claim('P159', {id: 'Q30138'})],
+      P373: [claim('P373', 'Example Institute')],
+      P18: [claim('P18', 'Example facade.jpg')],
+    });
+    expect(parseEntityResponse(institute)).toMatchObject({
+      logoCategory: 'Example Institute',
+    });
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(page))
+      .mockResolvedValueOnce(ok(institute))
+      .mockResolvedValue(ok(FILES));
+    const outcome = await searchWikidata('Example Institute', ctx(fetch));
+    const urls = fetch.mock.calls.map(call => decodeURIComponent(call[0]));
+    expect(urls).toContainEqual(
+      expect.stringContaining(logoCategorySearch('Example Institute')),
+    );
+    expect(outcome.ok && outcome.results[0]).toMatchObject({
+      canonical: true,
+      leads: true,
+    });
+  });
+});
+
+describe('the notable namesake (#92)', () => {
+  const instance = (id: string) => [
+    {rank: 'normal', mainsnak: {snaktype: 'value', datavalue: {value: {id}}}},
+  ];
+  it('takes the most notable person a name article names: «Napoleão» is Napoleon', async () => {
+    const page = JSON.stringify({
+      batchcomplete: true,
+      query: {
+        pages: [
+          {
+            title: 'Napoleão',
+            index: 1,
+            pageprops: {wikibase_item: 'Q109674583'},
+          },
+        ],
+      },
+    });
+    const surname = JSON.stringify({
+      entities: {Q109674583: {claims: {P31: instance('Q101352')}}},
+    });
+    const person = JSON.stringify({
+      batchcomplete: true,
+      query: {search: [{ns: 0, title: 'Q517'}]},
+    });
+    const napoleon = JSON.stringify({
+      entities: {Q517: {claims: {P31: instance('Q5')}}},
+    });
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(page))
+      .mockResolvedValueOnce(ok(surname))
+      .mockResolvedValueOnce(ok(person))
+      .mockResolvedValueOnce(ok(napoleon))
+      .mockResolvedValue(ok(NONE));
+    expect((await searchWikidata('Napoleão', ctx(fetch))).ok).toBe(true);
+    expect(fetch.mock.calls[2][0]).toBe(notablePersonUrl('Napoleão'));
+    expect(fetch.mock.calls[3][0]).toBe(entityUrl('Q517'));
+    // The people gallery is Napoleon's, not the family name's.
+    expect(decodeURIComponent(fetch.mock.calls[4][0])).toContain(
+      'haswbstatement:P180=Q517',
+    );
+    expect(parseNotablePerson(person)).toBe('Q517');
+    expect(
+      parseNotablePerson(JSON.stringify({query: {search: []}})),
+    ).toBeNull();
+  });
+
+  it('asks for a person, the most linked first', () => {
+    const url = decodeURIComponent(notablePersonUrl(' Napoleão '));
+    expect(url).toContain('srsearch=Napoleão haswbstatement:P31=Q5&');
+    expect(url).toContain('srsort=incoming_links_desc');
+    expect(url).toContain('srlimit=1');
   });
 });

@@ -25,25 +25,30 @@ const FLAG = PICTURE_PROPERTIES[0];
 const HUMAN = 'Q5';
 const LOGO = 'P154';
 /**
- * The item is an organisation or a brand, so its logo is the picture the query asks for (#81):
- * an instance of one of these classes, or an item with a headquarters (P159), which only
- * organisations have. shortcut: a direct P31 match, not the subclass tree, which would cost a
- * request per query; extend the list when the lab finds an organisation it misses.
+ * The item is an organisation: it has a headquarters (P159). With its logo, or without one the
+ * first file of its Commons «logos» category, the logo leads the page (#81, #92).
  */
-const ORGANISATION_CLASSES = new Set([
-  'Q43229', // organization
-  'Q4830453', // business
-  'Q783794', // company
-  'Q891723', // public company
-  'Q6881511', // enterprise
-  'Q167037', // corporation
-  'Q431289', // brand
-  'Q163740', // nonprofit organization
-  'Q178706', // institution
-  'Q2385804', // educational institution
-  'Q18534', // restaurant chain
-]);
 const HEADQUARTERS = 'P159';
+/**
+ * The item is a place: it has coordinates (P625). A logo (P154) leads the page for any item but
+ * a person or a place, so a brand with no class list entry and no headquarters, Coca-Cola
+ * (P31 drink brand, trademark), still leads with its logo (#92).
+ */
+const COORDINATES = 'P625';
+/** The item's Commons category (P373): its «<category> logos» subcategory holds its logos. */
+const COMMONS_CATEGORY = 'P373';
+/**
+ * A name, not a person: the article of the word is about the given or family name («Napoleão»,
+ * a family name in the English Wikipedia), so the most notable person it names is the subject
+ * (#92).
+ */
+const NAMES: ReadonlySet<string> = new Set([
+  'Q101352', // family name
+  'Q202444', // given name
+  'Q12308941', // male given name
+  'Q11879590', // female given name
+  'Q3409032', // unisex given name
+]);
 /** The signature file: never a picture of the person (research C). */
 const SIGNATURE = 'P109';
 
@@ -157,12 +162,51 @@ export function parseLogoItem(
   }
   const item = order.find(id => {
     const claims = data.entities?.[id]?.claims;
-    return isOrganisation(claims) && fileOf(claims?.[LOGO]) !== undefined;
+    return leadingLogoOf(claims) !== undefined;
   });
   return {
     ok: true,
     hit: item ? {title: subject, item, disambiguation: false} : null,
   };
+}
+
+/**
+ * The most notable person the name names: Wikidata's full-text search matches the labels of
+ * every language («Napoleão Bonaparte» in Portuguese), and the item with the most incoming links
+ * comes first (#92).
+ */
+export function notablePersonUrl(name: string): string {
+  const params = [
+    'action=query',
+    'format=json',
+    'formatversion=2',
+    'list=search',
+    `srsearch=${encodeURIComponent(
+      `${normalise(name)} haswbstatement:P31=${HUMAN}`,
+    )}`,
+    'srlimit=1',
+    'srprop=',
+    'srsort=incoming_links_desc',
+  ];
+  return `${WIKIDATA_API}?${params.join('&')}`;
+}
+
+type PersonResponse = {
+  error?: {code?: string; info?: string};
+  query?: {search?: {title?: string}[]};
+};
+
+/** The person's item id, or null when the search found nobody. */
+export function parseNotablePerson(text: string): string | null | Failure {
+  const data = parseJson<PersonResponse>(text);
+  if (isFailure(data)) {
+    return data;
+  }
+  if (data.error) {
+    return apiFailure(data.error);
+  }
+  const id = data.query?.search?.[0]?.title;
+  return typeof id === 'string' && /^Q\d+$/.test(id) ? id : null;
 }
 
 /** The item's claims, by its id. */
@@ -264,10 +308,19 @@ function isInstance(
 const HUMANS: ReadonlySet<string> = new Set([HUMAN]);
 
 function isOrganisation(claims: Record<string, Statement[]> = {}): boolean {
-  return (
-    isInstance(claims[INSTANCE_OF], ORGANISATION_CLASSES) ||
-    valueOf(claims[HEADQUARTERS]) !== undefined
-  );
+  return valueOf(claims[HEADQUARTERS]) !== undefined;
+}
+
+/** The logo that leads the page: an organisation's, or any item's but a person's or a place's. */
+function leadingLogoOf(
+  claims: Record<string, Statement[]> = {},
+): string | undefined {
+  const logo = fileOf(claims[LOGO]);
+  const leads =
+    isOrganisation(claims) ||
+    (!isInstance(claims[INSTANCE_OF], HUMANS) &&
+      valueOf(claims[COORDINATES]) === undefined);
+  return leads ? logo : undefined;
 }
 
 export type EntityOutcome =
@@ -275,11 +328,15 @@ export type EntityOutcome =
       ok: true;
       files: string[];
       human: boolean;
+      /** The item is a given or family name, not the person (#92). */
+      name?: true;
       signature?: string;
       /** The item's own flag (P41): it leads the page (#89). */
       flag?: string;
       /** The logo file, when the item is an organisation or a brand: it leads the page (#81). */
       leadingLogo?: string;
+      /** An organisation with no logo: the Commons category whose «logos» child holds it (#92). */
+      logoCategory?: string;
     }
   | Failure;
 
@@ -300,9 +357,11 @@ export function parseEntityResponse(text: string): EntityOutcome {
   }
   const files: string[] = [];
   let human = false;
+  let name = false;
   let signature: string | undefined;
   let flag: string | undefined;
   let leadingLogo: string | undefined;
+  let logoCategory: string | undefined;
   for (const entity of Object.values(data.entities)) {
     if (entity.missing !== undefined) {
       continue;
@@ -315,19 +374,28 @@ export function parseEntityResponse(text: string): EntityOutcome {
       }
     }
     human ||= isInstance(entity.claims?.[INSTANCE_OF], HUMANS);
+    name ||= isInstance(entity.claims?.[INSTANCE_OF], NAMES);
     signature ??= fileOf(entity.claims?.[SIGNATURE]);
-    if (isOrganisation(entity.claims)) {
-      leadingLogo ??= fileOf(entity.claims?.[LOGO]);
+    leadingLogo ??= leadingLogoOf(entity.claims);
+    if (isOrganisation(entity.claims) && !fileOf(entity.claims?.[LOGO])) {
+      logoCategory ??= fileOf(entity.claims?.[COMMONS_CATEGORY]);
     }
   }
   return {
     ok: true,
     files: files.filter(file => file !== signature),
     human,
+    ...(name && {name: true as const}),
     ...(signature && {signature}),
     ...(flag && flag !== signature && {flag}),
     ...(leadingLogo && {leadingLogo}),
+    ...(!leadingLogo && logoCategory && {logoCategory}),
   };
+}
+
+/** The Commons search for the files of an organisation's «logos» category (#92). */
+export function logoCategorySearch(category: string): string {
+  return `incategory:"${category.replace(/ /g, '_')}_logos"`;
 }
 
 /**
@@ -411,6 +479,32 @@ function suggestionOf(
     : {};
 }
 
+/** The item's pictures and kind, in one request. */
+async function entityOf(
+  item: string,
+  ctx: SourceContext,
+): Promise<EntityOutcome> {
+  const response = await ctx.fetch(entityUrl(item), {
+    'Api-User-Agent': ctx.userAgent,
+  });
+  return response.ok ? parseEntityResponse(response.text) : response;
+}
+
+/** The most notable person a name names, when there is one. */
+async function notablePerson(
+  name: string,
+  ctx: SourceContext,
+): Promise<{ok: true; item?: string} | Failure> {
+  const response = await ctx.fetch(notablePersonUrl(name), {
+    'Api-User-Agent': ctx.userAgent,
+  });
+  if (!response.ok) {
+    return response;
+  }
+  const found = parseNotablePerson(response.text);
+  return isFailure(found) ? found : {ok: true, ...(found && {item: found})};
+}
+
 export async function searchWikidata(
   query: string,
   ctx: SourceContext,
@@ -429,38 +523,54 @@ export async function searchWikidata(
   let signature: string | undefined;
   let flag: string | undefined;
   let leadingLogo: string | undefined;
-  if (hit.item) {
-    const response = await ctx.fetch(entityUrl(hit.item), {
-      'Api-User-Agent': ctx.userAgent,
-    });
-    if (!response.ok) {
-      return response;
+  let logoCategory: string | undefined;
+  let item = hit.item;
+  let leadImage = hit.leadImage;
+  if (item) {
+    let entity = await entityOf(item, ctx);
+    if (entity.ok && entity.name) {
+      // The article is the name's: the most notable person it names is the subject (#92).
+      const person = await notablePerson(query, ctx);
+      if (!person.ok) {
+        return person;
+      }
+      if (person.item) {
+        item = person.item;
+        leadImage = undefined;
+        entity = await entityOf(item, ctx);
+      }
     }
-    const entity = parseEntityResponse(response.text);
     if (!entity.ok) {
       return entity;
     }
-    ({files, human, signature, flag, leadingLogo} = entity);
+    ({files, human, signature, flag, leadingLogo, logoCategory} = entity);
   }
-  if (hit.leadImage) {
+  if (leadImage) {
     // The lead image uses underscores; Commons file names use spaces.
-    const lead = hit.leadImage.replace(/_/g, ' ');
+    const lead = leadImage.replace(/_/g, ' ');
     if (!files.includes(lead) && lead !== signature) {
       files.push(lead);
     }
   }
-  const [pictures, gallery] = await Promise.all([
+  const none = Promise.resolve<SourceOutcome>({ok: true, results: []});
+  const [pictures, gallery, logos] = await Promise.all([
     commonsFiles(files, ctx),
-    human && hit.item
-      ? commonsSearch(`haswbstatement:P180=${hit.item} filetype:bitmap`, ctx)
-      : Promise.resolve<SourceOutcome>({ok: true, results: []}),
+    human && item
+      ? commonsSearch(`haswbstatement:P180=${item} filetype:bitmap`, ctx)
+      : none,
+    logoCategory ? commonsSearch(logoCategorySearch(logoCategory), ctx) : none,
   ]);
   if (!pictures.ok) {
     return pictures;
   }
   if (!gallery.ok) {
-    ctx.log(`wikidata: depicts gallery of ${hit.item}: ${gallery.message}`);
+    ctx.log(`wikidata: depicts gallery of ${item}: ${gallery.message}`);
   }
+  if (!logos.ok) {
+    ctx.log(`wikidata: logos of ${item}: ${logos.message}`);
+  }
+  // An organisation with no logo on its item leads with its Commons category's first logo (#92).
+  const categoryLogo = logos.ok ? logos.results[0] : undefined;
   const signed = (title: string) =>
     signature !== undefined && title === withoutExtension(signature);
   // A country's own flag leads, before regional and other flags (#89); so does an
@@ -471,6 +581,9 @@ export async function searchWikidata(
   return {
     ok: true,
     results: [
+      ...(categoryLogo
+        ? [{...categoryLogo, canonical: true, leads: true as const}]
+        : []),
       ...pictures.results.map(result => ({
         ...result,
         canonical: true,
