@@ -458,7 +458,9 @@ describe('measureFirstPages (#66)', () => {
           : fail(MODULE_CODE, 'NOT_IMAGE: cannot decode', 'NOT_IMAGE'),
       toContour: async (src, dest, width) => {
         converted.push(`${src} -> ${dest} at ${width}`);
-        return ok({width: 330, height: 400, ms: 7});
+        // The measures of the written pixels, as the module resolves them (#101).
+        const measures = byPath[dest] ?? byPath[src] ?? outline;
+        return ok({width: 330, height: 400, ms: 7, measures});
       },
     },
     thumb: async item =>
@@ -513,10 +515,15 @@ describe('measureFirstPages (#66)', () => {
       ...base,
       analyzer: {
         ...base.analyzer,
-        measure: async path =>
-          path === '/p/thumbs/dark.contour.png'
-            ? ok({...outline, fragments: 0.6})
-            : base.analyzer.measure(path),
+        toContour: async (src, dest, width) => {
+          converted.push(`${src} -> ${dest} at ${width}`);
+          return ok({
+            width: 330,
+            height: 400,
+            ms: 7,
+            measures: {...outline, fragments: 0.6},
+          });
+        },
       },
     });
     expect(converted).toEqual([
@@ -541,14 +548,15 @@ describe('measureFirstPages (#66)', () => {
         analyzer: {
           ...base.analyzer,
           measure: async path =>
-            path === '/p/thumbs/map'
-              ? ok(map)
-              : path === '/p/thumbs/map.dark.png'
-              ? ok({...map, darkest: 0, faintLines: false})
-              : base.analyzer.measure(path),
+            path === '/p/thumbs/map' ? ok(map) : base.analyzer.measure(path),
           darken: async (src, dest, width) => {
             darkened.push(`${src} -> ${dest} at ${width}`);
-            return ok({width: 330, height: 400, ms: 5});
+            return ok({
+              width: 330,
+              height: 400,
+              ms: 5,
+              measures: {...map, darkest: 0, faintLines: false},
+            });
           },
         },
       },
@@ -591,7 +599,12 @@ describe('measureFirstPages (#66)', () => {
           path === symbol ? ok(greyLines) : base.analyzer.measure(path),
         darken: async (src: string, dest: string, width: number) => {
           darkened.push(`${src} -> ${dest} at ${width}`);
-          return ok({width: 330, height: 400, ms: 5});
+          return ok({
+            width: 330,
+            height: 400,
+            ms: 5,
+            measures: {...greyLines, darkest: 0, faintLines: false},
+          });
         },
       },
     };
@@ -639,6 +652,44 @@ describe('measureFirstPages (#66)', () => {
     const measured = await measureFirstPages(list, '/p', 'x', slow);
     expect([...measured.measures.keys()]).toEqual(['line']);
     expect(logLines().join('\n')).toContain('limit reached');
+  });
+
+  it('ranks a converted picture by the measures the conversion returned, never reading it again (#101)', async () => {
+    const read: string[] = [];
+    const base = deps();
+    await measureFirstPages(list, '/p', 'x', {
+      ...base,
+      analyzer: {
+        ...base.analyzer,
+        measure: async path => {
+          read.push(path);
+          return base.analyzer.measure(path);
+        },
+      },
+    });
+    expect(converted).toEqual([
+      '/p/thumbs/dark -> /p/thumbs/dark.contour.png at 400',
+    ]);
+    expect(read.filter(path => path.endsWith('.contour.png'))).toEqual([]);
+  });
+
+  it('starts no conversion once the limit returned the order (#101)', async () => {
+    let finish: () => void = () => {};
+    const slow = deps(5);
+    slow.analyzer = {
+      ...slow.analyzer,
+      measure: path =>
+        path === '/p/thumbs/dark'
+          ? new Promise(resolve => {
+              finish = () => resolve(ok(darkPainting));
+            })
+          : deps().analyzer.measure(path),
+    };
+    const measured = await measureFirstPages(list, '/p', 'x', slow);
+    expect(measured.measures.has('dark')).toBe(false);
+    finish();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(converted).toEqual([]);
   });
 
   describe('the early-download hook of Insert picture (#88)', () => {

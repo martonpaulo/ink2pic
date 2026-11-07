@@ -164,7 +164,14 @@ async function deviceOrder(query: string, style: Style): Promise<string[]> {
     byPath.set(`/t/thumbs/${id}.contour.png`, entry.contour);
     byPath.set(`/t/thumbs/${id}.dark.png`, entry.darkened);
   }
-  const converted = ok({width: 400, height: 400, ms: 1});
+  // The conversion answers the measures of the pixels it wrote, as the module does (#101).
+  const converted = (dest: string) => {
+    const measures = byPath.get(dest);
+    if (!measures) {
+      throw new Error(`no measures for ${dest}`);
+    }
+    return ok({width: 400, height: 400, ms: 1, measures});
+  };
   const deps: MeasureDeps = {
     analyzer: {
       measure: async file => {
@@ -174,8 +181,8 @@ async function deviceOrder(query: string, style: Style): Promise<string[]> {
         }
         return ok(measures);
       },
-      toContour: async () => converted,
-      darken: async () => converted,
+      toContour: async (_src, dest) => converted(dest),
+      darken: async (_src, dest) => converted(dest),
     },
     thumb: async item => `file:///t/thumbs/${item.id}`,
     limitMs: 1000,

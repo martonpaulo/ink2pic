@@ -131,8 +131,9 @@ public final class EinkPixels {
    * Returns whether it changed the pixels.
    */
   public static boolean darken(int[] argb, int width, int height) {
-    ThumbMeasures m = ThumbMeasures.of(argb, width, height);
-    if (!isFaintLines(m)) {
+    // The light measure: only what isFaintLines reads, at insert size too (#101).
+    ThumbMeasures m = ThumbMeasures.light(argb, width, height);
+    if (!m.faintLines) {
       return false;
     }
     int low = m.darkest;

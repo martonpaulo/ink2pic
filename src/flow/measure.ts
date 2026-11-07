@@ -142,38 +142,31 @@ async function measureFile(
   }
   const path = uri.slice(FILE_PREFIX.length);
   const dest = `${thumbPath(pluginDir, result)}${CONTOUR_SUFFIX}`;
-  const converted = await deps.analyzer.toContour(
-    path,
-    dest,
-    MEASURE_WIDTH,
-  );
+  const converted = await deps.analyzer.toContour(path, dest, MEASURE_WIDTH);
   if (!converted.ok) {
     // Shown and inserted as it is: the grid never shows what is not inserted.
     log(`contour ${result.id}: ${converted.message}`);
     return asFound(m);
   }
   storeDerived(dest);
-  const again = await deps.analyzer.measure(dest);
+  const drawn = converted.value.measures;
   log(
-    `contour ${result.id}: ${Math.round(converted.value.ms)} ms, now ${
-      again.ok ? pixelKind(again.value) : again.message
-    }`,
+    `contour ${result.id}: ${Math.round(
+      converted.value.ms,
+    )} ms, now ${pixelKind(drawn)}`,
   );
-  if (again.ok && chooseLook(m, query, allContour, again.value) === 'found') {
+  if (chooseLook(m, query, allContour, drawn) === 'found') {
     // Mostly speckle: the picture is shown and inserted as it is (#83).
     log(`contour ${result.id}: speckled, shown as found`);
     return asFound(m);
   }
-  return {
-    measures: again.ok ? again.value : m,
-    look: 'contour',
-    thumb: `${FILE_PREFIX}${dest}`,
-  };
+  return {measures: drawn, look: 'contour', thumb: `${FILE_PREFIX}${dest}`};
 }
 
 /**
  * Faint light-grey line work (#81): the tile shows it darkened, as the insert prepares it, and it
- * is measured again, so a picture still faint ranks after the clear ones.
+ * ranks by the measures of the darkened pixels, so a picture still faint ranks after the clear
+ * ones.
  */
 async function darkenFile(
   result: SearchResult,
@@ -193,17 +186,13 @@ async function darkenFile(
     return asFound(m);
   }
   storeDerived(dest);
-  const again = await deps.analyzer.measure(dest);
+  const drawn = darkened.value.measures;
   log(
-    `darken ${result.id}: ${Math.round(darkened.value.ms)} ms, now ${
-      again.ok ? pixelKind(again.value) : again.message
-    }`,
+    `darken ${result.id}: ${Math.round(darkened.value.ms)} ms, now ${pixelKind(
+      drawn,
+    )}`,
   );
-  return {
-    measures: again.ok ? again.value : m,
-    look: 'darkened',
-    thumb: `${FILE_PREFIX}${dest}`,
-  };
+  return {measures: drawn, look: 'darkened', thumb: `${FILE_PREFIX}${dest}`};
 }
 
 /**
@@ -261,6 +250,8 @@ export async function measureFirstPages(
   const firstPages = results.slice(0, MEASURED_RESULTS);
   const uris = firstPages.map(result => deps.thumb(result, thumbDir));
   let returned = false;
+  // No conversion starts once the order is returned: it would only delay the insert (#101).
+  const late = () => returned;
   Promise.allSettled(uris).then(() => {
     if (!returned) {
       onThumbs?.();
@@ -270,15 +261,7 @@ export async function measureFirstPages(
     firstPages.map((result, index) =>
       uris[index]
         .then(uri =>
-          measureFile(
-            result,
-            uri,
-            thumbDir,
-            deps,
-            query,
-            undefined,
-            contourAll,
-          ),
+          measureFile(result, uri, thumbDir, deps, query, late, contourAll),
         )
         .then(measured => {
           if (measured) {
@@ -288,7 +271,7 @@ export async function measureFirstPages(
         .catch(error => log(`pixels ${result.id}: ${String(error)}`)),
     ),
   );
-  const late = (await withinLimit(all, deps.limitMs)) === undefined;
+  const limitReached = (await withinLimit(all, deps.limitMs)) === undefined;
   returned = true;
   // Copies: a measure that ends after the limit changes nothing already shown.
   const prepared = new Map<string, Prepared>();
@@ -305,7 +288,9 @@ export async function measureFirstPages(
     `pixels: ${used.size} of ${Math.min(
       results.length,
       MEASURED_RESULTS,
-    )} measured in ${Date.now() - started} ms${late ? ', limit reached' : ''}`,
+    )} measured in ${Date.now() - started} ms${
+      limitReached ? ', limit reached' : ''
+    }`,
   );
   const distinct = orderMeasured(results, prepared, query, photos);
   if (distinct.length < results.length) {

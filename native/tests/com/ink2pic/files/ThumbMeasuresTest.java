@@ -117,6 +117,20 @@ public final class ThumbMeasuresTest {
     }
     check(refused, "a pixel array shorter than the size is refused");
 
+    // #101: the light measure agrees with the full one on what the faint-lines check reads.
+    int[][] samples = {
+      outline(gray(180)), outline(BLACK), outline(gray(60)), filled(WHITE), dots, colours
+    };
+    for (int k = 0; k < samples.length; k++) {
+      ThumbMeasures full = measure(samples[k]);
+      ThumbMeasures light = ThumbMeasures.light(samples[k], SIZE, SIZE);
+      check(light.faintLines == full.faintLines && light.darkest == full.darkest
+              && light.border == full.border && light.thickness == full.thickness,
+          "the light measure agrees with the full one on sample " + k);
+    }
+    check(ThumbMeasures.light(outline(gray(180)), SIZE, SIZE).faintLines,
+        "the light measure finds faint light-grey lines");
+
     if (failures > 0) {
       System.err.println(failures + " failed");
       System.exit(1);

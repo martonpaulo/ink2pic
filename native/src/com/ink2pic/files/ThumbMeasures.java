@@ -112,6 +112,27 @@ public final class ThumbMeasures {
     return b;
   }
 
+  /**
+   * Only what {@link EinkPixels#isFaintLines} reads, for the darkening at insert size (#101): the
+   * gray values, the frame and the ink pass, without the colours, edges and fragments. The
+   * fields those passes set stay zero; {@link #faintLines} and {@link #darkest} are as {@link #of}
+   * sets them.
+   */
+  static ThumbMeasures light(int[] argb, int width, int height) {
+    if (width < 1 || height < 1 || argb.length < (long) width * height) {
+      throw new IllegalArgumentException("bad size " + width + " x " + height);
+    }
+    int[] gray = new int[width * height];
+    for (int i = 0; i < gray.length; i++) {
+      gray[i] = EinkPixels.luminance(argb[i]);
+    }
+    ThumbMeasures b = new ThumbMeasures(width, height);
+    frame(gray, b);
+    inkAndObject(gray, b);
+    b.faintLines = EinkPixels.isFaintLines(b);
+    return b;
+  }
+
   /** Pass 4: the share of the ink in short 8-connected parts. */
   private static void fragments(int[] gray, ThumbMeasures b) {
     int w = b.width;

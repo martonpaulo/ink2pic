@@ -29,7 +29,11 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   private static final int MEASURE_WIDTH = 400;
   private static final double NANOS_PER_MS = 1e6;
   private final Workers workers = new Workers();
-  private final ExecutorService worker = workers.single();
+  /** Thumbnail measures and conversions, on a small pool (#101). */
+  private final ExecutorService thumbs =
+      workers.pool(Workers.thumbThreads(Runtime.getRuntime().availableProcessors()));
+  /** The insert's preparation, on its own thread: it never waits behind thumbnails (#101). */
+  private final ExecutorService insert = workers.single();
 
   public Ink2PicImageModule(ReactApplicationContext context) {
     super(context);
@@ -40,7 +44,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
     return "Ink2PicImage";
   }
 
-  /** A new React instance makes a new module: this one's thread stops with it (#95). */
+  /** A new React instance makes a new module: this one's threads stop with it (#95, #101). */
   @Override
   public void invalidate() {
     workers.shutdown();
@@ -59,37 +63,76 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
       String format,
       boolean contour,
       Promise promise) {
-    ModuleWork.submit(worker, promise, () -> {
+    ModuleWork.submit(insert, promise, () -> {
       long start = System.nanoTime();
       File source = SafePaths.checkPath(srcPath);
       File target = SafePaths.checkPath(destPath);
-      int width = (int) targetWidth;
-      if (width < 1 || width != targetWidth) {
-        throw new SafePaths.Refused("BAD_WIDTH", "a positive whole target width is required: " + targetWidth);
-      }
+      int width = wholeWidth(targetWidth);
       boolean png = PNG.equals(format);
       if (!png && !JPG.equals(format)) {
         throw new SafePaths.Refused("BAD_FORMAT", "format must be png or jpg: " + format);
       }
-      Bitmap prepared = prepare(source, width, png, contour);
-      try {
-        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
-        Bitmap.CompressFormat codec = png ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
-        if (!prepared.compress(codec, png ? PNG_QUALITY : JPG_QUALITY, encoded)) {
-          throw new SafePaths.Refused("ENCODE", "cannot encode " + format + " for " + destPath);
-        }
-        long bytes = ModuleWork.writeAtomically(
-            target, new ByteArrayInputStream(encoded.toByteArray()));
-        WritableMap result = Arguments.createMap();
-        result.putInt("width", prepared.getWidth());
-        result.putInt("height", prepared.getHeight());
-        result.putDouble("bytes", (double) bytes);
-        result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
-        return result;
-      } finally {
-        prepared.recycle();
-      }
+      Pixels prepared = prepare(source, width, png, contour);
+      long bytes = write(prepared, target, png);
+      return written(prepared, bytes, start);
     });
+  }
+
+  /**
+   * A thumbnail's conversion (#101): `prepareForEink(src, dest, width, 'png', contour)` on the
+   * thumbnail pool, which also resolves `measures`, those of the pixels it wrote, as
+   * {@link #measureThumb} would read them back from `dest`.
+   */
+  @ReactMethod
+  public void convertThumb(
+      String srcPath, String destPath, double targetWidth, boolean contour, Promise promise) {
+    ModuleWork.submit(thumbs, promise, () -> {
+      long start = System.nanoTime();
+      File source = SafePaths.checkPath(srcPath);
+      File target = SafePaths.checkPath(destPath);
+      int width = wholeWidth(targetWidth);
+      Pixels prepared = prepare(source, width, true, contour);
+      long bytes = write(prepared, target, true);
+      WritableMap result = written(prepared, bytes, start);
+      result.putMap("measures", measures(prepared, System.nanoTime()));
+      return result;
+    });
+  }
+
+  private static int wholeWidth(double targetWidth) throws SafePaths.Refused {
+    int width = (int) targetWidth;
+    if (width < 1 || width != targetWidth) {
+      throw new SafePaths.Refused("BAD_WIDTH", "a positive whole target width is required: " + targetWidth);
+    }
+    return width;
+  }
+
+  /** {width, height, bytes, ms} of a written file, `ms` from `start`. */
+  private static WritableMap written(Pixels prepared, long bytes, long start) {
+    WritableMap result = Arguments.createMap();
+    result.putInt("width", prepared.width);
+    result.putInt("height", prepared.height);
+    result.putDouble("bytes", (double) bytes);
+    result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
+    return result;
+  }
+
+  /** Encodes the prepared pixels as PNG or JPG and writes them to `target`; returns its bytes. */
+  private static long write(Pixels prepared, File target, boolean png) throws Exception {
+    Bitmap gray =
+        Bitmap.createBitmap(prepared.argb, prepared.width, prepared.height, Bitmap.Config.ARGB_8888);
+    try {
+      gray.setHasAlpha(false);
+      ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+      Bitmap.CompressFormat codec = png ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
+      if (!gray.compress(codec, png ? PNG_QUALITY : JPG_QUALITY, encoded)) {
+        throw new SafePaths.Refused(
+            "ENCODE", "cannot encode " + (png ? PNG : JPG) + " for " + target);
+      }
+      return ModuleWork.writeAtomically(target, new ByteArrayInputStream(encoded.toByteArray()));
+    } finally {
+      gray.recycle();
+    }
   }
 
   /**
@@ -98,38 +141,42 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void measureThumb(String path, Promise promise) {
-    ModuleWork.submit(worker, promise, () -> {
+    ModuleWork.submit(thumbs, promise, () -> {
       long start = System.nanoTime();
-      Pixels decoded = decode(SafePaths.checkPath(path), MEASURE_WIDTH);
-      ThumbMeasures m = ThumbMeasures.of(decoded.argb, decoded.width, decoded.height);
-      WritableMap result = Arguments.createMap();
-      result.putInt("width", m.width);
-      result.putInt("height", m.height);
-      result.putDouble("mean", m.mean);
-      result.putDouble("dark", m.dark);
-      result.putDouble("white", m.white);
-      result.putDouble("mid", m.mid);
-      result.putDouble("border", m.border);
-      result.putInt("borderMedian", m.borderMedian);
-      result.putDouble("ink", m.ink);
-      result.putInt("inkLeft", m.inkLeft);
-      result.putInt("inkTop", m.inkTop);
-      result.putInt("inkWidth", m.inkWidth);
-      result.putInt("inkHeight", m.inkHeight);
-      result.putInt("bands", m.bands);
-      result.putDouble("lineAspect", m.lineAspect);
-      result.putDouble("thickness", m.thickness);
-      result.putDouble("edge", m.edge);
-      result.putDouble("edgeBox", m.edgeBox);
-      result.putInt("colours", m.colours);
-      result.putDouble("objectShare", m.objectShare);
-      result.putString("hash", PerceptualHash.of(decoded.argb, decoded.width, decoded.height));
-      result.putDouble("fragments", m.fragments);
-      result.putInt("darkest", m.darkest);
-      result.putBoolean("faintLines", m.faintLines);
-      result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
-      return result;
+      return measures(decode(SafePaths.checkPath(path), MEASURE_WIDTH), start);
     });
+  }
+
+  /** The measures `measureThumb` resolves, of `pixels`, `ms` from `start`. */
+  private static WritableMap measures(Pixels pixels, long start) {
+    ThumbMeasures m = ThumbMeasures.of(pixels.argb, pixels.width, pixels.height);
+    WritableMap result = Arguments.createMap();
+    result.putInt("width", m.width);
+    result.putInt("height", m.height);
+    result.putDouble("mean", m.mean);
+    result.putDouble("dark", m.dark);
+    result.putDouble("white", m.white);
+    result.putDouble("mid", m.mid);
+    result.putDouble("border", m.border);
+    result.putInt("borderMedian", m.borderMedian);
+    result.putDouble("ink", m.ink);
+    result.putInt("inkLeft", m.inkLeft);
+    result.putInt("inkTop", m.inkTop);
+    result.putInt("inkWidth", m.inkWidth);
+    result.putInt("inkHeight", m.inkHeight);
+    result.putInt("bands", m.bands);
+    result.putDouble("lineAspect", m.lineAspect);
+    result.putDouble("thickness", m.thickness);
+    result.putDouble("edge", m.edge);
+    result.putDouble("edgeBox", m.edgeBox);
+    result.putInt("colours", m.colours);
+    result.putDouble("objectShare", m.objectShare);
+    result.putString("hash", PerceptualHash.of(pixels.argb, pixels.width, pixels.height));
+    result.putDouble("fragments", m.fragments);
+    result.putInt("darkest", m.darkest);
+    result.putBoolean("faintLines", m.faintLines);
+    result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
+    return result;
   }
 
   /** Decoded pixels, unpremultiplied ARGB, and their size. */
@@ -182,9 +229,10 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   /**
    * The gray picture at its output size. PNG is quantized to the screen's 16 levels, which also
    * shrinks the file; JPG is not, since its compression would blur the levels again
-   * [TO TEST, brief section 7, step 5]. A contour drawing is made at the output size.
+   * [TO TEST, brief section 7, step 5]. A contour drawing is made at the output size. The
+   * pixels are opaque gray, so they equal what a PNG of them decodes to.
    */
-  private static Bitmap prepare(File source, int targetWidth, boolean quantize, boolean contour)
+  private static Pixels prepare(File source, int targetWidth, boolean quantize, boolean contour)
       throws Exception {
     Pixels pixels = decode(source, targetWidth);
     // Gray that keeps the contrast between colours, before the contour and the e-ink curve (#89).
@@ -196,9 +244,6 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
       EinkPixels.darken(pixels.argb, pixels.width, pixels.height);
     }
     EinkPixels.toEink(pixels.argb, quantize);
-    Bitmap gray =
-        Bitmap.createBitmap(pixels.argb, pixels.width, pixels.height, Bitmap.Config.ARGB_8888);
-    gray.setHasAlpha(false);
-    return gray;
+    return pixels;
   }
 }

@@ -211,7 +211,9 @@ function fixtureFor(url: string): string | null {
   }
   if (host.endsWith('.wikipedia.org')) {
     // A written line's titles check (#87), else the lookup's search.
-    return url.includes('titles=') ? 'wikipedia-titles.json' : 'wikipedia-hit.json';
+    return url.includes('titles=')
+      ? 'wikipedia-titles.json'
+      : 'wikipedia-hit.json';
   }
   if (host === 'www.wikidata.org') {
     return 'wikidata-entity.json';
@@ -430,7 +432,10 @@ export class PluginHost {
     }
   }
 
-  private listen(channel: Channel, listener: AnyListener): {remove: () => void} {
+  private listen(
+    channel: Channel,
+    listener: AnyListener,
+  ): {remove: () => void} {
     this.listeners[channel].add(listener);
     const cached = this.cache[channel];
     if (cached && this.now - cached.at < REPLAY_MS) {
@@ -588,7 +593,10 @@ export class PluginHost {
       path.endsWith('/') ||
       segments.some(s => s === '' || s === '.' || s === '..')
     ) {
-      throw moduleError('BAD_PATH', `an absolute file path is required: ${path}`);
+      throw moduleError(
+        'BAD_PATH',
+        `an absolute file path is required: ${path}`,
+      );
     }
   }
 
@@ -621,7 +629,10 @@ export class PluginHost {
       const half = Math.floor(DOWNLOAD_BYTES / 2);
       this.store(dest, {bytes: half, truncated: true});
       if (cut === 'error') {
-        throw moduleError('IO', 'java.io.IOException: unexpected end of stream');
+        throw moduleError(
+          'IO',
+          'java.io.IOException: unexpected end of stream',
+        );
       }
       return half;
     }
@@ -631,7 +642,9 @@ export class PluginHost {
 
   /** A PNG the module's PngTail counts as whole: it ends with IEND. */
   private isWholePng(path: string, entry: FileEntry): boolean {
-    return path.endsWith('.png') && entry.image !== undefined && !entry.truncated;
+    return (
+      path.endsWith('.png') && entry.image !== undefined && !entry.truncated
+    );
   }
 
   private image(path: string): Size {
@@ -663,6 +676,22 @@ export class PluginHost {
   };
 
   // ---- The APIs, by module ----
+
+  /** The image module's preparation: `dest` scaled down to `width`, never up. */
+  private prepareImage(src: string, dest: string, width: number) {
+    const source = this.image(src);
+    const out = Math.min(width, source.width);
+    const size = {
+      width: out,
+      height: Math.round((source.height * out) / source.width),
+    };
+    this.store(dest, {image: size, bytes: DOWNLOAD_BYTES});
+    return {...size, bytes: DOWNLOAD_BYTES, ms: 5};
+  }
+
+  private measureImage(path: string) {
+    return {...LINE_ART, ...this.image(path)};
+  }
 
   private api(): Record<string, Record<string, Impl>> {
     return {
@@ -754,7 +783,10 @@ export class PluginHost {
           this.lasso = null;
           return success(true);
         },
-        recognizeElements: async (elements: {numInPage?: number}[], size: Size) => {
+        recognizeElements: async (
+          elements: {numInPage?: number}[],
+          size: Size,
+        ) => {
           if (
             size?.width !== this.pageSize.width ||
             size?.height !== this.pageSize.height
@@ -790,10 +822,16 @@ export class PluginHost {
           ) {
             throw new Error('layer must be an integer from 0 to 3');
           }
-          for (const element of elements as {picture?: {picturePath: string; rect: Rect}}[]) {
+          for (const element of elements as {
+            picture?: {picturePath: string; rect: Rect};
+          }[]) {
             if (element.picture) {
               // At the plugin's rect, with no clamping to the page (rule placeAtRect).
-              this.addPicture(element.picture.picturePath, element.picture.rect, page);
+              this.addPicture(
+                element.picture.picturePath,
+                element.picture.rect,
+                page,
+              );
             }
           }
           return success(true);
@@ -817,11 +855,16 @@ export class PluginHost {
       PluginFileAPI: {
         getPageSize: async () =>
           this.granted(PERMISSION.read) === GRANT.denied
-            ? failure(ERROR.readNotRequested.code, ERROR.readNotRequested.message)
+            ? failure(
+                ERROR.readNotRequested.code,
+                ERROR.readNotRequested.message,
+              )
             : success(this.pageSize),
         getElements: async (page: number) =>
           success(
-            this.elements.filter(e => e.pageNum === page).map(e => this.toSdk(e)),
+            this.elements
+              .filter(e => e.pageNum === page)
+              .map(e => this.toSdk(e)),
           ),
         getLastElement: async () => {
           const last = this.elements[this.elements.length - 1];
@@ -859,7 +902,11 @@ export class PluginHost {
           this.checkPath(path);
           this.needs(PERMISSION.write, path, 'WRITE');
           const all = (this.files.get(path)?.text ?? '') + text;
-          this.files.set(path, {text: all, bytes: all.length, order: ++this.writes});
+          this.files.set(path, {
+            text: all,
+            bytes: all.length,
+            order: ++this.writes,
+          });
           for (let dir = parentOf(path); dir; dir = parentOf(dir)) {
             this.folders.add(dir);
           }
@@ -873,7 +920,10 @@ export class PluginHost {
           }
           return [...this.files.entries()]
             .filter(([file]) => parentOf(file) === path)
-            .map(([file, entry]) => ({name: file.slice(path.length + 1), bytes: entry.bytes}));
+            .map(([file, entry]) => ({
+              name: file.slice(path.length + 1),
+              bytes: entry.bytes,
+            }));
         },
         listCompletePngs: async (path: string) => {
           this.checkPath(path);
@@ -881,7 +931,10 @@ export class PluginHost {
             return null;
           }
           return [...this.files.entries()]
-            .filter(([file, entry]) => parentOf(file) === path && this.isWholePng(file, entry))
+            .filter(
+              ([file, entry]) =>
+                parentOf(file) === path && this.isWholePng(file, entry),
+            )
             .map(([file]) => file.slice(path.length + 1));
         },
         isCompletePng: async (path: string) => {
@@ -917,18 +970,19 @@ export class PluginHost {
           _contour: boolean,
         ) => {
           if (format !== 'png' && format !== 'jpg') {
-            throw moduleError('BAD_FORMAT', `format must be png or jpg: ${format}`);
+            throw moduleError(
+              'BAD_FORMAT',
+              `format must be png or jpg: ${format}`,
+            );
           }
-          const source = this.image(src);
-          const out = Math.min(width, source.width);
-          const size = {
-            width: out,
-            height: Math.round((source.height * out) / source.width),
-          };
-          this.store(dest, {image: size, bytes: DOWNLOAD_BYTES});
-          return {...size, bytes: DOWNLOAD_BYTES, ms: 5};
+          return this.prepareImage(src, dest, width);
         },
-        measureThumb: async (path: string) => ({...LINE_ART, ...this.image(path)}),
+        measureThumb: async (path: string) => this.measureImage(path),
+        // The thumbnail lane's conversion: the written file and its measures (#101).
+        convertThumb: async (src: string, dest: string, width: number) => ({
+          ...this.prepareImage(src, dest, width),
+          measures: this.measureImage(dest),
+        }),
       },
     };
   }
@@ -944,7 +998,9 @@ export class PluginHost {
   ): this {
     for (const [api, methods] of Object.entries(this.api())) {
       const target: Record<string, unknown> =
-        api in sdk ? sdk[api] : (nativeModules[api] = {} as Record<string, unknown>);
+        api in sdk
+          ? sdk[api]
+          : (nativeModules[api] = {} as Record<string, unknown>);
       for (const [name, impl] of Object.entries(methods)) {
         const run = (...args: unknown[]) => {
           this.calls.push({api, name, args, at: this.now});

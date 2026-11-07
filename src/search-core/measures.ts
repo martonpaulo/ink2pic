@@ -58,8 +58,16 @@ export type Measures = {
   ms: number;
 };
 
-/** A picture file written by `toContour`: its size and the time it took. */
-export type ConvertedImage = {width: number; height: number; ms: number};
+/**
+ * A picture file written by `toContour` or `darken`: its size, the time it took, and the measures
+ * of the pixels it wrote, as `measure` would read them back from the file (#101).
+ */
+export type ConvertedImage = {
+  width: number;
+  height: number;
+  ms: number;
+  measures: Measures;
+};
 
 /** Measures and converts picture files; the device's is the plugin's Java module. */
 export type ImageAnalyzer = {

@@ -76,6 +76,24 @@ no fault and once per source and kind, the other sources answering from the cach
 part or leave it empty, and which line the search screen shows. `notice` in `runner.mjs` copies
 the screen's rule; a change to that rule changes the copy too.
 
+## Time the pixel step
+
+`timing.mjs` replays the device's pixel schedule for pages 1 and 2 over the tiles of an earlier
+run ([#101](https://github.com/martonpaulo/ink2pic/issues/101)), on a desktop JVM, with
+`LabTiming.java`: every thumbnail is measured, the tiles the run showed converted or darkened are
+converted, and the first tile is prepared for the insert at the same moment. It prints the time
+until every thumbnail is ready and the time the insert took from its request.
+
+```bash
+node lab/timing.mjs <run> before --native <old native/src>   # one worker, measured twice
+node lab/timing.mjs <run> after                              # the pool and the insert lane
+```
+
+`before` runs everything on one worker and measures each converted file again; `after` runs the
+thumbnails on a pool of three and the insert on its own thread. `--native` times the pixel code
+of another commit, such as `git show <commit>:native/src/...` written to a folder. The device is 3
+to 8 times slower than a desktop; the device's own `time` lines are the proof there.
+
 ## Files
 
 | File | What it holds |
@@ -88,6 +106,7 @@ the screen's rule; a change to that rule changes the copy too.
 | `out/<run>/faults.json` | The numbers `faults.mjs` writes. |
 | `out/<run>/sheets/sheet-NN.png` | Page 1 of eight queries per image, in the app's 2 x 3 grid, in grayscale; not committed, about 8 MB a run. |
 | `pixelorder.mjs`, `LabPixels.java` | The device's pixel step: measures, contour drawing and order. |
+| `timing.mjs`, `LabTiming.java` | The device's pixel schedule, timed before and after a change. |
 | `out/.cache/` | Raw source responses, thumbnails with their contour drawings, the compiled Java and sheet pages; not committed. |
 
 ## Judge a run
