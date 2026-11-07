@@ -14,6 +14,7 @@ One entry per build sent to the owner's Manta ([brief section 18](brief.md#18-de
 - [Build 0.1.0 (12), 2026-11-06, firmware 3.31.45](#build-010-12-2026-11-06-firmware-33145)
 - [Build 0.1.0 (13), 2026-11-06, firmware 3.31.45](#build-010-13-2026-11-06-firmware-33145)
 - [Build 0.1.0 (14), 2026-11-06, firmware 3.31.45](#build-010-14-2026-11-06-firmware-33145)
+- [Build 0.1.0 (15), 2026-11-07, firmware 3.31.45](#build-010-15-2026-11-07-firmware-33145)
 
 ## Build 0.1.0 (1), 2026-11-06, firmware 3.31.45
 
@@ -136,3 +137,18 @@ Prerelease [`v0.1.0-dev.14`](https://github.com/martonpaulo/ink2pic/releases/tag
 | --- | --- | --- | --- |
 | 2 Four inserts in a row | All four in the note | Pass | Shared files written in place ([#62](https://github.com/martonpaulo/ink2pic/issues/62)) |
 | 3, 4 Library, then reopen | The four pictures, kept | Pass | `library.json` saves every time |
+
+## Build 0.1.0 (15), 2026-11-07, firmware 3.31.45
+
+Prerelease [`v0.1.0-dev.15`](https://github.com/martonpaulo/ink2pic/releases/tag/v0.1.0-dev.15), commit `9ffa54c`, check card E15. Owner screenshots and two session logs.
+
+| Step | Expected | Result | Notes |
+| --- | --- | --- | --- |
+| 2 Insert picture on «apple» | An apple drawing, inserted at once, lassoed | Partial | Inserted at once and lassoed ([#74](https://github.com/martonpaulo/ink2pic/issues/74), [#73](https://github.com/martonpaulo/ink2pic/issues/73)); the picture was the Apple logo outline, and 3 of 6 page-1 pictures were dark ([#81](https://github.com/martonpaulo/ink2pic/issues/81)) |
+| 3 «apple logo» | The Apple logo on page 1 | Fail | Sub-brand wordmarks and 2 unrelated pictures on page 1; the plain logo first on page 2 ([#81](https://github.com/martonpaulo/ink2pic/issues/81)) |
+| 4 «Miguel de Cervantes» | Drawings and the portrait first; no signature, no text-only picture | Partial | No signature; a monument first, a namesake logo, a quote poster and speckled contours on page 1; the owner's best pick, a clean engraving bust, first on page 2 ([#83](https://github.com/martonpaulo/ink2pic/issues/83)) |
+| 5 «Confucious Institute» | «Showing results for» and pictures | Fail | 2 photos and no correction line: the suggestion runs only on an empty page ([#84](https://github.com/martonpaulo/ink2pic/issues/84)); the owner expects the institute's logo ([#81](https://github.com/martonpaulo/ink2pic/issues/81)) |
+| 6 Probe pen and page | The view closes and a picture gets the lasso | Pass | The plugin can lasso by itself ([#75](https://github.com/martonpaulo/ink2pic/issues/75)) |
+| 7 Lasso last word | Only that word lassoed | Partial | A lone «banana» passes; in phrases only «o» of «frio» and «na» of «China»: the walk stops at an i-dot ([#75](https://github.com/martonpaulo/ink2pic/issues/75)) |
+| 8 Session log | Sent | Pass | Letter gaps 6–20 px, word gaps 48–60 px; pauses inside and between words overlap (130–656 ms against 578–1122 ms); `lassoElements` false on a 53 × 52 rect |
+
