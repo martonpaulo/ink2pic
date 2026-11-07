@@ -61,3 +61,11 @@ export function logsDir(externalRoot = SHARED_ROOT): string {
 export function settingsPath(externalRoot = SHARED_ROOT): string {
   return sharedDir(externalRoot, 'settings.json');
 }
+
+/**
+ * `<root>/MyStyle/Ink2Pic/symbols`, the OpenMoji pictures kept for offline use (#91), one
+ * `<hex>.png` each, written in place (#62).
+ */
+export function symbolsDir(externalRoot = SHARED_ROOT): string {
+  return sharedDir(externalRoot, 'symbols');
+}

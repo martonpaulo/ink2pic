@@ -16,6 +16,7 @@ import {
 } from '../search-core';
 import {searchCached} from '../search/device';
 import {prepareThumbs} from '../search/thumbs';
+import {markSavedSymbols} from '../symbols/store';
 import {copy, CopyKey} from '../ui/copy';
 import {offlineText} from './failure';
 
@@ -42,10 +43,12 @@ export async function runSearch(
 ): Promise<SearchRun> {
   log(`search "${word}"${exact ? ' exactly' : ''}`);
   // The stored thumbnails are listed while the search runs, so the grid knows them at once.
-  const [outcome, thumbDir] = await Promise.all([
+  const [found, thumbDir] = await Promise.all([
     searchCached(word, sources, undefined, {exact}),
     prepareThumbs(),
   ]);
+  // Saved OpenMoji pictures are marked; with no network, only those show (#91).
+  const outcome = await markSavedSymbols(found);
   if (!isNewest()) {
     log(`search "${word}" ended after a newer one: ignored`);
     return {outcome: null, thumbDir};

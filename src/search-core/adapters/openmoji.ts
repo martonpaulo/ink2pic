@@ -184,6 +184,11 @@ function leaders(matches: readonly Match[]): Set<Match> {
   return new Set(concrete ? [] : matches.slice(0, LEADS_ABSTRACT));
 }
 
+/** Every symbol's code, in OpenMoji's order: what «Download symbols» fetches (#91). */
+export function symbolHexes(): string[] {
+  return symbols().map(symbol => symbol.hex);
+}
+
 export function pictureUrl(hex: string): string {
   return `${PICTURES}/${hex}.png`;
 }

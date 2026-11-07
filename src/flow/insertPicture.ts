@@ -22,6 +22,7 @@ import {
 } from '../storage/paths';
 import {pluginFolder} from '../storage/session';
 import {atStep, Done} from './failure';
+import {saveSymbol, symbolFile} from '../symbols/store';
 import {SIZE_WIDTHS} from '../settings/settings';
 import {getSettings} from '../storage/settings';
 import {LassoPlace, placeAtLasso, Placement} from './place';
@@ -147,7 +148,8 @@ async function download(
   if (!dir.ok) {
     return dir;
   }
-  let raw = await earlyFile(result, early);
+  // A saved OpenMoji symbol needs no download (#91).
+  let raw = (await symbolFile(result)) ?? (await earlyFile(result, early));
   if (!raw) {
     raw = insertDownloadPath(dir.value, imageExtension(url));
     const path = raw;
@@ -323,5 +325,7 @@ export async function insertPicture(
     });
     logTime('write', at);
   }
+  // A symbol inserted is kept for offline use; a no-op when the grid saved it already (#91).
+  await saveSymbol(result);
   return {ok: true, value: saved.value.path};
 }

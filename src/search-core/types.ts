@@ -21,6 +21,11 @@ export type SearchResult = {
   localSize?: {width: number; height: number};
   /** A symbol that leads the page: the word is abstract or names it exactly (#67). */
   leads?: true;
+  /**
+   * An OpenMoji symbol whose picture is saved on the device (#91): it shows and inserts with no
+   * network. Set by the app after each search, never by a source.
+   */
+  offlinePicture?: true;
 };
 
 export type SourceName = 'openclipart' | 'commons' | 'openmoji';

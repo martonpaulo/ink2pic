@@ -33,7 +33,9 @@ these files, each pinned to a commit and a SHA-256 in the script ([#67](https://
 
 The pictures, `https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/black/618x618/<HEX>.png`,
 are OpenMoji's, CC BY-SA 4.0: each result and each saved picture records the credit «OpenMoji» and
-the license.
+the license. The copies kept for offline use in `MyStyle/Ink2Pic/symbols/` are unchanged OpenMoji
+pictures under the same CC BY-SA 4.0 licence; Settings names it before the download
+([#91](https://github.com/martonpaulo/ink2pic/issues/91)).
 
 ## Keplex/supernote-pic2note
 

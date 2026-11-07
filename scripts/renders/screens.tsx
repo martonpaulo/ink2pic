@@ -13,7 +13,7 @@ import {Onboarding} from '../../src/ui/Onboarding';
 import {SearchScreen} from '../../src/ui/SearchScreen';
 import {StatusScreen} from '../../src/ui/StatusScreen';
 import {LanguagesScreen} from '../../src/ui/LanguagesScreen';
-import {SettingsScreen} from '../../src/ui/SettingsScreen';
+import {SettingsScreen, SymbolsControl} from '../../src/ui/SettingsScreen';
 import {defaultSettings, Settings} from '../../src/settings/settings';
 import type {LanguageCode} from '../../src/settings/languages';
 import {PERMISSIONS} from '../../src/onboarding/permissions';
@@ -101,8 +101,10 @@ const search = (word: string, sources: SourceAdapter[]) =>
     />,
   );
 
+/** 47 of the 1,447 symbols saved; a download stops at 300 (#91). */
+const SYMBOLS: SymbolsControl = {status: async () => ({total: 1447, saved: 47}), download: async () => ({total: 1447, saved: 300, complete: false})};
 const settingsScreen = (settings: Settings = defaultSettings(null)) =>
-  mount(<SettingsScreen settings={settings} onChange={() => {}} onLanguages={() => {}} onClear={async () => true} onClose={() => {}} />);
+  mount(<SettingsScreen settings={settings} onChange={() => {}} onLanguages={() => {}} onClear={async () => true} onClose={() => {}} symbols={SYMBOLS} />);
 const languagesScreen = (languages: LanguageCode[]) =>
   mount(<LanguagesScreen languages={languages} onChange={() => {}} onReset={() => {}} onBack={() => {}} onClose={() => {}} />);
 /** Every option away from its default, so each row shows another selected value. */
@@ -128,6 +130,8 @@ export const SCREENS: ScreenRender[] = [
   {name: 'settings-clear-question', render: async () => press(await settingsScreen(), copy['settings.clear'])},
   {name: 'settings-cleared', render: async () => press(await press(await settingsScreen(), copy['settings.clear']), copy['settings.clearConfirm'])},
   {name: 'settings-reset-question', render: async () => press(await settingsScreen(), copy['settings.reset'])},
+  {name: 'settings-symbols-question', render: async () => press(await settingsScreen(), copy['settings.symbolsDownload'])},
+  {name: 'settings-symbols-stopped', render: async () => press(await press(await settingsScreen(), copy['settings.symbolsDownload']), copy['settings.symbolsConfirm'])},
   {name: 'languages', render: () => languagesScreen(['zh', 'es', 'en', 'pt'])},
   {name: 'languages-one', render: () => languagesScreen(['en'])},
   {name: 'languages-reset-question', render: async () => press(await languagesScreen(['es', 'en']), copy['languages.reset'])},

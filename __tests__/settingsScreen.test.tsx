@@ -8,7 +8,7 @@ import {
   SOURCE_NAMES,
 } from '../src/settings/settings';
 import {copy, CopyKey} from '../src/ui/copy';
-import {SettingsScreen} from '../src/ui/SettingsScreen';
+import {SettingsScreen, SymbolsControl} from '../src/ui/SettingsScreen';
 
 type Shown = {
   label: string;
@@ -35,7 +35,7 @@ function buttons(tree: renderer.ReactTestRenderer): Shown[] {
 const texts = (tree: renderer.ReactTestRenderer) =>
   tree.root.findAllByType(Text).map(node => String(node.props.children));
 
-function screen(settings: Settings, cleared = true) {
+function screen(settings: Settings, cleared = true, symbols?: SymbolsControl) {
   const onChange = jest.fn();
   const onClear = jest.fn().mockResolvedValue(cleared);
   let tree!: renderer.ReactTestRenderer;
@@ -47,6 +47,7 @@ function screen(settings: Settings, cleared = true) {
         onLanguages={() => {}}
         onClear={onClear}
         onClose={() => {}}
+        {...(symbols && {symbols})}
       />,
     );
   });
@@ -134,4 +135,53 @@ it('asks before Reset all', async () => {
   expect(onChange).not.toHaveBeenCalled();
   await press(copy['settings.reset']);
   expect(onChange).toHaveBeenCalledWith({type: 'reset', system: null});
+});
+
+/** Offline symbols with `saved` of 1,447 on the device; the download stops at `stopAt`. */
+function fakeSymbols(saved: number, stopAt: number): SymbolsControl {
+  const total = 1447;
+  return {
+    status: async () => ({total, saved}),
+    download: async onProgress => {
+      onProgress({total, saved: saved + 1});
+      return {total, saved: stopAt, complete: stopAt === total};
+    },
+  };
+}
+
+const settled = () => act(async () => {});
+
+it('states the size of the symbols before downloading them (#91)', async () => {
+  const symbols = fakeSymbols(47, 1447);
+  const download = jest.spyOn(symbols, 'download');
+  const {tree, press} = screen(defaultSettings(null), true, symbols);
+  await settled();
+  expect(texts(tree)).toContain('Offline symbols: 47 of 1,447');
+  await press(copy['settings.symbolsDownload']);
+  expect(texts(tree)).toContain(
+    'Download 1,400 OpenMoji symbols, about 15 MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0.',
+  );
+  await press(copy['action.cancel']);
+  expect(download).not.toHaveBeenCalled();
+  await press(copy['settings.symbolsDownload']);
+  await press(copy['settings.symbolsConfirm']);
+  expect(download).toHaveBeenCalledTimes(1);
+  expect(texts(tree)).toContain(copy['settings.symbolsDone']);
+  expect(texts(tree)).toContain(
+    'Offline symbols: 1,447 of 1,447',
+  );
+});
+
+it('says where a cut download stopped, so a new tap resumes it (#91)', async () => {
+  const {tree, press} = screen(
+    defaultSettings(null),
+    true,
+    fakeSymbols(0, 300),
+  );
+  await settled();
+  await press(copy['settings.symbolsDownload']);
+  await press(copy['settings.symbolsConfirm']);
+  expect(texts(tree)).toContain(
+    'The download stopped at 300 of 1,447. Check the Wi-Fi, then download again to go on.',
+  );
 });

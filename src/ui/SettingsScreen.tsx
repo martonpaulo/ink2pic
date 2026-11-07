@@ -3,8 +3,9 @@
  * as buttons, the current one marked with the selected bar, as the system marks the open
  * Settings section (brief 8.4). Every tap is saved at once and used by the next search or insert.
  * Clear and Reset ask first, in the fixed status line at the bottom, so nothing above moves.
+ * «Download symbols» (#91) states the size there first, then its progress.
  */
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {
   canTurnOff,
@@ -15,6 +16,12 @@ import {
   SOURCE_NAMES,
   sourceOn,
 } from '../settings/settings';
+import {
+  downloadAllSymbols,
+  missingMegabytes,
+  symbolsStatus,
+  SymbolsStatus,
+} from '../symbols/store';
 import {Button} from './Button';
 import {copy, CopyKey} from './copy';
 import {languageName} from './LanguagesScreen';
@@ -31,13 +38,36 @@ export type SettingsScreenProps = {
   /** Clears the library list and recent searches; false when the file could not be written. */
   onClear: () => Promise<boolean>;
   onClose: () => void;
+  /** The offline symbols (#91); the device's own store when absent. */
+  symbols?: SymbolsControl;
+};
+
+/** What Settings reads and starts of the offline symbols. */
+export type SymbolsControl = {
+  status: () => Promise<SymbolsStatus>;
+  download: typeof downloadAllSymbols;
+};
+
+const DEVICE_SYMBOLS: SymbolsControl = {
+  status: symbolsStatus,
+  download: downloadAllSymbols,
 };
 
 /** What the bottom line shows: nothing, a question, or how Clear ended. */
-type Bottom = 'none' | 'clear' | 'reset' | 'cleared' | 'clearFailed';
+type Bottom =
+  | 'none'
+  | 'clear'
+  | 'reset'
+  | 'cleared'
+  | 'clearFailed'
+  | 'symbols'
+  | 'downloading';
 
+/** `symbols` and `downloading` show a line with numbers in it, from `symbolsLine`. */
 const BOTTOM_TEXT: Record<Bottom, string> = {
   none: '',
+  symbols: '',
+  downloading: '',
   clear: copy['settings.clearQuestion'],
   reset: copy['settings.resetQuestion'],
   cleared: copy['settings.cleared'],
@@ -57,6 +87,19 @@ function Option({
       <Text style={shared.text}>{label}</Text>
       <View style={shared.row}>{children}</View>
     </View>
+  );
+}
+
+/** 1447 as «1,447». */
+function grouped(count: number): string {
+  return String(count).replace(/\B(?=(\d{3})+$)/g, ',');
+}
+
+/** A copy text with its `{name}` slots filled. */
+function fill(key: CopyKey, values: Record<string, number>): string {
+  return Object.entries(values).reduce(
+    (text, [name, value]) => text.replace(`{${name}}`, grouped(value)),
+    copy[key] as string,
   );
 }
 
@@ -89,11 +132,66 @@ export function SettingsScreen({
   onLanguages,
   onClear,
   onClose,
+  symbols = DEVICE_SYMBOLS,
 }: SettingsScreenProps): React.JSX.Element {
   const [showLog, setShowLog] = useState(false);
   const [bottom, setBottom] = useState<Bottom>('none');
-  const asking = bottom === 'clear' || bottom === 'reset';
+  const [symbolsNow, setSymbolsNow] = useState<SymbolsStatus | null>(null);
+  /** A line with numbers in it, shown instead of the bottom's fixed text. */
+  const [symbolsLine, setSymbolsLine] = useState<string | null>(null);
+  const asking =
+    bottom === 'clear' || bottom === 'reset' || bottom === 'symbols';
+  useEffect(() => {
+    let shown = true;
+    symbols.status().then(status => shown && setSymbolsNow(status));
+    return () => {
+      shown = false;
+    };
+  }, [symbols]);
+  const ask = (next: Bottom) => {
+    setSymbolsLine(null);
+    setBottom(next);
+  };
+  const askSymbols = () => {
+    if (!symbolsNow) {
+      return;
+    }
+    if (symbolsNow.saved >= symbolsNow.total) {
+      ask('none');
+      setSymbolsLine(copy['settings.symbolsDone']);
+      return;
+    }
+    setBottom('symbols');
+    setSymbolsLine(
+      fill('settings.symbolsQuestion', {
+        count: symbolsNow.total - symbolsNow.saved,
+        size: missingMegabytes(symbolsNow),
+      }),
+    );
+  };
+  const downloadSymbols = async () => {
+    setBottom('downloading');
+    const progress = (status: SymbolsStatus) => {
+      setSymbolsNow(status);
+      setSymbolsLine(fill('settings.symbolsProgress', status));
+    };
+    if (symbolsNow) {
+      progress(symbolsNow);
+    }
+    const end = await symbols.download(progress);
+    setSymbolsNow(end);
+    setBottom('none');
+    setSymbolsLine(
+      end.complete
+        ? copy['settings.symbolsDone']
+        : fill('settings.symbolsStopped', {saved: end.saved, total: end.total}),
+    );
+  };
   const confirm = async () => {
+    if (bottom === 'symbols') {
+      await downloadSymbols();
+      return;
+    }
     if (bottom === 'reset') {
       setBottom('none');
       onChange({type: 'reset', system: null});
@@ -161,10 +259,23 @@ export function SettingsScreen({
               />
             ))}
           </Option>
+          {/* One row, label and action side by side: a second line would push the actions off. */}
+          <View style={shared.row}>
+            <Text style={[shared.text, styles.grow]}>
+              {symbolsNow
+                ? fill('settings.symbols', symbolsNow)
+                : copy['source.openmoji']}
+            </Text>
+            <Button
+              label={copy['settings.symbolsDownload']}
+              disabled={!symbolsNow || bottom === 'downloading'}
+              onPress={askSymbols}
+            />
+          </View>
           <View style={styles.grow} />
           {/* Reserved: a question or a result never moves the options above. */}
           <Text style={[shared.text, styles.bottomText]}>
-            {BOTTOM_TEXT[bottom]}
+            {symbolsLine ?? BOTTOM_TEXT[bottom]}
           </Text>
           <View style={[shared.row, styles.actions]}>
             {asking ? (
@@ -174,6 +285,8 @@ export function SettingsScreen({
                     copy[
                       bottom === 'clear'
                         ? 'settings.clearConfirm'
+                        : bottom === 'symbols'
+                        ? 'settings.symbolsConfirm'
                         : 'settings.reset'
                     ]
                   }
@@ -181,18 +294,20 @@ export function SettingsScreen({
                 />
                 <Button
                   label={copy['action.cancel']}
-                  onPress={() => setBottom('none')}
+                  onPress={() => ask('none')}
                 />
               </>
             ) : (
               <>
                 <Button
                   label={copy['settings.clear']}
-                  onPress={() => setBottom('clear')}
+                  disabled={bottom === 'downloading'}
+                  onPress={() => ask('clear')}
                 />
                 <Button
                   label={copy['settings.reset']}
-                  onPress={() => setBottom('reset')}
+                  disabled={bottom === 'downloading'}
+                  onPress={() => ask('reset')}
                 />
               </>
             )}

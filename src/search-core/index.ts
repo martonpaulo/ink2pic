@@ -2,7 +2,11 @@
 export type {PictureHost, SourceAdapter, SourceContext} from './adapter';
 export {commonsAdapter} from './adapters/commons';
 export {openclipartAdapter} from './adapters/openclipart';
-export {openmojiAdapter} from './adapters/openmoji';
+export {
+  openmojiAdapter,
+  pictureUrl as openmojiPictureUrl,
+  symbolHexes,
+} from './adapters/openmoji';
 export {wikidataAdapter} from './adapters/wikidata';
 export {createBreaker} from './breaker';
 export type {Breaker} from './breaker';

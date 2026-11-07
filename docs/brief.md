@@ -381,7 +381,7 @@ Abstract words and emotions («cold», «idea», «happy») find scenes, text or
 - The index is built by `scripts/build-openmoji-index.cjs` from pinned data files ([NOTICE.md](../NOTICE.md#openmoji-and-keyword-data)): `openmoji.json` of OpenMoji 17.0.0 (CC BY-SA 4.0), emojilib 4.0.3's English keywords (MIT) and the CLDR 49.0.0 annotations for `pt`, `es` and `zh` (Unicode-3.0), so those queries work (owner D4). Left out: flags, skin tones, the «man» and «woman» twins of a neutral person, OpenMoji's and Unicode's extras (`F8FF` Apple logo, `E051` Safari). 1,447 symbols; 353 KB, 145 KB gzipped [CONFIRMED by the script]. Research A's 57 KB was English only; each CLDR language adds about 35 KB gzipped.
 - Matching: the query is folded (lowercase, no accents: «frío» is «frio») and read in each language of the search context (section 5.4). A symbol scores 6 when its name is the word, 3 when the word is a word of its name (a Han word: part of it), plus 2 for CLDR's keywords and 1 for each of openmoji_tags and emojilib that hold it, summed over the languages. Six symbols at most.
 - Ranking (section 5.5): a symbol leads the page only when its name is the word («snowflake», «dog») or the word is abstract: no thing among the matches (outside the emotion and sign groups) carries it in its name. Then the best two lead: «cold» gives the cold face first, «idea» the light bulb, «happy» a grinning face [CONFIRMED by `__tests__/openmoji.test.ts`]. Else symbols fall 2 points below a drawing that names the word as plainly, so «apple» shows a drawing first [INFERENCE, to calibrate in the search lab].
-- Off the network, OpenMoji still answers: the search shows its symbols with the «source down» note. A setting switches it off by its adapter name ([#70](https://github.com/martonpaulo/ink2pic/issues/70)).
+- Off the network, OpenMoji still answers, but only with the symbols whose picture is saved on the device ([#91](https://github.com/martonpaulo/ink2pic/issues/91)): each symbol shown or inserted is saved once as `MyStyle/Ink2Pic/symbols/<HEX>.png`, written in place ([#62](https://github.com/martonpaulo/ink2pic/issues/62)), and the app marks those results `offlinePicture`. Settings > «Download symbols for offline use» states the size of the missing ones (1,447 PNGs at 618 px, about 15 MB measured), then downloads them three at a time with the plugin's User-Agent; it stops at the first failure and a new tap resumes from the files already saved. There is no «remove» action: deleting a file in shared storage needs FILE:DELETE (section 10.5), which Ink2Pic does not declare; the person deletes the folder with the file manager. A setting switches OpenMoji off by its adapter name ([#70](https://github.com/martonpaulo/ink2pic/issues/70)).
 
 ### 5.3 Rejected sources
 
@@ -666,6 +666,13 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `settings.dataSaver` | Data saver: fewer and smaller pictures |
 | `settings.dataSaver.off` | Off |
 | `settings.dataSaver.on` | On |
+| `settings.symbols` | Offline symbols: {saved} of {total} |
+| `settings.symbolsDownload` | Download symbols for offline use |
+| `settings.symbolsQuestion` | Download {count} OpenMoji symbols, about {size} MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0. |
+| `settings.symbolsConfirm` | Download |
+| `settings.symbolsProgress` | Downloading symbols: {saved} of {total}… |
+| `settings.symbolsDone` | Every symbol is saved for offline use. |
+| `settings.symbolsStopped` | The download stopped at {saved} of {total}. Check the Wi-Fi, then download again to go on. |
 | `settings.clear` | Clear library list |
 | `settings.clearQuestion` | Clear the library list and recent searches? The picture files stay in MyStyle/Ink2Pic/library/. |
 | `settings.clearConfirm` | Clear list |

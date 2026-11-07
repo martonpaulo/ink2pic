@@ -60,7 +60,8 @@ export const copy = {
   // Outside the brief's table: the #75 device spike in the Log view, removed when the spike ends.
   'probe.run': 'Probe pen and page',
   'probe.lastWord': 'Lasso last word',
-  'probe.noStrokes': 'No handwriting on this page yet. Write a word, then try again.',
+  'probe.noStrokes':
+    'No handwriting on this page yet. Write a word, then try again.',
   'probe.lassoFailed':
     'The lasso did not take the word. Open the log for the details.',
   // Outside the brief's table: the empty Library tab (#15).
@@ -118,6 +119,15 @@ export const copy = {
   'settings.dataSaver': 'Data saver: fewer and smaller pictures',
   'settings.dataSaver.off': 'Off',
   'settings.dataSaver.on': 'On',
+  'settings.symbols': 'Offline symbols: {saved} of {total}',
+  'settings.symbolsDownload': 'Download symbols for offline use',
+  'settings.symbolsQuestion':
+    'Download {count} OpenMoji symbols, about {size} MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0.',
+  'settings.symbolsConfirm': 'Download',
+  'settings.symbolsProgress': 'Downloading symbols: {saved} of {total}…',
+  'settings.symbolsDone': 'Every symbol is saved for offline use.',
+  'settings.symbolsStopped':
+    'The download stopped at {saved} of {total}. Check the Wi-Fi, then download again to go on.',
   'settings.clear': 'Clear library list',
   'settings.clearQuestion':
     'Clear the library list and recent searches? The picture files stay in MyStyle/Ink2Pic/library/.',
