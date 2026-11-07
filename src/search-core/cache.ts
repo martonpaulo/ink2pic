@@ -25,9 +25,10 @@ export type CacheOptions = {
 
 /**
  * Raised when cached results would show in an order the current ranking no longer gives: 2 since
- * the drawing-first ranking of #43, so a search from build 0.1.0 (12) is not reused (#59).
+ * the drawing-first ranking of #43, so a search from build 0.1.0 (12) is not reused (#59); 3 since
+ * the adult filter, so no cached search shows a picture it now leaves out (#69).
  */
-export const CACHE_VERSION = 2;
+export const CACHE_VERSION = 3;
 /** Newest entries kept; the oldest is evicted first. DEFAULT, no device measurement yet. */
 export const CACHE_LIMIT = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;

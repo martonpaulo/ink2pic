@@ -6,6 +6,7 @@ import type {SourceAdapter, SourceContext} from './adapter';
 import type {Breaker} from './breaker';
 import {Clock, noLog, systemClock} from './clock';
 import {SOURCE_TIMEOUT_MS} from './fetcher';
+import {withoutAdult} from './filters/adult';
 import {fallbackQueries, normalise} from './query';
 import {rankForEink} from './rank';
 import type {FailureKind, SearchResult, SourceOutcome} from './types';
@@ -177,8 +178,9 @@ async function searchOnce(
         ? {state: 'skipped', kind: outcome.kind, message: outcome.message}
         : status(outcome);
   });
+  // Adult pictures never show, from any source (#69).
   const results = rankForEink(
-    outcomes.map(o => (o.ok ? o.results : [])),
+    outcomes.map(o => (o.ok ? withoutAdult(o.results) : [])),
     query,
   );
   const failed = outcomes.filter(o => !o.ok).length;

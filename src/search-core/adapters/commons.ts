@@ -4,6 +4,7 @@
  */
 import type {PictureHost, SourceAdapter, SourceContext} from '../adapter';
 import {apiFailure} from '../fetcher';
+import {isAdult} from '../filters/adult';
 import {isPlainPicture} from '../rank';
 import {PAGE_SIZE, SearchResult, SourceOutcome, sourceFailure} from '../types';
 
@@ -11,7 +12,8 @@ const API = 'https://commons.wikimedia.org/w/api.php';
 const INFO_PARAMS = [
   'prop=imageinfo',
   'iiprop=url|mime|size|extmetadata',
-  'iiextmetadatafilter=LicenseShortName|Artist|Credit',
+  // Categories feed the adult filter (#69).
+  'iiextmetadatafilter=LicenseShortName|Artist|Credit|Categories',
 ];
 
 /** Thumbnail widths Wikimedia serves without strict rate limits (brief section 5.2). */
@@ -152,6 +154,9 @@ function toResult(page: Page): SearchResult | null {
     return null;
   }
   const meta = info.extmetadata ?? {};
+  if (isAdult(page, meta.Categories?.value)) {
+    return null;
+  }
   const attribution =
     plainText(meta.Artist?.value ?? '') ||
     plainText(meta.Credit?.value ?? '') ||

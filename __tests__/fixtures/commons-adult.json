@@ -1,0 +1,316 @@
+{
+ "_fixture": "cut from two real Commons generator=search responses (formatversion=2) with Categories in iiextmetadatafilter, «nude filetype:drawing» and «body filetype:drawing», 2026-11-07: titles, mimes, sizes, licenses and categories as Commons sent them; URLs, artists and the person names in two titles and their categories are synthetic (#69)",
+ "batchcomplete": true,
+ "query": {
+  "pages": [
+   {
+    "pageid": 36676363,
+    "ns": 6,
+    "title": "File:Woman chubby.svg",
+    "index": 1,
+    "imageinfo": [
+     {
+      "width": 804,
+      "height": 746,
+      "thumburl": "https://upload.example.test/thumb/36676363/330px-file.svg.png",
+      "url": "https://upload.example.test/36676363/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "CC-Zero|Fat fetishism|Nude people in art|Self-published work|Female human breasts in art|Created with Inkscape-categ:SVG"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 17906271,
+    "ns": 6,
+    "title": "File:PEGI Nudity annotated.svg",
+    "index": 2,
+    "imageinfo": [
+     {
+      "width": 256,
+      "height": 256,
+      "thumburl": "https://upload.example.test/thumb/17906271/330px-file.svg.png",
+      "url": "https://upload.example.test/17906271/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "With trademark|PD textlogo|SVG text logos|PEGI Sex|Valid SVG created with Inkscape:PEGI text logos|Nudity (text)"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 112298399,
+    "ns": 6,
+    "title": "File:Silhouette of a standing man.svg",
+    "index": 3,
+    "imageinfo": [
+     {
+      "width": 744,
+      "height": 1052,
+      "thumburl": "https://upload.example.test/thumb/112298399/330px-file.svg.png",
+      "url": "https://upload.example.test/112298399/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "CC-Zero|Self-published work|Silhouettes of men|SVG silhouettes of people"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 5099178,
+    "ns": 6,
+    "title": "File:Anime Girl.svg",
+    "index": 4,
+    "imageinfo": [
+     {
+      "width": 1052,
+      "height": 744,
+      "thumburl": "https://upload.example.test/thumb/5099178/330px-file.svg.png",
+      "url": "https://upload.example.test/5099178/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "Ecchi|GFDL|Fan service|License migration redundant|Self-published work|Valid SVG created with Text Editor|Pictures formerly showing a librsvg bug|Transparent clothing in art|Featured pictures on Wikipedia, German|Featured pictures on Wikipedia, Chinese|Featured pictures on Wikipedia, Persian|Featured pictures on Wikipedia, Spanish|Featured pictures on Wikipedia, Turkish|Featured pictures on Wikipedia, Vietnamese|Drawings of nude standing women|Female red hair in art|Nude or partially nude women in anime and manga|Partially nude women with blue background|Colorful drawings|Partially nude women with hair in movement|Featured pictures of digital art|Bottomless women in art|Valid SVG created with Inkscape-hand|Pictures of the Year/2008 (finalist)|Featured pictures on Wikipedia, Hindi|Lingerie in anime and manga|Female people with long hair in art"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 113723433,
+    "ns": 6,
+    "title": "File:Book decoration 04, 1898.svg",
+    "index": 5,
+    "imageinfo": [
+     {
+      "width": 1138,
+      "height": 1589,
+      "thumburl": "https://upload.example.test/thumb/113723433/330px-file.svg.png",
+      "url": "https://upload.example.test/113723433/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "Deutsche Kunst und Dekoration, vol. 2 (1898)|PD-old-80-expired|CC-PD-Mark|Art Nouveau women with flowers|Stars in Art Nouveau|Art Nouveau plants in line art|Trefoils in Art Nouveau|Line art of celestial bodies"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 67057188,
+    "ns": 6,
+    "title": "File:Black body realization.svg",
+    "index": 6,
+    "imageinfo": [
+     {
+      "width": 400,
+      "height": 350,
+      "thumburl": "https://upload.example.test/thumb/67057188/330px-file.svg.png",
+      "url": "https://upload.example.test/67057188/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "Black body|Self-published work|Valid SVG created with Text Editor"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 3945169,
+    "ns": 6,
+    "title": "File:Respiratory system complete en.svg",
+    "index": 7,
+    "imageinfo": [
+     {
+      "width": 512,
+      "height": 545,
+      "thumburl": "https://upload.example.test/thumb/3945169/330px-file.svg.png",
+      "url": "https://upload.example.test/3945169/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "Public domain",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "PD-user|Featured pictures on Wikipedia, English|Translation possible - SVG (switch)|SVG created with Inkscape:Important|Valid SVG created with Inkscape:Diagrams|Featured diagrams|SVG human respiratory system|English-language SVG diagrams|Featured pictures in the public domain|Multilingual SVG biology|Human diaphragm|SVG diagrams in Central Kurdish|Multilingual SVG with up to 9 languages"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 134573425,
+    "ns": 6,
+    "title": "File:Man Drying, 1968 Nude woodcut series.svg",
+    "index": 8,
+    "imageinfo": [
+     {
+      "width": 400,
+      "height": 563,
+      "thumburl": "https://upload.example.test/thumb/134573425/330px-file.svg.png",
+      "url": "https://upload.example.test/134573425/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "Files with broken file links|Nude males in prints|Self-published work|Woodcuts of nude women"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 47582807,
+    "ns": 6,
+    "title": "File:Human body features no labels.svg",
+    "index": 9,
+    "imageinfo": [
+     {
+      "width": 486,
+      "height": 734,
+      "thumburl": "https://upload.example.test/thumb/47582807/330px-file.svg.png",
+      "url": "https://upload.example.test/47582807/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY-SA 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "Self-published work|SVG nude standing couples|Vectorizations|Valid SVG created with Inkscape:Body features"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 111657181,
+    "ns": 6,
+    "title": "File:Kit body away cobreloa.svg",
+    "index": 10,
+    "imageinfo": [
+     {
+      "width": 198,
+      "height": 308,
+      "thumburl": "https://upload.example.test/thumb/111657181/330px-file.svg.png",
+      "url": "https://upload.example.test/111657181/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY-SA 4.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "Self-published work|Association football kit body"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "pageid": 11521704,
+    "ns": 6,
+    "title": "File:Hadako-tan.svg",
+    "index": 11,
+    "imageinfo": [
+     {
+      "width": 1200,
+      "height": 1600,
+      "thumburl": "https://upload.example.test/thumb/11521704/330px-file.svg.png",
+      "url": "https://upload.example.test/11521704/file.svg",
+      "mime": "image/svg+xml",
+      "extmetadata": {
+       "LicenseShortName": {
+        "value": "CC BY 3.0",
+        "source": "commons-desc-page",
+        "hidden": ""
+       },
+       "Artist": {
+        "value": "Example Artist"
+       },
+       "Categories": {
+        "value": "GFDL|License migration redundant|Self-published work|Invalid SVG created with Inkscape|Nude or partially nude women with pink hair|Large SVG files|Pictures showing a librsvg bug:Inkscape|Nude women with shaved genitalia|Penile-vaginal intercourse in art|Woman-on-top positions in art|Librsvg bug replaced by bitmap graphic|Kyonyū|Nude women in anime and manga|Colorful drawings of nude or partially nude women|Hentai in anime and manga|Nude men in anime and manga|People having sex in anime and manga"
+       }
+      }
+     }
+    ]
+   }
+  ]
+ }
+}
