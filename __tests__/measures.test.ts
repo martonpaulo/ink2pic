@@ -321,7 +321,7 @@ describe('reorderByMeasures (#66)', () => {
     ]);
   });
 
-  it('keeps a canonical picture at its index, also when it is dark', () => {
+  it('keeps a canonical picture at its index, also when it is a dark painting shown as its contour', () => {
     const list = [
       result('best'),
       result('wikidata', 'wikidata', true),
@@ -330,15 +330,29 @@ describe('reorderByMeasures (#66)', () => {
     ];
     const measures = new Map([
       ['best', darkPainting],
-      ['wikidata', darkPainting],
+      ['wikidata', {...outline, colours: 16}],
       ['dark', darkPainting],
+      ['line', outline],
+    ]);
+    expect(
+      ids(reorderByMeasures(list, measures, '', new Set(['wikidata']))),
+    ).toEqual(['line', 'wikidata', 'best', 'dark']);
+  });
+
+  it('sends a canonical picture shown near-black past page 2 too (#83)', () => {
+    const list = [
+      result('wikidata', 'wikidata', true),
+      result('line'),
+      result('other'),
+    ];
+    const measures = new Map([
+      ['wikidata', darkPainting],
       ['line', outline],
     ]);
     expect(ids(reorderByMeasures(list, measures))).toEqual([
       'line',
+      'other',
       'wikidata',
-      'best',
-      'dark',
     ]);
   });
 

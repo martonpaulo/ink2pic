@@ -340,8 +340,8 @@ export function pixelScorer(
 
 /**
  * Whether the picture leaves pages 1 and 2: a blank thumbnail, or one shown near-black, such as
- * a dark poster whose contour was mostly speckle (#83), unless the query asks for a photo or a
- * painting. A canonical picture stays.
+ * a dark poster or a dark canonical photo whose contour was mostly speckle (#83), unless the
+ * query asks for a photo or a painting. A blank canonical picture stays.
  */
 function isLeft(
   result: SearchResult,
@@ -349,21 +349,21 @@ function isLeft(
   query: string,
 ): boolean {
   const m = measures.get(result.id);
-  if (result.canonical || m === undefined) {
+  if (m === undefined) {
     return false;
   }
   const kind = pixelKind(m);
   const {styles} = readIntent(query);
   return (
-    kind === 'blank' ||
+    (kind === 'blank' && !result.canonical) ||
     (kind === 'dark' && !styles.has('photo') && !styles.has('painting'))
   );
 }
 
 /**
  * Re-sorts the first MEASURED_RESULTS results by `einkScore + pixelScorer`; ties keep their
- * order. A canonical Wikidata picture keeps its index (brief section 5.5, rule 4). A blank or
- * near-black thumbnail goes to the end of the list; the next result fills its place. Later
+ * order. A canonical Wikidata picture keeps its index (brief section 5.5, rule 4), unless it is
+ * shown near-black. A blank or near-black thumbnail goes to the end of the list; the next result fills its place. Later
  * results keep their order. `converted` names the pictures shown as their contour drawing.
  */
 export function reorderByMeasures(
@@ -392,7 +392,8 @@ export function reorderByMeasures(
   const ordered: SearchResult[] = [];
   for (const result of head) {
     // Each other slot takes the next sorted result, or a later one when blanks left.
-    const next = result.canonical ? result : queue.shift();
+    const keeps = result.canonical && !isLeft(result, measures, query);
+    const next = keeps ? result : queue.shift();
     if (next) {
       ordered.push(next);
     }
