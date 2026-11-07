@@ -148,13 +148,13 @@
    "id": "miguel-de-cervantes",
    "category": "person",
    "query": "Miguel de Cervantes",
-   "expect": "a portrait of Cervantes on page 1; no signature, no book page scan only"
+   "expect": "the grey lithograph bust on white, Commons «Miguel de Cervantes lithography», first and unconverted (owner's gold case, build 15); no signature, no logo, no quote poster, no speckled contour"
   },
   {
    "id": "federico-garcia-lorca",
    "category": "person",
    "query": "Federico García Lorca",
-   "expect": "a portrait of Lorca on page 1; no signature"
+   "expect": "a portrait of Lorca first; no signature, no quote poster, no near-black picture on pages 1 and 2"
   },
   {
    "id": "frida-kahlo",

@@ -252,22 +252,33 @@ const LINE_ART_WEIGHT = 3;
  */
 const UNMEASURED = 0.5;
 /**
- * Below every measured picture: faint line work not darkened, or still faint once darkened, its
- * lines too thin for e-ink (#81).
+ * Below every picture shown as found: a photo or painting shown as its contour drawing. A real
+ * line drawing or vector picture comes first (#83, owner: «não tem imagem tipo mais limpa?»).
+ */
+const CONVERTED_SCALE = -1;
+/**
+ * Below the contour drawings: a picture of mostly large text, a quote poster (#83), and faint
+ * line work not darkened or still faint once darkened, its lines too thin for e-ink (#81).
  */
 const LAST_SCALE = -2;
 
 /**
  * The pixel signal over one set of measures: `3 x lineArt`, min-max scaled within the set, so it
  * moves pictures only relative to each other. A canonical picture scores 0: it keeps its place.
+ * `converted` names the pictures shown as their contour drawing.
  */
-export function pixelScorer(measures: ReadonlyMap<string, Measures>): Scorer {
+export function pixelScorer(
+  measures: ReadonlyMap<string, Measures>,
+  converted: ReadonlySet<string> = new Set(),
+): Scorer {
   const scores = new Map<string, number>();
   const fixed = new Map<string, number>();
   for (const [id, m] of measures) {
     const kind = pixelKind(m);
-    if (isFaintLines(m) || kind === 'faint') {
+    if (isFaintLines(m) || kind === 'faint' || kind === 'text') {
       fixed.set(id, LAST_SCALE);
+    } else if (converted.has(id)) {
+      fixed.set(id, CONVERTED_SCALE);
     } else if (kind !== 'blank') {
       scores.set(id, lineArt(m));
     }
@@ -294,34 +305,49 @@ export function pixelScorer(measures: ReadonlyMap<string, Measures>): Scorer {
   };
 }
 
-function isBlank(
+/**
+ * Whether the picture leaves pages 1 and 2: a blank thumbnail, or one shown near-black, such as
+ * a dark poster whose contour was mostly speckle (#83), unless the query asks for a photo or a
+ * painting. A canonical picture stays.
+ */
+function isLeft(
   result: SearchResult,
   measures: ReadonlyMap<string, Measures>,
+  query: string,
 ): boolean {
   const m = measures.get(result.id);
-  return !result.canonical && m !== undefined && pixelKind(m) === 'blank';
+  if (result.canonical || m === undefined) {
+    return false;
+  }
+  const kind = pixelKind(m);
+  const {styles} = readIntent(query);
+  return (
+    kind === 'blank' ||
+    (kind === 'dark' && !styles.has('photo') && !styles.has('painting'))
+  );
 }
 
 /**
  * Re-sorts the first MEASURED_RESULTS results by `einkScore + pixelScorer`; ties keep their
- * order. A canonical Wikidata picture keeps its index (brief section 5.5, rule 4). A blank
- * thumbnail goes to the end of the list; the next result fills its place. Later results keep
- * their order.
+ * order. A canonical Wikidata picture keeps its index (brief section 5.5, rule 4). A blank or
+ * near-black thumbnail goes to the end of the list; the next result fills its place. Later
+ * results keep their order. `converted` names the pictures shown as their contour drawing.
  */
 export function reorderByMeasures(
   results: readonly SearchResult[],
   measures: ReadonlyMap<string, Measures>,
   query = '',
+  converted: ReadonlySet<string> = new Set(),
 ): SearchResult[] {
   if (measures.size === 0) {
     return [...results];
   }
   const head = results.slice(0, MEASURED_RESULTS);
-  const pixels = pixelScorer(measures);
+  const pixels = pixelScorer(measures, converted);
   const intent = intentFor(query, results);
-  const blank = head.filter(result => isBlank(result, measures));
+  const blank = head.filter(result => isLeft(result, measures, query));
   const sorted = head
-    .filter(result => !result.canonical && !isBlank(result, measures))
+    .filter(result => !result.canonical && !isLeft(result, measures, query))
     .map((result, order) => ({
       result,
       order,

@@ -266,8 +266,40 @@ describe('reorderByMeasures (#66)', () => {
       'cat',
     ]);
     expect(
-      ids(reorderByMeasures(list, new Map([['cat', darkPainting]]), 'cat')),
+      ids(reorderByMeasures(list, new Map([['cat', outline]]), 'cat')),
     ).toEqual(['cat', 'other']);
+  });
+
+  it('puts a contour drawing after a picture shown as found, text and faint lines last (#83)', () => {
+    const list = [
+      result('poster', 'Cat'),
+      result('photo', 'Cat'),
+      result('drawing', 'Cat'),
+    ];
+    const measures = new Map([
+      ['poster', signature],
+      ['photo', outline],
+      ['drawing', {...outline, white: 0.5}],
+    ]);
+    expect(
+      ids(reorderByMeasures(list, measures, 'cat', new Set(['photo']))),
+    ).toEqual(['drawing', 'photo', 'poster']);
+  });
+
+  it('sends a picture shown near-black past page 2 unless a photo is asked (#83)', () => {
+    const list = [result('poster', 'Cat'), result('line', 'Roof')];
+    const measures = new Map([
+      ['poster', darkPainting],
+      ['line', outline],
+    ]);
+    expect(ids(reorderByMeasures(list, measures, 'cat'))).toEqual([
+      'line',
+      'poster',
+    ]);
+    expect(ids(reorderByMeasures(list, measures, 'cat photo'))).toEqual([
+      'poster',
+      'line',
+    ]);
   });
 
   it('keeps a canonical picture at its index, also when it is dark', () => {
@@ -300,10 +332,9 @@ describe('reorderByMeasures (#66)', () => {
     ]);
     const ordered = ids(reorderByMeasures(list, measures));
     expect(ordered[0]).toBe('r11');
-    // Unmeasured thumbnails score the middle: above the dark one, below the outline.
-    expect(ordered[10]).toBe('r1');
-    // r12 is on page 3: not re-sorted, it moves up one place to fill the blank's slot.
-    expect(ordered.slice(11)).toEqual(['r12', 'r13', 'r14', 'r0']);
+    // r12 and r13 are on page 3: not re-sorted, they move up to fill the slots of the blank and
+    // the near-black one (#83), which go to the end.
+    expect(ordered.slice(10)).toEqual(['r12', 'r13', 'r14', 'r0', 'r1']);
     expect(new Set(ordered).size).toBe(15);
   });
 
@@ -353,13 +384,13 @@ describe('measureFirstPages (#66)', () => {
 
   it('re-sorts by the measured files and logs each kind', async () => {
     const measured = await measureFirstPages(list, '/p', 'x', deps());
-    // The dark painting is scored as the contour it shows: line art, near the outline.
+    // The dark painting shows as its contour drawing: after the pictures shown as found (#83).
     expect(measured.results.map(item => item.id)).toEqual([
       'line',
-      'dark',
       'web',
       'bad',
       'gloss',
+      'dark',
     ]);
     expect([...measured.measures.keys()].sort()).toEqual([
       'dark',

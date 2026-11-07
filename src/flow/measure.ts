@@ -282,7 +282,11 @@ export async function measureFirstPages(
       MEASURED_RESULTS,
     )} measured in ${Date.now() - started} ms${late ? ', limit reached' : ''}`,
   );
-  const ordered = reorderByMeasures(results, used, query);
+  // Shown as their contour drawing: they follow the pictures shown as found (#83).
+  const converted = new Set(
+    [...contourThumbs].filter(([, uri]) => isContourUri(uri)).map(([id]) => id),
+  );
+  const ordered = reorderByMeasures(results, used, query, converted);
   const distinct = dropNearDuplicates(ordered, used);
   if (distinct.length < ordered.length) {
     log(`pixels: ${ordered.length - distinct.length} near-duplicates left out`);

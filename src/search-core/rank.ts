@@ -14,7 +14,7 @@ import type {SearchResult} from './types';
 export type Scorer = (result: SearchResult, intent: QueryIntent) => number;
 
 const LINE_WORK =
-  /\b(engraving|etching|woodcut|drawing|line ?art|sketch|outline|illustration|clip ?art|icon|lithograph|gravure)\b/i;
+  /\b(engraving|etching|woodcut|drawing|line ?art|sketch|outline|illustration|clip ?art|icon|lithograph(y)?|gravure)\b/i;
 /**
  * Graphics that are about the word but are not a picture of it (#43), beyond the style groups a
  * query can ask for: these are never wanted.
