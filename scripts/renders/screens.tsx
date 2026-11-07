@@ -106,7 +106,7 @@ const settingsScreen = (settings: Settings = defaultSettings(null)) =>
 const languagesScreen = (languages: LanguageCode[]) =>
   mount(<LanguagesScreen languages={languages} onChange={() => {}} onReset={() => {}} onBack={() => {}} onClose={() => {}} />);
 /** Every option away from its default, so each row shows another selected value. */
-const CHANGED: Settings = {languages: ['zh', 'es', 'en', 'pt'], size: 'large', placement: 'replace', style: 'contour', sourcesOff: ['commons'], dataSaver: true};
+const CHANGED: Settings = {languages: ['zh', 'es', 'en', 'pt'], size: 'large', placement: 'replace', style: 'contour', spacing: 'wide', sourcesOff: ['commons'], dataSaver: true};
 
 // One line per screen, so adding one is one line.
 // prettier-ignore

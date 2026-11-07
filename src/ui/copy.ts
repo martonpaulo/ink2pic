@@ -60,6 +60,9 @@ export const copy = {
   // Outside the brief's table: the #75 device spike in the Log view, removed when the spike ends.
   'probe.run': 'Probe pen and page',
   'probe.lastWord': 'Lasso last word',
+  'probe.noStrokes': 'No handwriting on this page yet. Write a word, then try again.',
+  'probe.lassoFailed':
+    'The lasso did not take the word. Open the log for the details.',
   // Outside the brief's table: the empty Library tab (#15).
   'library.empty': 'No saved pictures yet. Insert one from a search.',
   // The Languages screen, from the plugin's Settings entry (#68).
@@ -103,6 +106,10 @@ export const copy = {
   'settings.style.drawings': 'Drawings first',
   'settings.style.photos': 'Photos too',
   'settings.style.contour': 'All as contour',
+  'settings.spacing': 'Word spacing in your handwriting',
+  'settings.spacing.tight': 'Tight',
+  'settings.spacing.normal': 'Normal',
+  'settings.spacing.wide': 'Wide',
   'settings.sources': 'Picture sources (one stays on)',
   'source.openclipart': 'Openclipart',
   'source.commons': 'Commons',

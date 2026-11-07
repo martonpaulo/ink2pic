@@ -68,6 +68,7 @@ it('shows each option with its current value selected', () => {
     copy['settings.size.medium'],
     copy['settings.placement.below'],
     copy['settings.style.drawings'],
+    copy['settings.spacing.normal'],
     ...SOURCE_NAMES.map(name => copy[`source.${name}` as CopyKey]),
     copy['settings.dataSaver.off'],
   ]);
@@ -83,10 +84,12 @@ it('has a copy text for every source the search has', () => {
 it('sends a tap as one step', async () => {
   const {onChange, press} = screen(defaultSettings(null));
   await press(copy['settings.size.large']);
+  await press(copy['settings.spacing.wide']);
   await press(copy['settings.dataSaver.on']);
   await press(copy['source.commons']);
   expect(onChange.mock.calls).toEqual([
     [{type: 'choose', key: 'size', value: 'large'}],
+    [{type: 'choose', key: 'spacing', value: 'wide'}],
     [{type: 'dataSaver', on: true}],
     [{type: 'source', name: 'commons', on: false}],
   ]);

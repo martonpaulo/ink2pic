@@ -1,25 +1,49 @@
 /**
- * Which strokes are «the word» the person means (#75): pure rules over strokes the pen-up events
- * delivered, in Android page pixels (docs.supernote.com, Coordinate System). Two candidate rules,
- * both measured by the #75 device spike before the main flow uses either:
+ * Which strokes are «the word» the person means (#75): pure rules over the page's strokes, in
+ * Android page pixels (docs.supernote.com, Coordinate System). Two rules:
  *
  * - circle: the last stroke is a closed loop drawn around earlier strokes; the word is the strokes
  *   inside it (the owner's flow, 2026-11-06);
- * - last strokes: walking back from the last stroke while each earlier one was written soon
- *   before, on the same line and close beside the group.
+ * - last word: by position only. Walk back by numInPage while the strokes sit on the same line;
+ *   group that line's letters into words by its own gaps; take the word of the newest letter, with
+ *   its dots, accents and bars.
  *
- * The thresholds are first guesses [INFERENCE]; the probe logs the measures that tune them.
+ * Every threshold is a ratio to a measure of the line itself, so the rule fits each person's
+ * handwriting (owner, 2026-11-07); the Word spacing setting scales the word gap. Pen-up times are
+ * not used: on the device, gaps inside a word (130–656 ms) and between words (578–1122 ms) overlap.
+ * The ratios are tuned on one device phrase [INFERENCE]; the probe logs every stroke of the line.
  */
 
 export type Point = {x: number; y: number};
 export type Rect = {left: number; top: number; right: number; bottom: number};
 export type PageSize = {width: number; height: number};
 
-/** One stroke: its sample points and when its pen-up arrived, in ms. */
-export type TimedStroke = {points: Point[]; at: number};
+/** One stroke of the page: its numInPage, the page's writing order, and its sample points. */
+export type PageStroke = {num: number; points: Point[]};
 
-export type WordRule = 'circle' | 'last strokes';
-export type WordChoice = {rule: WordRule; rect: Rect; strokes: number};
+export type WordRule = 'circle' | 'last word';
+
+/** What the rule made of one stroke: a letter on the line, a mark above it, or another line. */
+export type StrokePart = 'letter' | 'mark' | 'other line';
+export type StrokeVerdict = {
+  num: number;
+  rect: Rect;
+  part: StrokePart;
+  kept: boolean;
+};
+
+/** The line's own measures, in page pixels: they set the word gap and the lasso's padding. */
+export type LineMeasures = {height: number; letterGap: number; wordGap: number};
+
+export type WordChoice = {
+  rule: WordRule;
+  /** The rect to lasso: the word padded, within the page. */
+  rect: Rect;
+  strokes: number;
+  /** Every stroke the rule weighed, oldest first. */
+  verdicts: StrokeVerdict[];
+  measures: LineMeasures;
+};
 
 /** A loop is closed when its ends are this near, as a share of its larger side. */
 export const CLOSE_SHARE = 0.25;
@@ -27,14 +51,28 @@ export const CLOSE_SHARE = 0.25;
 export const LOOP_MIN_POINTS = 12;
 /** A stroke is inside the circle when at least this share of its points is. */
 export const INSIDE_SHARE = 0.8;
-/** The longest pause between two strokes of one word, in ms. */
-export const WORD_PAUSE_MS = 1500;
-/** Two strokes share a line when their vertical overlap is at least this share of the lower one. */
+/**
+ * A stroke is a letter of the line when its vertical overlap with the line's band is at least
+ * this share of the lower of the two heights: a tall «C», «f» or «h» overlaps the whole band.
+ */
 export const LINE_OVERLAP_SHARE = 0.3;
-/** The widest gap beside the group, as a share of the group's height: wider starts another word. */
-export const WORD_GAP_SHARE = 1;
-/** Margin added around the word before it is lassoed, in page pixels. */
-export const WORD_MARGIN_PX = 8;
+/** Shorter than this share of the band, a stroke is a mark: an i-dot, an accent, a bar. */
+export const MARK_SHARE = 0.6;
+/** A mark above the band belongs to the line when its bottom is within this many band heights. */
+export const MARK_REACH = 1;
+/** The smallest word gap, as a share of the line's median letter height. */
+export const WORD_GAP_SHARE = 0.8;
+/** A word gap is at least this many times the line's median gap between letters. */
+export const LETTER_GAP_RATIO = 3;
+/** Margin around the word before it is lassoed, as a share of the line's letter height. */
+export const LASSO_MARGIN_SHARE = 0.25;
+/**
+ * The lasso's smallest side, as a share of the letter height: lassoElements answered false for a
+ * 53 × 52 rect and true for 88 × 52 (build 15) [TO TEST, brief section 10.5].
+ */
+export const LASSO_MIN_SHARE = 2.5;
+
+type Measured = {num: number; rect: Rect};
 
 export function boundsOf(points: Point[]): Rect | null {
   if (points.length === 0) {
@@ -62,12 +100,29 @@ function union(rects: Rect[]): Rect | null {
   };
 }
 
-function strokesBounds(strokes: TimedStroke[]): Rect | null {
-  return union(
-    strokes
-      .map(stroke => boundsOf(stroke.points))
-      .filter((rect): rect is Rect => rect !== null),
-  );
+function height(rect: Rect): number {
+  return rect.bottom - rect.top;
+}
+
+/** The middle value; the mean of the two middle ones for an even count; 0 for none. */
+export function median(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function measure(strokes: PageStroke[]): Measured[] {
+  return strokes
+    .flatMap(stroke => {
+      const rect = boundsOf(stroke.points);
+      return rect === null ? [] : [{num: stroke.num, rect}];
+    })
+    .sort((a, b) => a.num - b.num);
 }
 
 /** A stroke whose two ends meet, relative to its size: a circle, an ellipse or a loop. */
@@ -76,7 +131,7 @@ export function isClosedLoop(points: Point[]): boolean {
   if (rect === null || points.length < LOOP_MIN_POINTS) {
     return false;
   }
-  const side = Math.max(rect.right - rect.left, rect.bottom - rect.top);
+  const side = Math.max(rect.right - rect.left, height(rect));
   const first = points[0];
   const last = points[points.length - 1];
   const ends = Math.hypot(last.x - first.x, last.y - first.y);
@@ -99,91 +154,275 @@ export function insideLoop(point: Point, loop: Point[]): boolean {
   return inside;
 }
 
+function isInside(stroke: PageStroke, loop: Point[]): boolean {
+  const inside = stroke.points.filter(point => insideLoop(point, loop));
+  return (
+    stroke.points.length > 0 &&
+    inside.length >= stroke.points.length * INSIDE_SHARE
+  );
+}
+
 /** The strokes that lie inside the loop, by the share of their points. */
 export function strokesInside(
-  strokes: TimedStroke[],
+  strokes: PageStroke[],
   loop: Point[],
-): TimedStroke[] {
-  return strokes.filter(stroke => {
-    if (stroke.points.length === 0) {
-      return false;
-    }
-    const inside = stroke.points.filter(point => insideLoop(point, loop));
-    return inside.length >= stroke.points.length * INSIDE_SHARE;
-  });
+): PageStroke[] {
+  return strokes.filter(stroke => isInside(stroke, loop));
 }
 
-/** The circle rule: the strokes before the last one that it encloses; null when none. */
-export function wordInCircle(strokes: TimedStroke[]): TimedStroke[] | null {
-  const circle = strokes[strokes.length - 1];
-  if (!circle || !isClosedLoop(circle.points)) {
-    return null;
+/** The band of a line: the median top and bottom of its letters, so one tall letter moves little. */
+function bandOf(letters: Rect[]): Rect {
+  return {
+    left: Math.min(...letters.map(rect => rect.left)),
+    right: Math.max(...letters.map(rect => rect.right)),
+    top: median(letters.map(rect => rect.top)),
+    bottom: median(letters.map(rect => rect.bottom)),
+  };
+}
+
+function partOf(rect: Rect, band: Rect): StrokePart {
+  const bandHeight = Math.max(height(band), 1);
+  const overlap =
+    Math.min(rect.bottom, band.bottom) - Math.max(rect.top, band.top);
+  if (
+    overlap >=
+    Math.max(Math.min(height(rect), bandHeight), 1) * LINE_OVERLAP_SHARE
+  ) {
+    return 'letter';
   }
-  const inside = strokesInside(strokes.slice(0, -1), circle.points);
-  return inside.length > 0 ? inside : null;
-}
-
-function sameLine(a: Rect, b: Rect): boolean {
-  const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-  const lower = Math.min(a.bottom - a.top, b.bottom - b.top);
-  return overlap >= Math.max(lower, 1) * LINE_OVERLAP_SHARE;
+  const small = height(rect) < bandHeight * MARK_SHARE;
+  const above =
+    rect.bottom <= band.top && rect.bottom >= band.top - bandHeight * MARK_REACH;
+  return small && above ? 'mark' : 'other line';
 }
 
 function horizontalGap(a: Rect, b: Rect): number {
   return Math.max(0, Math.max(a.left, b.left) - Math.min(a.right, b.right));
 }
 
-/** The last-strokes rule: the newest strokes written in one go, on one line, side by side. */
-export function lastStrokes(strokes: TimedStroke[]): TimedStroke[] {
-  const word: TimedStroke[] = [];
-  let group: Rect | null = null;
-  for (let i = strokes.length - 1; i >= 0; i--) {
-    const stroke = strokes[i];
-    const rect = boundsOf(stroke.points);
-    if (rect === null) {
-      continue;
+/** Letters side by side, overlapping or touching in x, merged left to right. */
+function clusters(letters: Measured[]): Measured[][] {
+  const sorted = [...letters].sort((a, b) => a.rect.left - b.rect.left);
+  const groups: {right: number; members: Measured[]}[] = [];
+  for (const letter of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && letter.rect.left <= last.right) {
+      last.members.push(letter);
+      last.right = Math.max(last.right, letter.rect.right);
+    } else {
+      groups.push({right: letter.rect.right, members: [letter]});
     }
-    if (group !== null) {
-      const newer = word[0];
-      const pause = newer.at - stroke.at;
-      const height = Math.max(group.bottom - group.top, 1);
-      if (
-        pause > WORD_PAUSE_MS ||
-        !sameLine(group, rect) ||
-        horizontalGap(group, rect) > height * WORD_GAP_SHARE
-      ) {
-        break;
-      }
-    }
-    word.unshift(stroke);
-    group = group === null ? rect : union([group, rect]);
   }
-  return word;
+  return groups.map(group => group.members);
 }
 
-/** The rect grown by the margin and kept inside the page, as lassoElements requires. */
-export function padToPage(rect: Rect, page: PageSize): Rect {
+function boundsOfAll(members: Measured[]): Rect {
+  return union(members.map(member => member.rect)) as Rect;
+}
+
+/** The line's measures from its letters' heights and gaps; `spacing` scales the word gap. */
+export function lineMeasures(
+  heights: number[],
+  gaps: number[],
+  spacing: number,
+): LineMeasures {
+  const letterHeight = median(heights);
+  const floor = letterHeight * WORD_GAP_SHARE;
+  const letterGap = median(gaps.filter(gap => gap < floor));
   return {
-    left: Math.max(0, Math.floor(rect.left - WORD_MARGIN_PX)),
-    top: Math.max(0, Math.floor(rect.top - WORD_MARGIN_PX)),
-    right: Math.min(page.width, Math.ceil(rect.right + WORD_MARGIN_PX)),
-    bottom: Math.min(page.height, Math.ceil(rect.bottom + WORD_MARGIN_PX)),
+    height: letterHeight,
+    letterGap,
+    wordGap: spacing * Math.max(floor, letterGap * LETTER_GAP_RATIO),
   };
 }
 
+/** The strokes of the newest line, by numInPage, ending at the first stroke of another line. */
+function newestLine(measured: Measured[]): {
+  line: Measured[];
+  band: Rect;
+  end: Measured | null;
+} {
+  const heights = measured.map(stroke => height(stroke.rect));
+  const typical = median(heights);
+  let seed = measured.length - 1;
+  while (seed > 0 && heights[seed] < typical * MARK_SHARE) {
+    seed--;
+  }
+  const letters = [measured[seed].rect];
+  let first = seed;
+  let end: Measured | null = null;
+  for (let i = seed - 1; i >= 0; i--) {
+    const part = partOf(measured[i].rect, bandOf(letters));
+    if (part === 'other line') {
+      end = measured[i];
+      break;
+    }
+    if (part === 'letter') {
+      letters.push(measured[i].rect);
+    }
+    first = i;
+  }
+  return {line: measured.slice(first), band: bandOf(letters), end};
+}
+
 /**
- * The word for the strokes written so far, oldest first: the circle rule when the last stroke
- * encloses earlier ones, else the last-strokes rule; null when there are no strokes.
+ * The last word by position: the newest line's letters grouped into words by the line's own word
+ * gap; the word of the newest letter, with each mark that lies nearer to it than to another word.
  */
-export function selectWord(
-  strokes: TimedStroke[],
+export function lastWord(
+  strokes: PageStroke[],
+  spacing: number,
+): {kept: number[]; verdicts: StrokeVerdict[]; measures: LineMeasures} | null {
+  const measured = measure(strokes);
+  if (measured.length === 0) {
+    return null;
+  }
+  const {line, band, end} = newestLine(measured);
+  const parts = line.map(stroke => partOf(stroke.rect, band));
+  const letters = line.filter((_, i) => parts[i] === 'letter');
+  const marks = line.filter((_, i) => parts[i] === 'mark');
+  const groups = clusters(letters.length > 0 ? letters : line);
+  const gaps = groups
+    .slice(1)
+    .map((group, i) => boundsOfAll(group).left - boundsOfAll(groups[i]).right);
+  const measures = lineMeasures(
+    letters.map(stroke => height(stroke.rect)),
+    gaps,
+    spacing,
+  );
+  const words: Measured[][] = [[...groups[0]]];
+  groups.slice(1).forEach((group, i) => {
+    if (gaps[i] >= measures.wordGap) {
+      words.push([...group]);
+    } else {
+      words[words.length - 1].push(...group);
+    }
+  });
+  const newest = Math.max(...(letters.length ? letters : line).map(s => s.num));
+  const chosen = words.findIndex(word => word.some(s => s.num === newest));
+  const kept = new Set(words[chosen].map(stroke => stroke.num));
+  for (const mark of marks) {
+    const distances = words.map(word =>
+      horizontalGap(mark.rect, boundsOfAll(word)),
+    );
+    const nearest = distances.indexOf(Math.min(...distances));
+    if (nearest === chosen && distances[nearest] < measures.wordGap) {
+      kept.add(mark.num);
+    }
+  }
+  const verdicts: StrokeVerdict[] = [
+    ...(end ? [{num: end.num, rect: end.rect, part: 'other line' as const, kept: false}] : []),
+    ...line.map((stroke, i) => ({
+      num: stroke.num,
+      rect: stroke.rect,
+      part: parts[i],
+      kept: kept.has(stroke.num),
+    })),
+  ];
+  return {kept: [...kept], verdicts, measures};
+}
+
+/**
+ * The rect grown by the margin, at least the smallest lasso on each side, and kept inside the
+ * page, as lassoElements requires. `letterHeight` is the line's measured letter height.
+ */
+export function padToPage(
+  rect: Rect,
+  letterHeight: number,
+  page: PageSize,
+): Rect {
+  const margin = letterHeight * LASSO_MARGIN_SHARE;
+  const least = letterHeight * LASSO_MIN_SHARE;
+  const grow = (low: number, high: number) =>
+    Math.max(margin, (least - (high - low)) / 2);
+  const x = grow(rect.left, rect.right);
+  const y = grow(rect.top, rect.bottom);
+  return {
+    left: Math.max(0, Math.floor(rect.left - x)),
+    top: Math.max(0, Math.floor(rect.top - y)),
+    right: Math.min(page.width, Math.ceil(rect.right + x)),
+    bottom: Math.min(page.height, Math.ceil(rect.bottom + y)),
+  };
+}
+
+function choice(
+  rule: WordRule,
+  measured: Measured[],
+  keptNums: number[],
+  verdicts: StrokeVerdict[],
+  measures: LineMeasures,
   page: PageSize,
 ): WordChoice | null {
-  const circled = wordInCircle(strokes);
-  const rule: WordRule = circled ? 'circle' : 'last strokes';
-  const word = circled ?? lastStrokes(strokes);
-  const rect = strokesBounds(word);
+  const kept = measured.filter(stroke => keptNums.includes(stroke.num));
+  const rect = union(kept.map(stroke => stroke.rect));
   return rect === null
     ? null
-    : {rule, rect: padToPage(rect, page), strokes: word.length};
+    : {
+        rule,
+        rect: padToPage(rect, measures.height, page),
+        strokes: kept.length,
+        verdicts,
+        measures,
+      };
+}
+
+/**
+ * The circle rule: the strokes before `circle` that it encloses; every stroke that meets the
+ * circle's rect is weighed. Null when the circle is not a closed loop or holds nothing.
+ */
+export function wordInCircle(
+  strokes: PageStroke[],
+  circle: PageStroke,
+  page: PageSize,
+): WordChoice | null {
+  const loop = boundsOf(circle.points);
+  if (loop === null || !isClosedLoop(circle.points)) {
+    return null;
+  }
+  const near = strokes.filter(stroke => {
+    const rect = boundsOf(stroke.points);
+    return (
+      stroke.num !== circle.num &&
+      rect !== null &&
+      rect.left <= loop.right &&
+      rect.right >= loop.left &&
+      rect.top <= loop.bottom &&
+      rect.bottom >= loop.top
+    );
+  });
+  const inside = near.filter(stroke => isInside(stroke, circle.points));
+  if (inside.length === 0) {
+    return null;
+  }
+  const measured = measure(near);
+  const keptNums = inside.map(stroke => stroke.num);
+  const verdicts = measured.map(stroke => ({
+    ...stroke,
+    part: 'letter' as const,
+    kept: keptNums.includes(stroke.num),
+  }));
+  const insideHeights = measured
+    .filter(stroke => keptNums.includes(stroke.num))
+    .map(stroke => height(stroke.rect));
+  const measures = lineMeasures(insideHeights, [], 1);
+  return choice('circle', measured, keptNums, verdicts, measures, page);
+}
+
+/** The last word of the page's strokes by position; null when there are none. */
+export function selectWord(
+  strokes: PageStroke[],
+  page: PageSize,
+  spacing: number,
+): WordChoice | null {
+  const word = lastWord(strokes, spacing);
+  return word === null
+    ? null
+    : choice(
+        'last word',
+        measure(strokes),
+        word.kept,
+        word.verdicts,
+        word.measures,
+        page,
+      );
 }

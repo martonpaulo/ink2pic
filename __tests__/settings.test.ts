@@ -145,6 +145,7 @@ describe('settingsStep (#70)', () => {
       size: 'medium',
       placement: 'below',
       style: 'drawings',
+      spacing: 'normal',
       sourcesOff: [],
       dataSaver: false,
     });
@@ -180,6 +181,7 @@ describe('settingsStep (#70)', () => {
       {type: 'choose', key: 'size', value: 'small'},
       {type: 'choose', key: 'placement', value: 'replace'},
       {type: 'choose', key: 'style', value: 'contour'},
+      {type: 'choose', key: 'spacing', value: 'tight'},
       {type: 'source', name: SOURCE_NAMES[0], on: false},
       {type: 'dataSaver', on: true},
     ];

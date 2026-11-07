@@ -575,7 +575,7 @@ The minimum is the Supernote's own system text: the note title in the bottom bar
 
 ### 8.9 No settings in the flow
 
-Defaults are chosen so the user never needs to adjust; every default is today's behaviour. The plugin's own Settings entry (`registerConfigButton`) opens the Settings screen, outside the flow ([#70](https://github.com/martonpaulo/ink2pic/issues/70)): picture size, where the picture goes, picture style (Drawings first; Photos too, which stops ranking photos below drawings and asks Commons for every picture at once; All as contour, which shows and inserts every picture as a contour drawing), the sources on or off (one always stays on), the data saver (12 results per source, thumbnails of 250 px on Commons and 200 px on Openclipart), Clear library list (an empty `library.json`, never a file deleted: Ink2Pic has no FILE:DELETE) and Reset all, each asked first. Each option is one row of value buttons, the current one with the selected bar; every tap is saved at once and used by the next search or insert, and the search cache keys an answer by the options that change it. Its Languages row opens the Languages screen: the query languages in the order they are tried, each tap saved at once to `MyStyle/Ink2Pic/settings.json`, and a Reset to the default, the system language then English ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
+Defaults are chosen so the user never needs to adjust; every default is today's behaviour. The plugin's own Settings entry (`registerConfigButton`) opens the Settings screen, outside the flow ([#70](https://github.com/martonpaulo/ink2pic/issues/70)): picture size, where the picture goes, picture style (Drawings first; Photos too, which stops ranking photos below drawings and asks Commons for every picture at once; All as contour, which shows and inserts every picture as a contour drawing), word spacing (Tight, Normal, Wide: how far apart the person writes words, section 8.11), the sources on or off (one always stays on), the data saver (12 results per source, thumbnails of 250 px on Commons and 200 px on Openclipart), Clear library list (an empty `library.json`, never a file deleted: Ink2Pic has no FILE:DELETE) and Reset all, each asked first. Each option is one row of value buttons, the current one with the selected bar; every tap is saved at once and used by the next search or insert, and the search cache keys an answer by the options that change it. Its Languages row opens the Languages screen: the query languages in the order they are tried, each tap saved at once to `MyStyle/Ink2Pic/settings.json`, and a Reset to the default, the system language then English ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
 
 ### 8.10 User-facing copy
 
@@ -654,6 +654,10 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `settings.style.drawings` | Drawings first |
 | `settings.style.photos` | Photos too |
 | `settings.style.contour` | All as contour |
+| `settings.spacing` | Word spacing in your handwriting |
+| `settings.spacing.tight` | Tight |
+| `settings.spacing.normal` | Normal |
+| `settings.spacing.wide` | Wide |
 | `settings.sources` | Picture sources (one stays on) |
 | `source.openclipart` | Openclipart |
 | `source.commons` | Commons |
@@ -681,6 +685,37 @@ shows its `error.permission.*` text, named as the Settings screen names it, foll
 download failure shows `error.download`; `error.unexpected` is the failed start
 ([#49](https://github.com/martonpaulo/ink2pic/issues/49)). Every negative code lives in
 `src/sdk/result.ts`.
+
+### 8.11 The last word
+
+«Lasso last word» chooses the word the person wrote last from the page's strokes, by position
+only ([#75](https://github.com/martonpaulo/ink2pic/issues/75), `src/flow/selectWord.ts`). Page
+elements carry no time, and on the owner's device the pauses inside a word (130–656 ms) and
+between words (578–1122 ms) overlap, so no time threshold is used [CONFIRMED in the build 15
+logs]. The grouping adapts to each person's handwriting: every constant is a ratio to a value
+measured on the chosen line (owner, 2026-11-07).
+
+1. Read the page with `getElements(page, notePath)`, with no Probe armed, keep the newest 60
+   strokes, read their points, and recycle every element read.
+2. Start at the newest stroke that is not a mark and walk back by `numInPage` while the strokes sit
+   on its line. The line's band is the median top and bottom of its letters. A stroke is a letter
+   when it overlaps the band by at least 0.3 of the lower of the two heights, so a tall «C», «f» or
+   «h» stays in. A stroke shorter than 0.6 of the band whose bottom lies at most one band height
+   above it is a mark (an i-dot, j-dot, accent or bar): it never ends the walk. The first other
+   stroke ends it.
+3. Merge letters that overlap in x, then split the line into words where the gap reaches the word
+   gap: `spacing × max(0.8 × letter height, 3 × median letter gap)`, where the letter height is
+   the median letter height and the letter gaps are the line's gaps under 0.8 of it.
+4. The word holding the newest letter is chosen, with every mark nearer to it than to another word.
+5. The rect is padded by 0.25 of the letter height, grown to at least 2.5 letter heights on each
+   side and kept within the page. `lassoElements` answered false for a 53 × 52 rect and true for
+   88 × 52 on build 15 [TO TEST: the smallest rect it takes]. A false answer is logged and shown.
+
+The Word spacing setting sets `spacing`: Tight 0.7, Normal 1, Wide 1.4 [INFERENCE: tuned on one
+hand]. On the owner's line (letter gaps 6–20 px, word gaps 48–60 px, x-height about 35–40 px) the
+word gap is about 33 px. Every stroke of the chosen line is logged with its `numInPage`, rect and
+whether it was kept, so the next device round can be replayed
+([#79](https://github.com/martonpaulo/ink2pic/issues/79)).
 
 ---
 

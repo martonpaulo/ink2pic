@@ -134,6 +134,7 @@ export function SettingsScreen({
           <ChoiceRow name="placement" settings={settings} onChange={onChange} />
           <Text style={shared.text}>{copy['settings.placementNote']}</Text>
           <ChoiceRow name="style" settings={settings} onChange={onChange} />
+          <ChoiceRow name="spacing" settings={settings} onChange={onChange} />
           <Option label={copy['settings.sources']}>
             {SOURCE_NAMES.map(name => {
               const on = sourceOn(settings, name);

@@ -24,6 +24,8 @@ export const CHOICES = {
   placement: ['below', 'replace', 'beside'],
   /** Drawings first (today), photos ranked as drawings, or every picture as a contour drawing. */
   style: ['drawings', 'photos', 'contour'],
+  /** How far apart the person writes words: it scales the measured word gap (#75). */
+  spacing: ['tight', 'normal', 'wide'],
 } as const;
 
 export type ChoiceKey = keyof typeof CHOICES;
@@ -35,6 +37,7 @@ export type Settings = {
   size: Choice<'size'>;
   placement: Choice<'placement'>;
   style: Choice<'style'>;
+  spacing: Choice<'spacing'>;
   /** The sources turned off, by adapter name; a source not listed is on, so a new one is on. */
   sourcesOff: readonly string[];
   /** Fewer results per search and smaller thumbnails. */
@@ -46,6 +49,16 @@ export const SIZE_WIDTHS: Record<Choice<'size'>, number> = {
   small: 400,
   medium: 640,
   large: 960,
+};
+
+/**
+ * The scale of the word gap the last-word rule measures on the line, for each Word spacing (#75):
+ * tight hands leave small gaps between words, wide hands large gaps between letters [INFERENCE].
+ */
+export const SPACING_SCALES: Record<Choice<'spacing'>, number> = {
+  tight: 0.7,
+  normal: 1,
+  wide: 1.4,
 };
 
 /** Every source the search has, by adapter name, in the order it searches them. */
@@ -62,6 +75,7 @@ export const RESET_GROUPS: Record<keyof Settings, string> = {
   size: 'insert',
   placement: 'insert',
   style: 'insert',
+  spacing: 'handwriting',
   sourcesOff: 'search',
   dataSaver: 'search',
 };
@@ -78,6 +92,7 @@ export function defaultSettings(system: string | null): Settings {
     size: 'medium',
     placement: 'below',
     style: 'drawings',
+    spacing: 'normal',
     sourcesOff: [],
     dataSaver: false,
   };
@@ -270,6 +285,7 @@ export function parseSettings(
   const size = choice('size');
   const placement = choice('placement');
   const style = choice('style');
+  const spacing = choice('spacing');
   const sourcesOff =
     'sourcesOff' in fields ? readSourcesOff(fields.sourcesOff, problems) : null;
   const dataSaver = readField(
@@ -285,6 +301,7 @@ export function parseSettings(
       size,
       placement,
       style,
+      spacing,
       sourcesOff: sourcesOff ?? defaults.sourcesOff,
       dataSaver,
     },

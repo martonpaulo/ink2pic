@@ -5,8 +5,14 @@
  *
  * Once armed (by Probe in the Log view), each pen-up logs the last element and the pen; a circle
  * drawn around earlier strokes is lassoed natively with the view closed. Probe also lassoes the
- * page's last picture and reads the lasso back; Lasso last word lassoes the last strokes. Both
- * close the view after the lasso, so the person sees whether the native lasso stays.
+ * page's last picture and reads the lasso back. Lasso last word reads the page's strokes, with no
+ * Probe first, and lassoes the last word by position. Both close the view after a lasso that took,
+ * so the person sees whether the native lasso stays; a lasso that did not take is said on screen.
+ *
+ * The calls made: getCurrentFilePath, getCurrentPageNum, getPageSize, getElements,
+ * getLastElement, the stroke points' size and getRange, recycle, getPenInfo, lassoElements,
+ * getLassoRect, getLassoElements, closePluginView and the two listeners. None deletes, inserts or
+ * changes an element.
  */
 import {brief, log, logged} from '../log/memory';
 import {
@@ -28,12 +34,16 @@ import {
   strokePoints,
 } from '../sdk/pen';
 import {closePluginView} from '../sdk/plugin';
+import {getSettings} from '../storage/settings';
+import {SPACING_SCALES} from '../settings/settings';
 import {
   boundsOf,
   PageSize,
+  PageStroke,
   selectWord,
-  TimedStroke,
+  isClosedLoop,
   WordChoice,
+  wordInCircle,
 } from './selectWord';
 
 /** `Element.TYPE_STROKE` and `TYPE_PICTURE` (docs, Element). */
@@ -44,8 +54,8 @@ const ACTION_DOWN = 0;
 const ACTION_UP = 1;
 const ACTION_MOVE = 2;
 const ACTION_CANCEL = 3;
-/** Strokes kept for the word rules: a few words' worth. */
-export const PROBE_STROKES = 40;
+/** The newest strokes of the page whose points the word rules read: a few lines' worth. */
+export const PROBE_STROKES = 60;
 /** Points a log line shows of a circle, spread over the whole loop. */
 const SAMPLE_POINTS = 8;
 /** Long enough for a picture's path and rect on one line. */
@@ -60,7 +70,8 @@ type SdkElement = {
 };
 
 let stops: (() => void)[] = [];
-let strokes: TimedStroke[] = [];
+/** When the last pen-up arrived, for the pause the log shows. */
+let lastAt: number | null = null;
 let context: PageContext | null = null;
 let motion: {points: PenPoint[]; toolType: number} | null = null;
 /** Pen-ups are handled one after another, in the order they arrive. */
@@ -74,7 +85,7 @@ export function probeArmed(): boolean {
 export function stopPenProbe(): void {
   stops.forEach(stop => stop());
   stops = [];
-  strokes = [];
+  lastAt = null;
   context = null;
   motion = null;
   queue = Promise.resolve();
@@ -96,10 +107,6 @@ async function readContext(): Promise<PageContext | null> {
   );
   if (!size.ok) {
     return null;
-  }
-  if (context && (context.path !== path.value || context.page !== page.value)) {
-    log('probe: another page, the strokes so far are dropped');
-    strokes = [];
   }
   context = {path: path.value, page: page.value, size: size.value};
   return context;
@@ -137,12 +144,13 @@ function typeCounts(elements: object[]): string {
  * lassoElements selects what the rect holds, what a lassoed picture carries, and whether the
  * lasso changes the pen.
  */
-async function lassoAndRead(rect: Rect, expected: string): Promise<void> {
+async function lassoAndRead(rect: Rect, expected: string): Promise<boolean> {
   await logged('getPenInfo (before the lasso)', getPenInfo);
   log(`probe lasso: rect ${brief(rect)}, expected ${expected}`);
   const lassoed = await logged('lassoElements', () => lassoElements(rect));
-  if (!lassoed.ok) {
-    return;
+  if (!lassoed.ok || !lassoed.value) {
+    log('probe lasso: lassoElements did not take the rect; nothing more is read');
+    return false;
   }
   await logged('getLassoRect', getLassoRect);
   const held = await logged('getLassoElements', getLassoElements);
@@ -162,11 +170,12 @@ async function lassoAndRead(rect: Rect, expected: string): Promise<void> {
       );
   }
   await logged('getPenInfo (after the lasso)', getPenInfo);
+  return true;
 }
 
 async function handlePenUp(elements: object[], at: number): Promise<void> {
-  const previous = strokes[strokes.length - 1];
-  const pause = previous ? `${at - previous.at} ms after the last` : 'first';
+  const pause = lastAt === null ? 'first' : `${at - lastAt} ms after the last`;
+  lastAt = at;
   log(
     `probe pen-up: ${elements.length} element(s), ${pause}; ${elements
       .map(describe)
@@ -188,13 +197,18 @@ async function handlePenUp(elements: object[], at: number): Promise<void> {
     } points, at ${at}`,
   );
   await logged('getPenInfo', getPenInfo);
-  if (element.type !== STROKE_TYPE || !points.ok || page === null) {
+  if (
+    element.type !== STROKE_TYPE ||
+    !points.ok ||
+    page === null ||
+    !isClosedLoop(points.value)
+  ) {
     return;
   }
-  strokes = [...strokes, {points: points.value, at}].slice(-PROBE_STROKES);
-  const word = selectWord(strokes, page.size);
+  const circle = {num: element.numInPage ?? -1, points: points.value};
+  const word = wordInCircle(await readPageStrokes(page), circle, page.size);
   logWord(word);
-  if (word?.rule === 'circle') {
+  if (word !== null) {
     log(
       `probe circle: ${points.value.length} points, rect ${brief(
         rect,
@@ -207,13 +221,64 @@ async function handlePenUp(elements: object[], at: number): Promise<void> {
   }
 }
 
-function logWord(word: WordChoice | null): void {
+/**
+ * The page's newest PROBE_STROKES strokes with their points, oldest first. Every element read is
+ * recycled, as the SDK requires (docs, Element Caching and Release).
+ */
+async function readPageStrokes(page: PageContext): Promise<PageStroke[]> {
+  const started = Date.now();
+  const all = await logged('getElements', () =>
+    getElements(page.page, page.path),
+  );
+  if (!all.ok) {
+    return [];
+  }
+  const kept: PageStroke[] = [];
+  try {
+    const strokes = all.value
+      .map(element => element as SdkElement)
+      .filter(element => element.type === STROKE_TYPE)
+      .sort((a, b) => (a.numInPage ?? 0) - (b.numInPage ?? 0))
+      .slice(-PROBE_STROKES);
+    for (const element of strokes) {
+      const points = await strokePoints(element);
+      if (points.ok) {
+        kept.push({num: element.numInPage ?? 0, points: points.value});
+      }
+    }
+  } finally {
+    for (const element of all.value) {
+      await recycleElement(element);
+    }
+  }
   log(
-    word
-      ? `probe word: rule ${word.rule}, ${word.strokes} stroke(s), rect ${brief(
-          word.rect,
-        )}`
-      : 'probe word: none',
+    `probe page strokes: ${all.value.length} element(s), ${
+      kept.length
+    } stroke(s) read, ${Date.now() - started} ms`,
+  );
+  return kept;
+}
+
+/** The choice, then every stroke the rule weighed: the next device round's replay data (#79). */
+function logWord(word: WordChoice | null, spacing = ''): void {
+  if (word === null) {
+    log('probe word: none');
+    return;
+  }
+  const {height, letterGap, wordGap} = word.measures;
+  log(
+    `probe word: rule ${word.rule}, ${word.strokes} stroke(s), rect ${brief(
+      word.rect,
+    )}, letter height ${Math.round(height)}, letter gap ${Math.round(
+      letterGap,
+    )}, word gap ${Math.round(wordGap)}${spacing}`,
+  );
+  word.verdicts.forEach(verdict =>
+    log(
+      `probe line stroke #${verdict.num} rect ${brief(verdict.rect)} ${
+        verdict.part
+      }, ${verdict.kept ? 'kept' : 'left out'}`,
+    ),
   );
 }
 
@@ -315,19 +380,33 @@ export async function runProbe(): Promise<void> {
   await logged('closePluginView', closePluginView);
 }
 
-/** Lasso last word: lassoes the word the rules choose from the strokes so far, then closes. */
-export async function lassoLastWord(): Promise<void> {
+/** What Lasso last word ended with, for the screen: null when the lasso took. */
+export type LastWordProblem = 'noStrokes' | 'lassoFailed';
+
+/**
+ * Lasso last word: reads the page's strokes, cold, lassoes the last word by position, then
+ * closes the view; the view stays open with the problem when nothing was lassoed.
+ */
+export async function lassoLastWord(): Promise<LastWordProblem | null> {
   await queue;
   const page = await readContext();
-  const word = page ? selectWord(strokes, page.size) : null;
-  logWord(word);
+  const strokes = page ? await readPageStrokes(page) : [];
+  const spacing = (await getSettings()).spacing;
+  const word = page
+    ? selectWord(strokes, page.size, SPACING_SCALES[spacing])
+    : null;
+  logWord(word, `, spacing ${spacing}`);
   if (word === null) {
-    log('probe: no strokes yet; tap Probe, write a word, then try again');
-    return;
+    log('probe: no strokes on this page yet');
+    return 'noStrokes';
   }
-  await lassoAndRead(
+  const took = await lassoAndRead(
     word.rect,
     `${word.strokes} stroke(s) by the ${word.rule} rule`,
   );
+  if (!took) {
+    return 'lassoFailed';
+  }
   await logged('closePluginView', closePluginView);
+  return null;
 }
