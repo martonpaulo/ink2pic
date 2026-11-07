@@ -12,12 +12,16 @@ import {fallbackQueries, normalise} from './query';
 import {DEFAULT_SCORERS, PHOTO_SCORERS, rankForEink} from './rank';
 import type {FailureKind, SearchResult, SourceOutcome} from './types';
 
-export type SourceStatus =
+export type SourceStatus = (
   | {state: 'ok'; count: number}
   | {state: 'empty'}
   | {state: 'failed'; kind: FailureKind; message: string}
   /** Not asked: its breaker is open after failing twice in a row (#65). */
-  | {state: 'skipped'; kind: FailureKind; message: string};
+  | {state: 'skipped'; kind: FailureKind; message: string}
+) & {
+  /** The source answers from data in the plugin, with no request, as OpenMoji (#82, #99). */
+  local?: true;
+};
 
 export type SearchOutcome = {
   results: SearchResult[];
@@ -192,10 +196,13 @@ async function searchOnce(
   const statuses: Record<string, SourceStatus> = {};
   sources.forEach((source, i) => {
     const outcome = outcomes[i];
-    statuses[source.name] =
-      skipped[i] && !outcome.ok
+    statuses[source.name] = {
+      ...(skipped[i] && !outcome.ok
         ? {state: 'skipped', kind: outcome.kind, message: outcome.message}
-        : status(outcome);
+        : status(outcome)),
+      // Marked from the searched adapters, so a cached answer and any adapter list agree (#99).
+      ...(source.localIndex && {local: true as const}),
+    };
   });
   // Adult pictures never show, from any source (#69).
   const results = rankForEink(

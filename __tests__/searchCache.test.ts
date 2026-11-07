@@ -163,7 +163,7 @@ describe('cachedSearch', () => {
     });
     expect(result.problem).toBe('unknown search cache version 3');
     await result.saved;
-    expect(JSON.parse(files[PATH]).version).toBe(4);
+    expect(JSON.parse(files[PATH]).version).toBe(CACHE_VERSION);
   });
 
   it('keeps a narrow Commons original, so a cached result is never upscaled (#55)', async () => {

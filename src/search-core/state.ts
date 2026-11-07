@@ -3,7 +3,6 @@
  * never reads the outcome's flags itself.
  */
 import {isThin} from './pages';
-import {DEFAULT_ADAPTERS} from './registry';
 import type {SearchOutcome} from './search';
 import type {FailureKind, SearchResult} from './types';
 
@@ -32,22 +31,15 @@ export type SearchStateKind = SearchState['kind'];
 /** Failure kinds that mean the device has no network, not that one source is down. */
 const OFFLINE_KINDS: ReadonlySet<FailureKind> = new Set(['network', 'timeout']);
 
-/** Sources that answer from data in the plugin, with no request (OpenMoji). */
-const LOCAL_SOURCES: ReadonlySet<string> = new Set(
-  DEFAULT_ADAPTERS.filter(adapter => adapter.localIndex).map(
-    adapter => adapter.name,
-  ),
-);
-
 /** True when every source that needs the network failed for the network (#82, #91). */
 export function networkDown(outcome: SearchOutcome): boolean {
-  const others = Object.entries(outcome.statuses).filter(
-    ([name]) => !LOCAL_SOURCES.has(name),
+  const others = Object.values(outcome.statuses).filter(
+    status => !status.local,
   );
   return (
     others.length > 0 &&
     others.every(
-      ([, status]) =>
+      status =>
         (status.state === 'failed' || status.state === 'skipped') &&
         OFFLINE_KINDS.has(status.kind),
     )

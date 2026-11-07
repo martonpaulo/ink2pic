@@ -634,8 +634,11 @@ describe('the source-down line shows only on a thin page (#82)', () => {
       kind: 'network',
       message: 'Network request failed',
     });
-  const symbols = (...results: SearchResult[]) =>
-    answering('openmoji', {ok: true, results});
+  const local = (name: string, results: SearchResult[]): SourceAdapter => ({
+    ...answering(name, {ok: true, results}),
+    localIndex: true,
+  });
+  const symbols = (...results: SearchResult[]) => local('openmoji', results);
   const offlineKind = async (...results: SearchResult[]) =>
     searchState(
       await searchAll(
@@ -644,6 +647,21 @@ describe('the source-down line shows only on a thin page (#82)', () => {
         {correct: false},
       ),
     ).kind;
+
+  it('reads the local sources from the searched adapters, not the default list (#99)', async () => {
+    const outcome = await searchAll(
+      'soup',
+      [offline('commons'), local('bundled', [result('b1')])],
+      {correct: false},
+    );
+    expect(outcome.statuses.bundled).toEqual({
+      state: 'ok',
+      count: 1,
+      local: true,
+    });
+    expect(outcome.statuses.commons.local).toBeUndefined();
+    expect(searchState(outcome).kind).toBe('offline');
+  });
 
   it('offline, a local index alone is no answer: the state is offline (#82)', async () => {
     expect(await offlineKind(result('o1'))).toBe('offline');

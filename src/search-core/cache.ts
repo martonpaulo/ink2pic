@@ -36,9 +36,10 @@ export type CacheOptions = {
  * Raised when cached results would show in an order the current ranking no longer gives: 2 since
  * the drawing-first ranking of #43, so a search from build 0.1.0 (12) is not reused (#59); 3 since
  * the adult filter, so no cached search shows a picture it now leaves out (#69); 4 since entries
- * keep `canonical`, which the measured order and the logo lead read (#99).
+ * keep `canonical`, which the measured order and the logo lead read (#99); 5 since each status
+ * says whether its source is local, which offline detection reads (#99).
  */
-export const CACHE_VERSION = 4;
+export const CACHE_VERSION = 5;
 /** Newest entries kept; the oldest is evicted first. DEFAULT, no device measurement yet. */
 export const CACHE_LIMIT = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -153,7 +154,11 @@ function isStoredResult(value: unknown): value is StoredResult {
 }
 
 function isStatus(value: unknown): value is SourceStatus {
-  return isObject(value) && typeof value.state === 'string';
+  return (
+    isObject(value) &&
+    typeof value.state === 'string' &&
+    (value.local === undefined || value.local === true)
+  );
 }
 
 function isEntry(value: unknown): value is Entry {
