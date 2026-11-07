@@ -71,6 +71,36 @@ public final class EinkPixelsTest {
     check(EinkPixels.sampleSize(640, 480, 640) == 1, "no sample at target width");
     check(EinkPixels.sampleSize(300, 200, 640) == 1, "no sample below target width");
     check(EinkPixels.sampleSize(700, 40000, 640) == 8, "sample fits the edge and pixel caps");
+    // #81: faint light-grey lines on white get their darkest ink black; other pictures stay.
+    int side = EinkPixels.MEASURE_WIDTH;
+    int size = side * side;
+    int[] faint = new int[size];
+    Arrays.fill(faint, 0xFFFFFFFF);
+    for (int x = 100; x < 300; x++) {
+      faint[200 * side + x] = 0xFFB4B4B4;
+    }
+    check(EinkPixels.darken(faint, side, side), "faint lines are darkened");
+    check((faint[200 * side + 150] & 0xFF) == 0 && (faint[0] & 0xFF) == 255,
+        "their darkest ink is black and the paper stays white: " + (faint[200 * side + 150] & 0xFF));
+    int[] dark = new int[size];
+    Arrays.fill(dark, 0xFFFFFFFF);
+    for (int x = 100; x < 300; x++) {
+      dark[200 * side + x] = 0xFF202020;
+    }
+    check(!EinkPixels.darken(dark, side, side) && (dark[200 * side + 150] & 0xFF) == 0x20,
+        "dark lines stay as they are");
+    int[] paper = new int[size];
+    Arrays.fill(paper, 0xFFFFFFFF);
+    check(!EinkPixels.darken(paper, side, side), "white paper has nothing to darken");
+    int[] fill = new int[size];
+    Arrays.fill(fill, 0xFFFFFFFF);
+    for (int y = 100; y < 300; y++) {
+      for (int x = 100; x < 300; x++) {
+        fill[y * side + x] = 0xFFB4B4B4;
+      }
+    }
+    check(!EinkPixels.darken(fill, side, side) && (fill[200 * side + 200] & 0xFF) == 0xB4,
+        "a light-grey fill is not line work and stays grey");
     if (failures > 0) {
       System.err.println(failures + " failed");
       System.exit(1);

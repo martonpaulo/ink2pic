@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Contact sheets of a run (#63): each query's page 1 as the app's 2 x 3 grid, in grayscale as
- * on e-ink, with each tile's title, source and score. Rendered to PNG with the Playwright and
+ * on e-ink, with each tile's title, source and score, and what its pixels say: its kind, and the
+ * contour drawing the device shows in its place when it converts it (#81). Rendered to PNG with the Playwright and
  * Chromium the machine already has, `QUERIES_PER_SHEET` queries per image, into
  * `out/<run>/sheets/`.
  *
@@ -47,17 +48,23 @@ body { margin: 0; padding: 16px; background: #fff; color: #000; width: ${SHEET_W
 
 /** The tile's place on page 1 (0-based, as `flags` in a judgment names it) and its signals. */
 function tileHtml(tile, place, files) {
-  const file = files.get(tile.thumb);
+  // The device shows a converted picture as its contour drawing (#81).
+  const file = tile.pixels?.file ?? files.get(tile.thumb);
   const picture = file
     ? `<img src="${escape(pathToFileURL(file))}">`
     : '<span>no thumbnail</span>';
   const score = tile.canonical ? 'canonical' : `score ${tile.score}`;
   const format = (tile.mime ?? '').replace('image/', '');
+  const pixels = tile.pixels
+    ? `${tile.pixels.kind}${tile.pixels.converted ? ' → contour' : ''}${
+        tile.pixels.darkened ? ' → darkened' : ''
+      } · line ${tile.pixels.lineArt}`
+    : 'not measured';
   return `<div class="tile"><div class="img">${picture}</div>
 <div class="title">${escape(tile.title)}</div>
 <div class="meta">[${place}] ${escape(tile.source)} · ${escape(
     format,
-  )} · ${score}</div></div>`;
+  )} · ${score}<br>${escape(pixels)}</div></div>`;
 }
 
 function caseHtml(entry, number, files) {

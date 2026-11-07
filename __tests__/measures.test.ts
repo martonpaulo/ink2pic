@@ -7,6 +7,7 @@ import {
 import {logLines, startLog} from '../src/log/memory';
 import {ok, fail, MODULE_CODE} from '../src/sdk/result';
 import {
+  isFaintLines,
   lineArt,
   Measures,
   needsContour,
@@ -39,6 +40,8 @@ const paper: Measures = {
   edgeBox: 0,
   colours: 1,
   objectShare: 0,
+  darkest: 0,
+  faintLines: false,
   ms: 2,
 };
 
@@ -135,8 +138,44 @@ describe('pixelKind (#66)', () => {
     expect(pixelKind(signature)).toBe('text');
     expect(pixelKind(faint)).toBe('faint');
     expect(pixelKind(blank)).toBe('blank');
-    expect(pixelKind({...glossy, border: 0.86, white: 0.4})).toBe('clean');
-    expect(pixelKind(glossy)).toBe('plain');
+    const light = {...glossy, dark: 0.2, ink: 0.2};
+    expect(pixelKind({...light, border: 0.86, white: 0.4})).toBe('clean');
+    expect(pixelKind(light)).toBe('plain');
+  });
+
+  it('names dark clip art on paper solid: a silhouette, a dark shaded apple (#81)', () => {
+    expect(pixelKind(glossy)).toBe('solid');
+    // A silhouette under the dark share, known by its thick solid fill.
+    expect(
+      pixelKind({...outline, dark: 0.27, ink: 0.27, thickness: 28, white: 0.7}),
+    ).toBe('solid');
+    // Thick line art (a clock face) stays as it is.
+    expect(
+      pixelKind({...outline, dark: 0.19, ink: 0.3, thickness: 7.8, white: 0.7}),
+    ).not.toBe('solid');
+  });
+});
+
+describe('faint line work (#81)', () => {
+  const map = {...outline, darkest: 190, faintLines: true};
+
+  it('reads the native rule: light-grey lines on paper', () => {
+    expect(isFaintLines(map)).toBe(true);
+    expect(isFaintLines(outline)).toBe(false);
+  });
+
+  it('ranks a picture still faint after the clear ones', () => {
+    const scorer = pixelScorer(
+      new Map([
+        ['still', map],
+        ['clear', outline],
+        ['thin', faint],
+      ]),
+    );
+    const intent = readIntent('spain');
+    const score = (id: string) => scorer(result(id), intent);
+    expect(score('still')).toBeLessThan(score('clear'));
+    expect(score('thin')).toBeLessThan(score('clear'));
   });
 });
 
@@ -145,7 +184,12 @@ describe('needsContour (#66, owner decision D5 A)', () => {
     expect(needsContour(darkPainting, 'cervantes')).toBe(true);
     expect(needsContour(photo, 'jesse jackson')).toBe(true);
     expect(needsContour(outline, 'cat')).toBe(false);
-    expect(needsContour(glossy, 'apple')).toBe(false);
+    expect(needsContour({...glossy, dark: 0.2, ink: 0.2}, 'apple')).toBe(false);
+  });
+
+  it('converts dark clip art too: «apple» shows no black silhouette (#81)', () => {
+    expect(needsContour(glossy, 'apple')).toBe(true);
+    expect(needsContour(glossy, 'apple photo')).toBe(false);
   });
 
   it('converts every picture not already line work when the query asks for an outline', () => {
@@ -280,7 +324,8 @@ describe('measureFirstPages (#66)', () => {
   const byPath: Record<string, Measures> = {
     '/p/thumbs/dark': darkPainting,
     '/p/thumbs/line': outline,
-    '/p/thumbs/gloss': glossy,
+    // Light enough to stay as it is (#81).
+    '/p/thumbs/gloss': {...glossy, dark: 0.2, ink: 0.2},
     // The dark painting's contour: thin lines on white.
     '/p/thumbs/dark.contour.png': {...outline, colours: 16},
   };
@@ -340,6 +385,41 @@ describe('measureFirstPages (#66)', () => {
     );
     expect(isContourUri(measured.contourThumbs.get('dark') ?? '')).toBe(true);
     expect(measured.contourThumbs.has('line')).toBe(false);
+  });
+
+  it('shows faint light-grey lines darkened, inserted darkened, not as a contour (#81)', async () => {
+    const map = {...outline, darkest: 190, faintLines: true};
+    const darkened: string[] = [];
+    const base = deps();
+    const measured = await measureFirstPages(
+      [result('map'), result('line')],
+      '/p',
+      'spain',
+      {
+        ...base,
+        analyzer: {
+          ...base.analyzer,
+          measure: async path =>
+            path === '/p/thumbs/map'
+              ? ok(map)
+              : path === '/p/thumbs/map.dark.png'
+              ? ok({...map, darkest: 0, faintLines: false})
+              : base.analyzer.measure(path),
+          darken: async (src, dest, width) => {
+            darkened.push(`${src} -> ${dest} at ${width}`);
+            return ok({width: 330, height: 400, ms: 5});
+          },
+        },
+      },
+    );
+    expect(darkened).toEqual([
+      '/p/thumbs/map -> /p/thumbs/map.dark.png at 400',
+    ]);
+    expect(converted).toEqual([]);
+    const shown = measured.contourThumbs.get('map') ?? '';
+    expect(shown).toBe('file:///p/thumbs/map.dark.png');
+    expect(isContourUri(shown)).toBe(false);
+    expect(measured.measures.get('map')?.darkest).toBe(0);
   });
 
   it('shows every measured picture as its contour drawing under All contour (#70)', async () => {

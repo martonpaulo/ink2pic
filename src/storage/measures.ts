@@ -19,4 +19,6 @@ export const deviceAnalyzer: ImageAnalyzer = {
   // The insert's own preparation, so the grid shows what goes in.
   toContour: (src, dest, width) =>
     prepareForEink(src, dest, width, 'png', true),
+  // The same preparation without a contour: faint lines darkened (#81).
+  darken: (src, dest, width) => prepareForEink(src, dest, width, 'png', false),
 };

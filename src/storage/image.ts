@@ -37,8 +37,8 @@ type NativeImage = {
 
 /**
  * Writes `dest` from `src`: flattened on white, scaled down to `width` (never up), with
- * `contour` turned into a contour drawing (#66), gray with the e-ink contrast curve, and for PNG
- * quantized to 16 levels.
+ * `contour` turned into a contour drawing (#66), else faint light-grey lines darkened (#81), gray
+ * with the e-ink contrast curve, and for PNG quantized to 16 levels.
  */
 export function prepareForEink(
   src: string,

@@ -13,6 +13,7 @@ import {log} from '../log/memory';
 import {
   dropNearDuplicates,
   ImageAnalyzer,
+  isFaintLines,
   lineArt,
   MEASURED_RESULTS,
   Measures,
@@ -38,6 +39,8 @@ export const LATER_MEASURE_LIMIT_MS = 2000;
 const FILE_PREFIX = 'file://';
 /** The converted thumbnail, beside the stored one in the private folder, counted by its store. */
 const CONTOUR_SUFFIX = '.contour.png';
+/** A faint picture's darkened thumbnail (#81): not a contour drawing, so it inserts darkened too. */
+const DARKENED_SUFFIX = '.dark.png';
 /** Thumbnails come at 330 and 400 px; never scaled up. */
 const CONTOUR_THUMB_WIDTH = 400;
 const DIGITS = 2;
@@ -46,7 +49,10 @@ export type MeasuredPages = {
   results: SearchResult[];
   /** The measures the order used, by result id: of the converted thumbnail when converted. */
   measures: ReadonlyMap<string, Measures>;
-  /** Thumbnails shown as their contour drawing: result id to `file://` URI. */
+  /**
+   * Thumbnails shown prepared, result id to `file://` URI: as their contour drawing, or darkened
+   * when faint (#81); `isContourUri` tells which.
+   */
   contourThumbs: ReadonlyMap<string, string>;
 };
 
@@ -122,8 +128,13 @@ async function measureFile(
       DIGITS,
     )} in ${Math.round(m.ms)} ms`,
   );
-  if ((!allContour && !needsContour(m, query)) || late()) {
+  if (late()) {
     return {measures: m, contour: null};
+  }
+  if (!allContour && !needsContour(m, query)) {
+    return isFaintLines(m)
+      ? darkenFile(result, uri, deps, m)
+      : {measures: m, contour: null};
   }
   const path = uri.slice(FILE_PREFIX.length);
   const dest = `${path}${CONTOUR_SUFFIX}`;
@@ -140,6 +151,38 @@ async function measureFile(
   const again = await deps.analyzer.measure(dest);
   log(
     `contour ${result.id}: ${Math.round(converted.value.ms)} ms, now ${
+      again.ok ? pixelKind(again.value) : again.message
+    }`,
+  );
+  return {
+    measures: again.ok ? again.value : m,
+    contour: `${FILE_PREFIX}${dest}`,
+  };
+}
+
+/**
+ * Faint light-grey line work (#81): the tile shows it darkened, as the insert prepares it, and it
+ * is measured again, so a picture still faint ranks after the clear ones.
+ */
+async function darkenFile(
+  result: SearchResult,
+  uri: string,
+  deps: MeasureDeps,
+  m: Measures,
+): Promise<Measured> {
+  if (!deps.analyzer.darken) {
+    return {measures: m, contour: null};
+  }
+  const path = uri.slice(FILE_PREFIX.length);
+  const dest = `${path}${DARKENED_SUFFIX}`;
+  const darkened = await deps.analyzer.darken(path, dest, CONTOUR_THUMB_WIDTH);
+  if (!darkened.ok) {
+    log(`darken ${result.id}: ${darkened.message}`);
+    return {measures: m, contour: null};
+  }
+  const again = await deps.analyzer.measure(dest);
+  log(
+    `darken ${result.id}: ${Math.round(darkened.value.ms)} ms, now ${
       again.ok ? pixelKind(again.value) : again.message
     }`,
   );

@@ -12,7 +12,7 @@ const API = 'https://commons.wikimedia.org/w/api.php';
 const INFO_PARAMS = [
   'prop=imageinfo',
   'iiprop=url|mime|size|extmetadata',
-  // Categories feed the adult filter (#69).
+  // Categories feed the adult filter (#69) and the style rules (#81).
   'iiextmetadatafilter=LicenseShortName|Artist|Credit|Categories',
 ];
 
@@ -156,9 +156,11 @@ function toResult(page: Page): SearchResult | null {
     return null;
   }
   const meta = info.extmetadata ?? {};
-  if (isAdult(page, meta.Categories?.value)) {
+  const categories = meta.Categories?.value;
+  if (isAdult(page, categories)) {
     return null;
   }
+  const tags = (categories ?? '').split('|').filter(Boolean);
   const attribution =
     plainText(meta.Artist?.value ?? '') ||
     plainText(meta.Credit?.value ?? '') ||
@@ -175,6 +177,8 @@ function toResult(page: Page): SearchResult | null {
     license: plainText(meta.LicenseShortName?.value ?? '') || 'unknown',
     attribution,
     mime: info.mime,
+    // The style rules read them: a logo is known by its category, not only its title (#81).
+    ...(tags.length > 0 && {tags}),
   };
 }
 

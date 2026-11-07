@@ -3,7 +3,10 @@ import {join} from 'path';
 import {USER_AGENT} from '../src/config';
 import {
   entityUrl,
+  isQueryArticle,
+  logoItemUrl,
   parseEntityResponse,
+  parseLogoItemResponse,
   parseWikipediaResponse,
   searchWikidata,
   wikidataAdapter,
@@ -261,5 +264,104 @@ describe('searchWikidata', () => {
     const fetch = jest.fn().mockResolvedValue(ok(NONE));
     expect((await searchWikidata('qzxv', ctx(fetch))).ok).toBe(true);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('logos of organisations and brands (#81)', () => {
+  const claim = (property: string, value: unknown) => ({
+    mainsnak: {snaktype: 'value', property, datavalue: {value}},
+    rank: 'normal',
+  });
+  const entity = (claims: Record<string, unknown[]>) =>
+    JSON.stringify({entities: {Q1: {claims}}});
+
+  it('leads with the logo of an organisation, known by its class or its headquarters', () => {
+    const company = entity({
+      P31: [claim('P31', {id: 'Q4830453'})],
+      P154: [claim('P154', 'Example company logo.svg')],
+    });
+    expect(parseEntityResponse(company)).toMatchObject({
+      files: ['Example company logo.svg'],
+      leadingLogo: 'Example company logo.svg',
+    });
+    const institute = entity({
+      P31: [claim('P31', {id: 'Q999999'})],
+      P159: [claim('P159', {id: 'Q956'})],
+      P154: [claim('P154', 'Example institute logo.svg')],
+    });
+    expect(parseEntityResponse(institute)).toMatchObject({
+      leadingLogo: 'Example institute logo.svg',
+    });
+  });
+
+  it('never leads with the logo of a thing or a person', () => {
+    const city = entity({
+      P31: [claim('P31', {id: 'Q515'})],
+      P154: [claim('P154', 'Example city logo.svg')],
+    });
+    const outcome = parseEntityResponse(city);
+    expect(outcome).toMatchObject({files: ['Example city logo.svg']});
+    expect(outcome).not.toHaveProperty('leadingLogo');
+    expect(
+      parseEntityResponse(fixture('wikidata-entity.json')),
+    ).not.toHaveProperty('leadingLogo');
+  });
+
+  it('drops an article a style word found alone: «apple logo» is not the Logo language', async () => {
+    expect(isQueryArticle('apple logo', 'Logo (programming language)')).toBe(
+      false,
+    );
+    expect(isQueryArticle('apple logo', 'Apple Inc.')).toBe(true);
+    // Without a style word the search's spelling tolerance decides.
+    expect(isQueryArticle('elephent', 'Elephant')).toBe(true);
+    const page = JSON.stringify({
+      batchcomplete: true,
+      query: {
+        pages: [
+          {
+            title: 'Logo (programming language)',
+            index: 1,
+            pageprops: {wikibase_item: 'Q201436'},
+            pageimage: 'Example_turtle.gif',
+          },
+        ],
+      },
+    });
+    const noItem = JSON.stringify({batchcomplete: true, query: {search: []}});
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(page))
+      .mockResolvedValueOnce(ok(noItem));
+    expect(await searchWikidata('apple logo', ctx(fetch))).toEqual({
+      ok: true,
+      results: [],
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('finds the brand a logo query names through Wikidata: «apple logo» is Apple Inc.', async () => {
+    const page = JSON.stringify({
+      batchcomplete: true,
+      query: {pages: [{title: 'Logo (programming language)', index: 1}]},
+    });
+    const item = JSON.stringify({
+      batchcomplete: true,
+      query: {search: [{title: 'Q312'}]},
+    });
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(page))
+      .mockResolvedValueOnce(ok(item))
+      .mockResolvedValue(ok(JSON.stringify({entities: {}})));
+    await searchWikidata('apple logo', ctx(fetch));
+    expect(fetch.mock.calls[1][0]).toBe(logoItemUrl('apple'));
+    expect(decodeURIComponent(fetch.mock.calls[1][0])).toContain(
+      'srsearch=apple haswbstatement:P154',
+    );
+    expect(fetch.mock.calls[2][0]).toBe(entityUrl('Q312'));
+    expect(parseLogoItemResponse(item, 'apple')).toEqual({
+      ok: true,
+      hit: {title: 'apple', item: 'Q312', disambiguation: false},
+    });
   });
 });

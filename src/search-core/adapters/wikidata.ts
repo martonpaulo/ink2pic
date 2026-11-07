@@ -10,7 +10,7 @@
  */
 import type {SourceAdapter, SourceContext} from '../adapter';
 import {apiFailure} from '../fetcher';
-import {lookupLanguages, normalise} from '../query';
+import {lookupLanguages, normalise, readIntent, words} from '../query';
 import {Failure, SourceOutcome, sourceFailure} from '../types';
 import {commonsFiles, commonsSearch} from './commons';
 
@@ -22,6 +22,27 @@ export const PICTURE_PROPERTIES = ['P41', 'P154', 'P18'] as const;
 const INSTANCE_OF = 'P31';
 const FLAG = PICTURE_PROPERTIES[0];
 const HUMAN = 'Q5';
+const LOGO = 'P154';
+/**
+ * The item is an organisation or a brand, so its logo is the picture the query asks for (#81):
+ * an instance of one of these classes, or an item with a headquarters (P159), which only
+ * organisations have. shortcut: a direct P31 match, not the subclass tree, which would cost a
+ * request per query; extend the list when the lab finds an organisation it misses.
+ */
+const ORGANISATION_CLASSES = new Set([
+  'Q43229', // organization
+  'Q4830453', // business
+  'Q783794', // company
+  'Q891723', // public company
+  'Q6881511', // enterprise
+  'Q167037', // corporation
+  'Q431289', // brand
+  'Q163740', // nonprofit organization
+  'Q178706', // institution
+  'Q2385804', // educational institution
+  'Q18534', // restaurant chain
+]);
+const HEADQUARTERS = 'P159';
 /** The signature file: never a picture of the person (research C). */
 const SIGNATURE = 'P109';
 
@@ -71,6 +92,55 @@ export function wikipediaUrl(query: string, language: string): string {
     'redirects=1',
   ];
   return `${WIKIPEDIA_API.replace('{language}', language)}?${params.join('&')}`;
+}
+
+/**
+ * The item with a logo (P154) that best matches the subject: Wikidata's own search, one request,
+ * only for a logo query whose Wikipedia article does not name its subject («apple logo» found the
+ * Logo language, #81). The most linked match wins: «apple» is Apple Inc., not Apple Corps, the
+ * first by relevance. shortcut: links measure fame, not the subject's sense; upgrade when the
+ * lab finds a logo query it resolves to the wrong brand.
+ */
+export function logoItemUrl(subject: string): string {
+  const q = encodeURIComponent(`${subject} haswbstatement:${LOGO}`);
+  const params = [
+    'action=query',
+    'format=json',
+    'formatversion=2',
+    'list=search',
+    `srsearch=${q}`,
+    'srlimit=1',
+    'srsort=incoming_links_desc',
+    'srprop=',
+  ];
+  return `${WIKIDATA_API}?${params.join('&')}`;
+}
+
+type ItemSearchResponse = {
+  error?: {code?: string; info?: string};
+  query?: {search?: {title?: string}[]};
+};
+
+/** The first item of a Wikidata search, as a hit named by the subject. */
+export function parseLogoItemResponse(
+  text: string,
+  subject: string,
+): WikiOutcome {
+  const data = parseJson<ItemSearchResponse>(text);
+  if (isFailure(data)) {
+    return data;
+  }
+  if (data.error) {
+    return apiFailure(data.error);
+  }
+  const item = data.query?.search?.[0]?.title;
+  return {
+    ok: true,
+    hit:
+      item && /^Q\d+$/.test(item)
+        ? {title: subject, item, disambiguation: false}
+        : null,
+  };
 }
 
 /** The item's claims, by its id. */
@@ -154,11 +224,28 @@ function fileOf(statements?: Statement[]): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
-function isHuman(statements: Statement[] = []): boolean {
+/** Whether one of the item's classes (P31) is in `classes`. */
+function isInstance(
+  statements: Statement[] = [],
+  classes: ReadonlySet<string>,
+): boolean {
   return statements.some(s => {
     const value = s.mainsnak?.datavalue?.value as {id?: unknown} | undefined;
-    return s.rank !== 'deprecated' && value?.id === HUMAN;
+    return (
+      s.rank !== 'deprecated' &&
+      typeof value?.id === 'string' &&
+      classes.has(value.id)
+    );
   });
+}
+
+const HUMANS: ReadonlySet<string> = new Set([HUMAN]);
+
+function isOrganisation(claims: Record<string, Statement[]> = {}): boolean {
+  return (
+    isInstance(claims[INSTANCE_OF], ORGANISATION_CLASSES) ||
+    valueOf(claims[HEADQUARTERS]) !== undefined
+  );
 }
 
 export type EntityOutcome =
@@ -169,6 +256,8 @@ export type EntityOutcome =
       signature?: string;
       /** The item's own flag (P41): it leads the page (#89). */
       flag?: string;
+      /** The logo file, when the item is an organisation or a brand: it leads the page (#81). */
+      leadingLogo?: string;
     }
   | Failure;
 
@@ -191,6 +280,7 @@ export function parseEntityResponse(text: string): EntityOutcome {
   let human = false;
   let signature: string | undefined;
   let flag: string | undefined;
+  let leadingLogo: string | undefined;
   for (const entity of Object.values(data.entities)) {
     if (entity.missing !== undefined) {
       continue;
@@ -202,8 +292,11 @@ export function parseEntityResponse(text: string): EntityOutcome {
         files.push(file);
       }
     }
-    human ||= isHuman(entity.claims?.[INSTANCE_OF]);
+    human ||= isInstance(entity.claims?.[INSTANCE_OF], HUMANS);
     signature ??= fileOf(entity.claims?.[SIGNATURE]);
+    if (isOrganisation(entity.claims)) {
+      leadingLogo ??= fileOf(entity.claims?.[LOGO]);
+    }
   }
   return {
     ok: true,
@@ -211,7 +304,39 @@ export function parseEntityResponse(text: string): EntityOutcome {
     human,
     ...(signature && {signature}),
     ...(flag && flag !== signature && {flag}),
+    ...(leadingLogo && {leadingLogo}),
   };
+}
+
+/**
+ * Whether the article can be the query's: a query that names a style («apple logo») must find an
+ * article naming its subject, or the style word alone finds one («Logo (programming language)»,
+ * whose turtle curve then led page 1, #81). Without a style word, the search's spelling tolerance
+ * decides («elephent»).
+ */
+export function isQueryArticle(query: string, title: string): boolean {
+  const {subject, styles} = readIntent(query);
+  if (styles.size === 0) {
+    return true;
+  }
+  const have = words(title);
+  return subject.some(word => have.includes(word));
+}
+
+/** For a logo query, the item with a logo its subject names; for any other, none (#81). */
+async function logoItem(
+  query: string,
+  ctx: SourceContext,
+): Promise<WikiOutcome> {
+  const {subject, styles} = readIntent(query);
+  if (!styles.has('logo') || subject.length === 0) {
+    return {ok: true, hit: null};
+  }
+  const named = subject.join(' ');
+  const response = await ctx.fetch(logoItemUrl(named), {
+    'Api-User-Agent': ctx.userAgent,
+  });
+  return response.ok ? parseLogoItemResponse(response.text, named) : response;
 }
 
 /** The first language whose Wikipedia has an article for the query; a failure stops the walk. */
@@ -225,6 +350,9 @@ async function lookup(query: string, ctx: SourceContext): Promise<WikiOutcome> {
       return response;
     }
     const found = parseWikipediaResponse(response.text);
+    if (found.ok && found.hit && !isQueryArticle(query, found.hit.title)) {
+      return logoItem(query, ctx);
+    }
     if (!found.ok || found.hit) {
       return found;
     }
@@ -262,6 +390,7 @@ export async function searchWikidata(
   let human = false;
   let signature: string | undefined;
   let flag: string | undefined;
+  let leadingLogo: string | undefined;
   if (hit.item) {
     const response = await ctx.fetch(entityUrl(hit.item), {
       'Api-User-Agent': ctx.userAgent,
@@ -273,7 +402,7 @@ export async function searchWikidata(
     if (!entity.ok) {
       return entity;
     }
-    ({files, human, signature, flag} = entity);
+    ({files, human, signature, flag, leadingLogo} = entity);
   }
   if (hit.leadImage) {
     // The lead image uses underscores; Commons file names use spaces.
@@ -296,9 +425,11 @@ export async function searchWikidata(
   }
   const signed = (title: string) =>
     signature !== undefined && title === withoutExtension(signature);
-  // A country's own flag leads, before regional and other flags (#89).
+  // A country's own flag leads, before regional and other flags (#89); so does an
+  // organisation's or a brand's own logo (#81).
   const leads = (title: string) =>
-    flag !== undefined && title === withoutExtension(flag);
+    (flag !== undefined && title === withoutExtension(flag)) ||
+    (leadingLogo !== undefined && title === withoutExtension(leadingLogo));
   return {
     ok: true,
     results: [

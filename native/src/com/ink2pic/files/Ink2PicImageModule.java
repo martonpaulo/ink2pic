@@ -117,6 +117,8 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
       result.putInt("colours", m.colours);
       result.putDouble("objectShare", m.objectShare);
       result.putString("hash", PerceptualHash.of(decoded.argb, decoded.width, decoded.height));
+      result.putInt("darkest", m.darkest);
+      result.putBoolean("faintLines", m.faintLines);
       result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
       return result;
     });
@@ -181,6 +183,9 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
     Decolor.apply(pixels.argb, pixels.width, pixels.height);
     if (contour) {
       Contour.apply(pixels.argb, pixels.width, pixels.height);
+    } else {
+      // Faint light-grey line work gets its darkest ink black (#81).
+      EinkPixels.darken(pixels.argb, pixels.width, pixels.height);
     }
     EinkPixels.toEink(pixels.argb, quantize);
     Bitmap gray =

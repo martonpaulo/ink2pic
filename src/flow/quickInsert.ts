@@ -16,7 +16,7 @@ import {
   insertPicture,
   startEarlyDownload,
 } from './insertPicture';
-import {measureFirstPages} from './measure';
+import {isContourUri, measureFirstPages} from './measure';
 import type {LassoPlace} from './place';
 import {afterSearch, runSearch, stateText} from './search';
 import {copy} from '../ui/copy';
@@ -93,7 +93,7 @@ export async function insertBest(
     best,
     word,
     place,
-    pages.contourThumbs.has(best.id),
+    isContourUri(pages.contourThumbs.get(best.id) ?? ''),
     undefined,
     usable,
   );

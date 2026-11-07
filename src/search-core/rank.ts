@@ -81,7 +81,28 @@ function sameWord(word: string, queryWord: string): boolean {
   );
 }
 
-/** How directly the title names the subject: 0 not at all, else the mention or plain-subject score. */
+/**
+ * Whether the picture carries a style group's word in its title or in what its source files it
+ * under: «Apple-icon» is in the Commons category «Apple Inc. logos» (#81).
+ */
+function styled(result: SearchResult, group: StyleGroup): boolean {
+  return (
+    hasStyle(result.title, group) ||
+    (result.tags ?? []).some(tag => hasStyle(tag, group))
+  );
+}
+
+function stylisedOther(result: SearchResult): boolean {
+  return [result.title, ...(result.tags ?? [])].some(text =>
+    STYLISED_OTHER.test(text),
+  );
+}
+
+/**
+ * How directly the title names the subject: 0 not at all, else the mention or plain-subject score.
+ * For a logo query any other word names something else: «Apple Arcade logo» is a sub-brand's
+ * mark, not the plain Apple logo (#81).
+ */
 const subjectScorer: Scorer = (result, {subject, styles}) => {
   const have = words(result.title);
   if (
@@ -99,9 +120,8 @@ const subjectScorer: Scorer = (result, {subject, styles}) => {
         ![...styles].some(group => hasStyle(word, group)),
     ),
   );
-  return others.size <= PLAIN_SUBJECT_WORDS
-    ? PLAIN_SUBJECT_SCORE
-    : MENTION_SCORE;
+  const plain = styles.has('logo') ? 0 : PLAIN_SUBJECT_WORDS;
+  return others.size <= plain ? PLAIN_SUBJECT_SCORE : MENTION_SCORE;
 };
 
 const lineWorkScorer: Scorer = result =>
@@ -110,22 +130,22 @@ const lineWorkScorer: Scorer = result =>
 const photoScorer: Scorer = (result, {styles}) =>
   !styles.has('photo') && hasStyle(result.title, 'photo') ? PHOTO_SCORE : 0;
 
-/** One penalty for any stylised graphic the query did not ask for. */
+/**
+ * One penalty for any stylised graphic the query did not ask for: a logo of something else than
+ * the subject («apple», the fruit) falls here, by its title or its categories (#81).
+ */
 const stylisedScorer: Scorer = (result, {styles}) =>
-  STYLISED_OTHER.test(result.title) ||
-  STYLISED_GROUPS.some(
-    group => !styles.has(group) && hasStyle(result.title, group),
-  )
+  stylisedOther(result) ||
+  STYLISED_GROUPS.some(group => !styles.has(group) && styled(result, group))
     ? STYLISED_SCORE
     : 0;
 
 const textScorer: Scorer = (result, {styles}) =>
-  !styles.has('text') && hasStyle(result.title, 'text') ? TEXT_SCORE : 0;
+  !styles.has('text') && styled(result, 'text') ? TEXT_SCORE : 0;
 
-/** The styles the query asks for, each one the title carries. */
+/** The styles the query asks for, each one the title or the categories carry. */
 const askedStyleScorer: Scorer = (result, {styles}) =>
-  [...styles].filter(group => hasStyle(result.title, group)).length *
-  ASKED_STYLE_SCORE;
+  [...styles].filter(group => styled(result, group)).length * ASKED_STYLE_SCORE;
 
 const formatScorer: Scorer = result => {
   if (result.source === 'openclipart') {
@@ -160,10 +180,10 @@ export const PHOTO_SCORERS: readonly Scorer[] = DEFAULT_SCORERS.filter(
   scorer => scorer !== photoScorer,
 );
 
-function total(
+export function total(
   result: SearchResult,
   intent: QueryIntent,
-  scorers: readonly Scorer[],
+  scorers: readonly Scorer[] = DEFAULT_SCORERS,
 ): number {
   return scorers.reduce((sum, score) => sum + score(result, intent), 0);
 }
@@ -174,6 +194,28 @@ export function einkScore(
   scorers: readonly Scorer[] = DEFAULT_SCORERS,
 ): number {
   return total(result, readIntent(query), scorers);
+}
+
+/** A canonical logo that leads: the query names an organisation or a brand (#81). */
+function leadingLogo(result: SearchResult): boolean {
+  return (
+    result.canonical === true && result.leads === true && styled(result, 'logo')
+  );
+}
+
+/**
+ * What the ranker reads of a query among its results: when Wikidata says the query names an
+ * organisation or a brand, its logos are what was asked, as if the query said «logo» (#81).
+ */
+export function intentFor(
+  query: string,
+  results: readonly SearchResult[],
+): QueryIntent {
+  const intent = readIntent(query);
+  if (intent.styles.has('logo') || !results.some(leadingLogo)) {
+    return intent;
+  }
+  return {...intent, styles: new Set([...intent.styles, 'logo'])};
 }
 
 /**
@@ -219,16 +261,15 @@ function wanted(result: SearchResult, {styles}: QueryIntent): boolean {
  * Sorts by score; ties keep each source's own order and alternate the sources, so the first
  * page mixes both. `lists` holds each source's results in its own rank order. Canonical
  * results keep their own order and follow the best-ranked other result, so page 1 holds both
- * the simple drawing and, for a person, the real portrait (#43); the query's own flag, a canonical
- * result that leads, comes before that result (#89). A picture two sources return
- * is shown once.
+ * the simple drawing and, for a person, the real portrait (#43); a canonical result that leads,
+ * the query's own flag (#89) or the logo of the organisation or brand it names (#81), comes
+ * before that result. A picture two sources return is shown once.
  */
 export function rankForEink(
   lists: readonly SearchResult[][],
   query = '',
   scorers: readonly Scorer[] = DEFAULT_SCORERS,
 ): SearchResult[] {
-  const intent = readIntent(query);
   const interleaved: SearchResult[] = [];
   const longest = Math.max(0, ...lists.map(list => list.length));
   for (let i = 0; i < longest; i++) {
@@ -238,8 +279,10 @@ export function rankForEink(
       }
     }
   }
+  const intent = intentFor(query, interleaved);
   const kept = interleaved.filter(result => wanted(result, intent));
-  const canonical = kept.filter(result => result.canonical);
+  const leading = kept.filter(result => result.canonical && result.leads);
+  const canonical = kept.filter(result => result.canonical && !result.leads);
   const [best, ...rest] = kept
     .filter(result => !result.canonical)
     .map((result, order) => ({
@@ -249,15 +292,8 @@ export function rankForEink(
     }))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map(entry => entry.result);
-  // The query's own flag (#89) leads, before the best other result.
-  const leading = canonical.filter(result => result.leads);
-  const following = canonical.filter(result => !result.leads);
-  const ordered = [
-    ...leading,
-    ...(best ? [best] : []),
-    ...following,
-    ...rest,
-  ];
+  // The query's own flag (#89) or its organisation's logo (#81) leads, before the best other result.
+  const ordered = [...leading, ...(best ? [best] : []), ...canonical, ...rest];
   const seen = new Set<string>();
   return ordered.filter(result => !seen.has(result.id) && seen.add(result.id));
 }

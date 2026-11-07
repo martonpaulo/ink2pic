@@ -73,6 +73,13 @@ public final class ThumbMeasures {
   public int colours;
   /** Share of pixels that differ from the background: near zero for a blank thumbnail. */
   public double objectShare;
+  /**
+   * The darkest ink, by {@link EinkPixels#darkest}: light grey for faint line work, which the
+   * insert darkens (#81); 255 without ink.
+   */
+  public int darkest;
+  /** Faint line work, which the insert darkens: {@link EinkPixels#isFaintLines} (#81). */
+  public boolean faintLines;
 
   private ThumbMeasures(int width, int height) {
     this.width = width;
@@ -91,6 +98,7 @@ public final class ThumbMeasures {
     frame(gray, b);
     inkAndObject(gray, b);
     edges(gray, b);
+    b.faintLines = EinkPixels.isFaintLines(b);
     return b;
   }
 
@@ -213,6 +221,7 @@ public final class ThumbMeasures {
     double n = (double) w * h;
     b.ink = ink / n;
     b.objectShare = object / n;
+    b.darkest = EinkPixels.darkest(gray, w * h);
     b.thickness = boundary == 0 ? 0 : (double) ink / boundary;
     if (ink == 0) {
       return;

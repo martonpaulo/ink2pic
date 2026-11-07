@@ -18,6 +18,7 @@ export {dropNearDuplicates} from './duplicates';
 export {createContext, createFetcher} from './fetcher';
 export type {Fetcher, FetchLike} from './fetcher';
 export {
+  isFaintLines,
   lineArt,
   MEASURED_RESULTS,
   needsContour,

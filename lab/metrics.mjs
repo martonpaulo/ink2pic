@@ -146,7 +146,8 @@ async function metrics(name) {
         ...entry,
         page1: entry.page1.map(tile => ({
           ...tile,
-          file: files.get(tile.thumb),
+          // What the tile shows: its contour drawing when the device converts it (#81).
+          file: tile.pixels?.file ?? files.get(tile.thumb),
         })),
       },
       judgment[entry.id],

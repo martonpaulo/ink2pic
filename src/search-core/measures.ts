@@ -5,7 +5,7 @@
  * and another project can supply; `pixelScorer` is one more `Scorer` of the ranker.
  */
 import {readIntent} from './query';
-import {DEFAULT_SCORERS, einkScore, Scorer} from './rank';
+import {DEFAULT_SCORERS, intentFor, Scorer, total} from './rank';
 import {PAGE_SIZE, SearchResult} from './types';
 
 /** What an analyzer call gives: the value, or why there is none, for the log. */
@@ -48,6 +48,10 @@ export type Measures = {
   objectShare: number;
   /** Perceptual hash, 48 hex digits (`PerceptualHash.java`, #89); absent from an older module. */
   hash?: string;
+  /** The darkest ink's gray, 255 without ink: light grey for faint line work (#81). */
+  darkest: number;
+  /** Thin light-grey lines on paper, by `EinkPixels.isFaintLines`: the insert darkens them (#81). */
+  faintLines: boolean;
   ms: number;
 };
 
@@ -63,6 +67,15 @@ export type ImageAnalyzer = {
     dest: string,
     width: number,
   ) => Promise<Measured<ConvertedImage>>;
+  /**
+   * Writes `dest` as the picture prepared for e-ink without a contour, faint lines darkened
+   * (#81), as the insert prepares it; without it, a faint picture shows as found.
+   */
+  darken?: (
+    src: string,
+    dest: string,
+    width: number,
+  ) => Promise<Measured<ConvertedImage>>;
 };
 
 /**
@@ -72,6 +85,7 @@ export type ImageAnalyzer = {
 export type PixelKind =
   | 'blank'
   | 'dark'
+  | 'solid'
   | 'photo'
   | 'text'
   | 'faint'
@@ -93,9 +107,24 @@ const FAINT_INK = 0.01;
 const FAINT_WHITE = 0.9;
 const OUTLINE_WHITE = 0.6;
 const OUTLINE_DARK = 0.2;
+/**
+ * From this share of dark pixels a picture on paper reads as a black block on e-ink: a
+ * silhouette, a dark shaded or gradient clip art (#81). Measured in the search lab on 652
+ * thumbnails of its cases (2026-11-07): from 0.3 every picture is a heavy black area and its
+ * contour drawing a clean outline; below it sits thick line art (clocks, bicycles), whose contour
+ * only doubles its lines.
+ */
+const DARK_CLIPART = 0.3;
+/** A solid fill: much ink in thick areas, hard to annotate (research D); a silhouette below 0.3. */
+const SOLID_INK = 0.25;
+const SOLID_STROKE = 15;
 
 function isFaint(m: Measures): boolean {
   return m.ink < FAINT_INK && m.white > FAINT_WHITE;
+}
+
+function isSolid(m: Measures): boolean {
+  return m.ink > SOLID_INK && m.thickness > SOLID_STROKE;
 }
 
 export function pixelKind(m: Measures): PixelKind {
@@ -107,6 +136,9 @@ export function pixelKind(m: Measures): PixelKind {
   }
   if (m.border < FILLED_BORDER && m.mid >= PHOTO_MID) {
     return 'photo';
+  }
+  if (m.dark >= DARK_CLIPART || isSolid(m)) {
+    return 'solid';
   }
   const clean = m.border >= CLEAN_BORDER;
   if (clean && m.ink < TEXT_INK && m.lineAspect >= TEXT_LINE_ASPECT) {
@@ -121,7 +153,7 @@ export function pixelKind(m: Measures): PixelKind {
   return clean ? 'clean' : 'plain';
 }
 
-const CONVERTED: ReadonlySet<PixelKind> = new Set(['dark', 'photo']);
+const CONVERTED: ReadonlySet<PixelKind> = new Set(['dark', 'photo', 'solid']);
 const ALREADY_LINES: ReadonlySet<PixelKind> = new Set([
   'outline',
   'text',
@@ -131,8 +163,8 @@ const ALREADY_LINES: ReadonlySet<PixelKind> = new Set([
 
 /**
  * Whether the picture is shown and inserted as a contour drawing (owner decision D5 A): a dark
- * picture or a photo, or any picture not already line work when the query asks for an outline;
- * never when the query asks for a photo or a painting.
+ * picture, a photo or dark clip art on paper (#81), or any picture not already line work when
+ * the query asks for an outline; never when the query asks for a photo or a painting.
  */
 export function needsContour(m: Measures, query: string): boolean {
   // The query's style words are read once, by the query pipeline (#65).
@@ -144,6 +176,14 @@ export function needsContour(m: Measures, query: string): boolean {
   return (
     CONVERTED.has(kind) || (styles.has('drawing') && !ALREADY_LINES.has(kind))
   );
+}
+
+/**
+ * Whether the picture is faint line work on paper, which the insert darkens (#81). The rule is the
+ * native one, `EinkPixels.isFaintLines`, which darkens it: one owner.
+ */
+export function isFaintLines(m: Measures): boolean {
+  return m.faintLines;
 }
 
 /** The weights of the line-art score (research D, section 3). */
@@ -165,9 +205,6 @@ const OUTLINE_INK_MAX = 0.3;
 const THIN_STROKE = 4;
 const MEDIUM_STROKE = 8;
 const HALF = 0.5;
-/** A solid fill: much ink in thick areas, hard to annotate. */
-const SOLID_INK = 0.25;
-const SOLID_STROKE = 15;
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -193,7 +230,7 @@ export function lineArt(m: Measures): number {
     (Math.log2(Math.max(1, m.colours)) - FEW_COLOURS_LOG2) /
       (MANY_COLOURS_LOG2 - FEW_COLOURS_LOG2),
   );
-  const solid = m.ink > SOLID_INK && m.thickness > SOLID_STROKE ? 1 : 0;
+  const solid = isSolid(m) ? 1 : 0;
   return (
     LINE_ART.lowMid * (1 - m.mid) +
     LINE_ART.white * m.white +
@@ -214,6 +251,11 @@ const LINE_ART_WEIGHT = 3;
  * measure neither lifts nor buries it; upgrade when the search lab shows a better default.
  */
 const UNMEASURED = 0.5;
+/**
+ * Below every measured picture: faint line work not darkened, or still faint once darkened, its
+ * lines too thin for e-ink (#81).
+ */
+const LAST_SCALE = -2;
 
 /**
  * The pixel signal over one set of measures: `3 x lineArt`, min-max scaled within the set, so it
@@ -221,8 +263,12 @@ const UNMEASURED = 0.5;
  */
 export function pixelScorer(measures: ReadonlyMap<string, Measures>): Scorer {
   const scores = new Map<string, number>();
+  const fixed = new Map<string, number>();
   for (const [id, m] of measures) {
-    if (pixelKind(m) !== 'blank') {
+    const kind = pixelKind(m);
+    if (isFaintLines(m) || kind === 'faint') {
+      fixed.set(id, LAST_SCALE);
+    } else if (kind !== 'blank') {
       scores.set(id, lineArt(m));
     }
   }
@@ -232,6 +278,10 @@ export function pixelScorer(measures: ReadonlyMap<string, Measures>): Scorer {
   return result => {
     if (result.canonical) {
       return 0;
+    }
+    const set = fixed.get(result.id);
+    if (set !== undefined) {
+      return LINE_ART_WEIGHT * set;
     }
     const score = scores.get(result.id);
     const scaled =
@@ -268,13 +318,14 @@ export function reorderByMeasures(
   }
   const head = results.slice(0, MEASURED_RESULTS);
   const pixels = pixelScorer(measures);
+  const intent = intentFor(query, results);
   const blank = head.filter(result => isBlank(result, measures));
   const sorted = head
     .filter(result => !result.canonical && !isBlank(result, measures))
     .map((result, order) => ({
       result,
       order,
-      score: einkScore(result, query, [...DEFAULT_SCORERS, pixels]),
+      score: total(result, intent, [...DEFAULT_SCORERS, pixels]),
     }))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map(entry => entry.result);

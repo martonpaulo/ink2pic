@@ -19,13 +19,21 @@ export type SearchResult = {
   localPath?: string;
   /** The library picture's size, so it can be placed at the lasso too (#33). */
   localSize?: {width: number; height: number};
-  /** A symbol that leads the page: the word is abstract or names it exactly (#67). */
+  /**
+   * A picture that leads the page: a symbol for a word that is abstract or that it names exactly
+   * (#67), or the logo of the organisation or brand the query names (#81).
+   */
   leads?: true;
   /**
    * An OpenMoji symbol whose picture is saved on the device (#91): it shows and inserts with no
    * network. Set by the app after each search, never by a source.
    */
   offlinePicture?: true;
+  /**
+   * What the source files the picture under, read by the style rules like its title (#81): on
+   * Commons, the file's categories («Apple Inc. logos»). Openclipart's search page sends none.
+   */
+  tags?: string[];
 };
 
 export type SourceName = 'openclipart' | 'commons' | 'openmoji';

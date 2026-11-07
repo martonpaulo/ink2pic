@@ -299,3 +299,67 @@ it('does not rank a photo below a drawing under Photos too (#70)', () => {
     einkScore(photo, 'apple'),
   );
 });
+
+describe('logos (#81)', () => {
+  const tagged = (title: string, tags: string[], extra = {}): SearchResult => ({
+    ...r('commons', title, 'image/svg+xml'),
+    tags,
+    ...extra,
+  });
+
+  it('knows a logo by its categories: «apple» shows the fruit before the Apple Inc. mark', () => {
+    const logo = tagged('Apple-icon', [
+      'Apple Inc. logos',
+      'Black and white icons',
+    ]);
+    const fruit = tagged('Apple fruit icon', ['Apple icons', 'Fruit icons']);
+    expect(einkScore(logo, 'apple')).toBeLessThan(einkScore(fruit, 'apple'));
+    expect(rankForEink([[logo, fruit]], 'apple').map(x => x.title)).toEqual([
+      'Apple fruit icon',
+      'Apple-icon',
+    ]);
+    // Asked for, the same categories lift it.
+    expect(einkScore(logo, 'apple logo')).toBeGreaterThan(
+      einkScore(fruit, 'apple logo'),
+    );
+  });
+
+  it("puts a namesake institution's logo below the person (#83)", () => {
+    const portrait = r(
+      'commons',
+      'Miguel de Cervantes engraving',
+      'image/jpeg',
+    );
+    const institute = tagged('Instituto Cervantes Madrid', ['Logos of Spain']);
+    expect(
+      rankForEink([[institute, portrait]], 'Miguel de Cervantes').map(
+        x => x.title,
+      ),
+    ).toEqual(['Miguel de Cervantes engraving', 'Instituto Cervantes Madrid']);
+  });
+
+  it("shows the plain mark before a sub-brand's wordmark for «apple logo»", () => {
+    const arcade = tagged('Apple Arcade logo', ['Apple Inc. logos']);
+    const plain = tagged('Apple logo black', ['Apple Inc. logos']);
+    expect(
+      rankForEink([[arcade, plain]], 'apple logo').map(x => x.title),
+    ).toEqual(['Apple logo black', 'Apple Arcade logo']);
+  });
+
+  it("leads with an organisation's own logo and does not bury its other logos", () => {
+    const own = tagged('Example Institute logo', ['Logos of institutes'], {
+      canonical: true,
+      leads: true,
+    });
+    const building = r('commons', 'Example Institute building', 'image/jpeg');
+    const old = tagged('Example Institute old logo', ['Logos of institutes']);
+    const ranked = rankForEink([[building, old], [own]], 'Example Institute');
+    expect(ranked[0].title).toBe('Example Institute logo');
+    expect(einkScore(old, 'Example Institute')).toBeLessThan(0);
+    expect(ranked.map(x => x.title)).toEqual([
+      'Example Institute logo',
+      'Example Institute old logo',
+      'Example Institute building',
+    ]);
+  });
+});

@@ -15,6 +15,27 @@ public final class EinkPixels {
    * stay visible on e-ink. [INFERENCE, to calibrate on device]
    */
   public static final double CONTRAST = 1.25;
+  /** From this gray a pixel is paper, as {@link ThumbMeasures#WHITE_FROM} counts it. */
+  public static final int PAPER_FROM = 225;
+  /** The darkest ink is the gray under which this share of the non-paper pixels lie. */
+  public static final double DARKEST_SHARE = 0.05;
+  /** With fewer ink pixels than this there is no line work to darken. */
+  public static final int MIN_INK_PIXELS = 16;
+  /**
+   * Line work whose darkest ink is this gray or lighter is faint on e-ink and is darkened (#81):
+   * the thin light-grey maps of «Spain» on build 15. Set in the search lab (brief section 5.5).
+   */
+  public static final int FAINT_DARKEST = 120;
+  /**
+   * Strokes thinner than this, in pixels at {@link #MEASURE_WIDTH}, are lines; thicker ones are
+   * fills. In the search lab every faint picture under 6 px was line work (maps, outlines, the
+   * Eiffel Tower) and every one from 8.9 px a grey fill.
+   */
+  public static final double THIN_STROKE = 8;
+  /** The thumbnail width the measures are taken at, as the device and the lab measure. */
+  public static final int MEASURE_WIDTH = 400;
+  /** From this white share of the frame the picture stands on paper, as `measures.ts` reads it. */
+  public static final double CLEAN_BORDER = 0.85;
   /** Decode caps, as Pic2Note uses for exports (brief section 7, step 2). */
   public static final long MAX_DECODE_PIXELS = 16L * 1000 * 1000;
   public static final int MAX_DECODE_EDGE = 8192;
@@ -57,6 +78,66 @@ public final class EinkPixels {
   public static int quantize(int gray) {
     int step = WHITE / (LEVELS - 1);
     return Math.round((float) gray / step) * step;
+  }
+
+  /**
+   * The darkest ink of a picture on paper: the gray below which {@link #DARKEST_SHARE} of its
+   * non-paper pixels lie, so a few dark dots do not count; {@link #WHITE} with too little ink.
+   */
+  public static int darkest(int[] gray, int n) {
+    int[] histogram = new int[WHITE + 1];
+    int ink = 0;
+    for (int i = 0; i < n; i++) {
+      if (gray[i] < PAPER_FROM) {
+        histogram[gray[i]]++;
+        ink++;
+      }
+    }
+    if (ink < MIN_INK_PIXELS) {
+      return WHITE;
+    }
+    long reach = Math.max(1, Math.round(ink * DARKEST_SHARE));
+    long seen = 0;
+    for (int g = 0; g < PAPER_FROM; g++) {
+      seen += histogram[g];
+      if (seen >= reach) {
+        return g;
+      }
+    }
+    return WHITE;
+  }
+
+  /**
+   * Whether the measured picture is faint line work (#81): thin strokes, at most
+   * {@link #THIN_STROKE} px at the measure width, on paper, whose darkest ink is light grey. A
+   * light-grey fill (a pastel apple, a grey silhouette) is not: darkened it turns black.
+   */
+  public static boolean isFaintLines(ThumbMeasures m) {
+    double stroke = m.thickness * MEASURE_WIDTH / Math.max(m.width, m.height);
+    return m.border >= CLEAN_BORDER
+        && m.darkest >= FAINT_DARKEST
+        && m.darkest < PAPER_FROM
+        && stroke < THIN_STROKE;
+  }
+
+  /**
+   * Darkens faint line work in place (#81): a levels stretch that makes its darkest ink black and
+   * keeps paper white, so thin light-grey lines show on e-ink. Any other picture is unchanged.
+   * Returns whether it changed the pixels.
+   */
+  public static boolean darken(int[] argb, int width, int height) {
+    ThumbMeasures m = ThumbMeasures.of(argb, width, height);
+    if (!isFaintLines(m)) {
+      return false;
+    }
+    int low = m.darkest;
+    double scale = (double) WHITE / (WHITE - low);
+    for (int i = 0; i < width * height; i++) {
+      int gray = luminance(argb[i]);
+      int g = (int) Math.max(0, Math.min(WHITE, Math.round((gray - low) * scale)));
+      argb[i] = OPAQUE | (g << RED_SHIFT) | (g << GREEN_SHIFT) | g;
+    }
+    return true;
   }
 
   /** Rewrites `argb` in place as opaque gray pixels, flattened on white with the e-ink curve. */

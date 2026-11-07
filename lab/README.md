@@ -15,7 +15,8 @@ ignores `lab/`. Nothing here runs in `npm run validate`.
   with this message when it is missing.
 - The project's `node_modules` (`npm ci`): the scripts transpile the TypeScript with the
   `typescript` devDependency, through `ts-hook.cjs`.
-- Python 3 with Pillow, for the pixel measures.
+- Python 3 with Pillow, for the pixel measures of `metrics.mjs`.
+- A JDK (`javac` and `java`), for the device's pixel step (below).
 - Playwright with Chromium, installed outside the project and found through `NODE_PATH`, for the
   sheets.
 
@@ -29,7 +30,16 @@ node lab/metrics.mjs baseline   # numbers, into lab/out/baseline/metrics.json
 
 `run.mjs` (through `runner.mjs`) calls the search core's `searchAll` over `DEFAULT_ADAPTERS`,
 with the context the device builds, without the device's search cache, breaker and thumbnail
-store, so each query is judged on its own. It asks one query at a time, with the app's
+store, so each query is judged on its own. Then it takes the device's pixel step
+([#66](https://github.com/martonpaulo/ink2pic/issues/66), [#81](https://github.com/martonpaulo/ink2pic/issues/81)), in `pixelorder.mjs`: the
+thumbnails of pages 1 and 2 are measured by the plugin's own `ThumbMeasures.java`, compiled from
+`native/src` with `LabPixels.java`, which decodes with ImageIO in place of Android; a picture that
+`needsContour` names is replaced by its contour drawing from the plugin's `Decolor.java` and
+`Contour.java`, unless the drawing `isSpeckled`; faint line work is replaced by its darkened copy
+(`EinkPixels.darken`); the search core's `reorderByMeasures` re-sorts them; and
+`dropNearDuplicates` leaves out near-duplicates by the plugin's `PerceptualHash.java`. Pages 1 and 2 in `results.json` are in the order
+the device shows, and each tile's `pixels` holds its kind, its line-art score and the file it
+shows. It asks one query at a time, with the app's
 User-Agent and a pause after each query that reached the network. A query whose source was
 throttled or did not answer is asked again once, 5 seconds later, and is then kept as it failed:
 `statuses`, `attempts`, `seconds` and `waited` in `results.json` say what happened. The script ends
@@ -73,7 +83,8 @@ the screen's rule; a change to that rule changes the copy too.
 | `out/<run>/metrics.json` | The numbers `metrics.mjs` writes. |
 | `out/<run>/faults.json` | The numbers `faults.mjs` writes. |
 | `out/<run>/sheets/sheet-NN.png` | Page 1 of eight queries per image, in the app's 2 x 3 grid, in grayscale; not committed, about 8 MB a run. |
-| `out/.cache/` | Raw source responses, thumbnails and sheet pages; not committed. |
+| `pixelorder.mjs`, `LabPixels.java` | The device's pixel step: measures, contour drawing and order. |
+| `out/.cache/` | Raw source responses, thumbnails with their contour drawings, the compiled Java and sheet pages; not committed. |
 
 ## Judge a run
 

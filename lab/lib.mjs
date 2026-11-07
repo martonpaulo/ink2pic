@@ -40,6 +40,8 @@ export function product() {
   return {
     core: require('../src/search-core/index.ts'),
     rank: require('../src/search-core/rank.ts'),
+    measures: require('../src/search-core/measures.ts'),
+    duplicates: require('../src/search-core/duplicates.ts'),
     config: require('../src/config.ts'),
     copy: require('../src/ui/copy.ts'),
   };

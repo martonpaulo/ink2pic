@@ -14,6 +14,7 @@ import {
   ROOT_DIR,
   sleep,
 } from './lib.mjs';
+import {pixelOrder} from './pixelorder.mjs';
 
 /** Between two queries that asked the network: one query at a time, as a person searches. */
 const QUERY_DELAY_MS = 2000;
@@ -29,7 +30,7 @@ const HTTP_SERVER_ERROR = 500;
 /** What a source answers that is not its usual page or JSON: a captive portal, an outage page. */
 const MALFORMED_BODY = '<html><body>Service unavailable</body></html>';
 
-const {core, rank, config, copy} = product();
+const {core, rank, measures, duplicates, config, copy} = product();
 export const SOURCE_NAMES = core.DEFAULT_ADAPTERS.map(adapter => adapter.name);
 /**
  * shortcut: the device's query languages, copied from src/search/device.ts, which imports the
@@ -98,7 +99,8 @@ export function notice(outcome) {
   return {state: state.kind, text};
 }
 
-function tile(result, query) {
+function tile(result, query, shown) {
+  const pixels = shown.get(result.id);
   return {
     id: result.id,
     source: result.source,
@@ -107,6 +109,7 @@ function tile(result, query) {
     thumb: result.thumbUrl,
     canonical: result.canonical === true,
     score: result.canonical ? null : rank.einkScore(result, query),
+    pixels: pixels ?? null,
   };
 }
 
@@ -169,6 +172,14 @@ export async function runCases(
     const started = Date.now();
     const {outcome, named, attempt, requests, retryAfter, waited} =
       await searchCase(item.query, faults, log);
+    // The device's order: pages 1 and 2 re-sorted by their pixels before page 1 shows (#81).
+    const {results, shown} = await pixelOrder(
+      outcome.results,
+      item.query,
+      measures,
+      duplicates,
+      config.USER_AGENT,
+    );
     out.push({
       ...item,
       statuses: outcome.statuses,
@@ -182,8 +193,8 @@ export async function runCases(
       // The longest Retry-After a source sent, in seconds: how long it asked the lab to wait.
       retryAfter,
       total: outcome.results.length,
-      page1: core.pageOf(outcome.results, 0).map(r => tile(r, item.query)),
-      page2: core.pageOf(outcome.results, 1).map(r => tile(r, item.query)),
+      page1: core.pageOf(results, 0).map(r => tile(r, item.query, shown)),
+      page2: core.pageOf(results, 1).map(r => tile(r, item.query, shown)),
     });
     const failures = named.length ? `, failed: ${named.join(', ')}` : '';
     log(

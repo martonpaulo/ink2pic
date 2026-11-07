@@ -83,7 +83,7 @@ export function cacheKey(query: string, variant = ''): string {
 }
 
 function store(result: SearchResult): StoredResult {
-  const {id, source, title, thumbUrl, license, attribution, mime, leads} =
+  const {id, source, title, thumbUrl, license, attribution, mime, leads, tags} =
     result;
   const original = storedOriginal(result);
   return {
@@ -97,6 +97,8 @@ function store(result: SearchResult): StoredResult {
     ...(original && {original}),
     // A cached symbol keeps its lead: the measures re-rank it on the way out (#67).
     ...(leads && {leads}),
+    // The style rules read them on the way out too (#81).
+    ...(tags && {tags}),
   };
 }
 
@@ -128,6 +130,9 @@ function isStoredResult(value: unknown): value is StoredResult {
     STRING_FIELDS.every(field => typeof value[field] === 'string') &&
     (value.mime === undefined || typeof value.mime === 'string') &&
     (value.leads === undefined || value.leads === true) &&
+    (value.tags === undefined ||
+      (Array.isArray(value.tags) &&
+        value.tags.every(tag => typeof tag === 'string'))) &&
     isOriginal(value.original)
   );
 }

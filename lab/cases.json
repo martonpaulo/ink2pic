@@ -139,6 +139,12 @@
    "expect": "a portrait of Napoleon Bonaparte on page 1; no signature, no map"
   },
   {
+   "id": "napoleao",
+   "category": "person",
+   "query": "Napoleão",
+   "expect": "a portrait of Napoleon Bonaparte first; no signature, no map, no poster"
+  },
+  {
    "id": "miguel-de-cervantes",
    "category": "person",
    "query": "Miguel de Cervantes",
@@ -299,6 +305,12 @@
    "category": "style",
    "query": "map of Spain",
    "expect": "a map of Spain first"
+  },
+  {
+   "id": "spain",
+   "category": "place",
+   "query": "Spain",
+   "expect": "a picture of Spain whose lines show clearly on e-ink first; no faint light-grey map (owner, build 15)"
   },
   {
    "id": "photo-of-a-cat",
@@ -503,6 +515,18 @@
    "category": "brand",
    "query": "Google",
    "expect": "the Google logo first"
+  },
+  {
+   "id": "confucius-institute",
+   "category": "brand",
+   "query": "Confucius Institute",
+   "expect": "the Confucius Institute logo first: the query names an institution"
+  },
+  {
+   "id": "confucious-institute",
+   "category": "recognition",
+   "query": "Confucious Institute",
+   "expect": "the Confucius Institute logo first, despite the spelling (owner, build 15)"
   },
   {
    "id": "apples",
