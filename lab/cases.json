@@ -277,6 +277,12 @@
    "expect": "a one-letter typo of elephant: an elephant on page 1 is the hope; no unrelated text"
   },
   {
+   "id": "confucious-institute",
+   "category": "recognition",
+   "query": "Confucious Institute",
+   "expect": "a misspelled name that still matches a few files: the Confucius Institute's pictures on page 1, under «Showing results for Confucius Institute.» (#84)"
+  },
+  {
    "id": "apple-logo",
    "category": "style",
    "query": "apple logo",

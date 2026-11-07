@@ -4,7 +4,9 @@ import {BREAKER_OPEN_MS, createBreaker} from '../src/search-core/breaker';
 import {cachedSearch} from '../src/search-core/cache';
 import {systemClock} from '../src/search-core/clock';
 import type {SourceAdapter} from '../src/search-core/adapter';
+import {PAGE_SIZE} from '../src/search-core/pages';
 import {searchAll} from '../src/search-core/search';
+import {searchState} from '../src/search-core/state';
 import {createContext, FetchLike} from '../src/search-core/fetcher';
 import {DEFAULT_ADAPTERS} from '../src/search-core/registry';
 import type {SearchResult, SourceOutcome} from '../src/search-core/types';
@@ -25,6 +27,10 @@ const never = (name: string): SourceAdapter => ({
   name,
   search: () => new Promise(() => {}),
 });
+
+/** One full page 1 of results, `prefix`1 to `prefix`6. */
+const page = (prefix: string): SearchResult[] =>
+  Array.from({length: PAGE_SIZE}, (_, i) => result(`${prefix}${i + 1}`));
 
 afterEach(() => jest.useRealTimers());
 
@@ -285,11 +291,15 @@ describe('the corrected search (#65)', () => {
     expect(commons.search).toHaveBeenCalledTimes(2);
   });
 
-  it('never corrects a query that found pictures, or an exact search', async () => {
+  it('never corrects a query that filled page 1, or an exact search', async () => {
     const found = suggesting('commons', {
-      apple: {ok: true, results: [result('a1')], suggestion: 'apples'},
+      apple: {ok: true, results: page('a'), suggestion: 'apples'},
+      apples: {ok: true, results: [result('s1')]},
     });
-    expect((await searchAll('apple', [found])).correctedQuery).toBeUndefined();
+    const full = await searchAll('apple', [found]);
+    expect(full.correctedQuery).toBeUndefined();
+    expect(full.results.map(x => x.id)).toEqual(page('a').map(x => x.id));
+    expect(found.search).toHaveBeenCalledTimes(1);
     const exact = suggesting('commons', {
       qzxv: {ok: true, results: [], suggestion: 'qzxw'},
       qzxw: {ok: true, results: [result('w1')]},
@@ -298,6 +308,51 @@ describe('the corrected search (#65)', () => {
       (await searchAll('qzxv', [exact], {correct: false})).results,
     ).toEqual([]);
     expect(exact.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('searches the suggestion once when page 1 is thin; its pictures lead (#84)', async () => {
+    const commons = suggesting('commons', {
+      'Confucious Institute': {
+        ok: true,
+        results: [result('c1'), result('c2')],
+        suggestion: 'confucius institute',
+      },
+      'confucius institute': {
+        ok: true,
+        results: [result('k1'), result('c2'), result('k2')],
+      },
+    });
+    const wikidata = {...suggesting('wikidata', {}), supplement: true as const};
+    const outcome = await searchAll('Confucious Institute', [
+      commons,
+      wikidata,
+    ]);
+    expect(outcome.correctedQuery).toBe('confucius institute');
+    expect(outcome.results.map(x => x.id)).toEqual(['k1', 'c2', 'k2', 'c1']);
+    expect(commons.search).toHaveBeenCalledTimes(2);
+    expect(wikidata.search).toHaveBeenCalledTimes(1);
+    expect(searchState(outcome).kind).toBe('corrected');
+  });
+
+  it('a thin page tries only a suggestion, never a prefix or a longest word (#84)', async () => {
+    const commons = suggesting('commons', {
+      elephan: {ok: true, results: [result('e1')]},
+      'elephan*': {ok: true, results: [result('e2')]},
+    });
+    const outcome = await searchAll('elephan', [commons]);
+    expect(outcome.correctedQuery).toBeUndefined();
+    expect(outcome.results.map(x => x.id)).toEqual(['e1']);
+    expect(commons.search).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the thin page when the suggestion finds nothing (#84)', async () => {
+    const commons = suggesting('commons', {
+      qzxv: {ok: true, results: [result('q1')], suggestion: 'qzxw'},
+    });
+    const outcome = await searchAll('qzxv', [commons]);
+    expect(outcome.correctedQuery).toBeUndefined();
+    expect(outcome.results.map(x => x.id)).toEqual(['q1']);
+    expect(commons.search).toHaveBeenCalledTimes(2);
   });
 
   it('never corrects when every source failed', async () => {
@@ -450,3 +505,4 @@ describe('the fallback ladder (#71)', () => {
     expect(short.search).toHaveBeenCalledTimes(1);
   });
 });
+

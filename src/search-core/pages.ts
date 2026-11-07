@@ -11,3 +11,11 @@ export function pageCount(total: number): number {
 export function pageOf<T>(items: readonly T[], index: number): T[] {
   return items.slice(index * PAGE_SIZE, (index + 1) * PAGE_SIZE);
 }
+
+/**
+ * Page 1 is thin when it is not full, empty included: the one rule for when a search tries the
+ * suggested spelling (#84) and when the screen says a source did not answer (#82).
+ */
+export function isThin(count: number): boolean {
+  return count < PAGE_SIZE;
+}

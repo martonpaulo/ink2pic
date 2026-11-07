@@ -7,6 +7,7 @@ import type {Breaker} from './breaker';
 import {Clock, noLog, systemClock} from './clock';
 import {SOURCE_TIMEOUT_MS} from './fetcher';
 import {withoutAdult} from './filters/adult';
+import {isThin} from './pages';
 import {fallbackQueries, normalise} from './query';
 import {DEFAULT_SCORERS, PHOTO_SCORERS, rankForEink} from './rank';
 import type {FailureKind, SearchResult, SourceOutcome} from './types';
@@ -26,8 +27,8 @@ export type SearchOutcome = {
   /** Every source failed: nothing to show but the failure. */
   allFailed: boolean;
   /**
-   * The spelling a source suggested, when the query found nothing and the suggestion did: the
-   * results are the suggestion's (#65). The query itself stays what the person typed.
+   * The spelling a source suggested, when page 1 was thin and the suggestion found pictures: its
+   * results lead, the query's own follow (#65, #84). The query itself stays what the person typed.
    */
   correctedQuery?: string;
   /** An expired cached answer, shown because every source failed (#65). */
@@ -200,10 +201,12 @@ async function searchOnce(
 }
 
 /**
- * Searches every source in parallel and ranks what they found. When nothing was found, the main
- * sources search once more (no supplement, so at most their own requests more) with the first
- * of: the spelling a source suggested (Commons, then Wikipedia), the word as a prefix, the
- * phrase's longest word (#65, #71); those results show when they found any.
+ * Searches every source in parallel and ranks what they found. When page 1 is thin (`isThin`),
+ * the main sources search once more (no supplement, so at most their own requests more). An
+ * empty search tries the first of: the spelling a source suggested (Commons, then Wikipedia), the
+ * word as a prefix, the phrase's longest word (#65, #71); those results show when they found any.
+ * A search that found a few pictures tries only a source's suggestion: its results lead and the
+ * first search's follow (#84).
  */
 export async function searchAll(
   query: string,
@@ -219,27 +222,41 @@ export async function searchAll(
   const run: Run = {ctx, clock, timeoutMs, breaker};
   const first = await searchOnce(query, sources, run);
   const {outcome} = first;
-  if (!correct || outcome.results.length > 0 || outcome.allFailed) {
+  const found = outcome.results.length;
+  if (!correct || !isThin(found) || outcome.allFailed) {
     return outcome;
   }
   // One re-run at most, of the main sources: the first candidate that differs from the query.
+  // A few pictures found: only a source's suggestion, never a cut word or a longer phrase's part.
   const typed = normalise(query).toLocaleLowerCase();
-  const suggestion = [first.suggestion, ...fallbackQueries(query)].find(
+  const candidates = found
+    ? [first.suggestion]
+    : [first.suggestion, ...fallbackQueries(query)];
+  const suggestion = candidates.find(
     candidate => candidate && candidate.toLocaleLowerCase() !== typed,
   );
   if (!suggestion) {
     return outcome;
   }
-  ctx.log(`search "${query}": nothing found, trying "${suggestion}"`);
+  ctx.log(
+    `search "${query}": ${found ? `only ${found} found` : 'nothing found'}, ` +
+      `trying "${suggestion}"`,
+  );
   const main = sources.filter(source => !source.supplement);
   const second = await searchOnce(suggestion, main, run);
   if (second.outcome.results.length === 0) {
     ctx.log(`search "${suggestion}": nothing found either`);
     return outcome;
   }
+  const seen = new Set(second.outcome.results.map(result => result.id));
   return {
     ...second.outcome,
+    results: [
+      ...second.outcome.results,
+      ...outcome.results.filter(result => !seen.has(result.id)),
+    ],
     statuses: {...outcome.statuses, ...second.outcome.statuses},
+    sourceDown: outcome.sourceDown || second.outcome.sourceDown,
     correctedQuery: suggestion,
   };
 }
