@@ -1,11 +1,20 @@
 /**
  * The #75 device spike's two buttons, above the call log; the results are log lines
- * (src/flow/penProbe.ts), and a Lasso last word that lassoed nothing says so here. Removed with
- * the spike.
+ * (src/flow/penProbe.ts), and a Lasso last word that lassoed nothing says so here. While the
+ * probe listens, «Probe on» and Stop probe show, so a stray tap is never silent. Shown only
+ * while PROBE_CONTROLS is true; removed with the spike.
  */
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Text, View} from 'react-native';
-import {LastWordProblem, lassoLastWord, runProbe} from '../flow/penProbe';
+import {PROBE_CONTROLS} from '../config';
+import {
+  LastWordProblem,
+  lassoLastWord,
+  onProbeArmed,
+  probeArmed,
+  runProbe,
+  stopPenProbe,
+} from '../flow/penProbe';
 import {Button} from './Button';
 import {copy} from './copy';
 import {shared} from './styles';
@@ -15,8 +24,17 @@ const PROBLEM_TEXT: Record<LastWordProblem, string> = {
   lassoFailed: copy['probe.lassoFailed'],
 };
 
-export function ProbeBar(): React.JSX.Element {
+export function ProbeBar({
+  enabled = PROBE_CONTROLS,
+}: {
+  enabled?: boolean;
+}): React.JSX.Element | null {
   const [problem, setProblem] = useState<LastWordProblem | null>(null);
+  const [armed, setArmed] = useState(probeArmed);
+  useEffect(() => onProbeArmed(setArmed), []);
+  if (!enabled) {
+    return null;
+  }
   return (
     <View>
       <View style={shared.row}>
@@ -26,6 +44,14 @@ export function ProbeBar(): React.JSX.Element {
           onPress={async () => setProblem(await lassoLastWord())}
         />
       </View>
+      {armed ? (
+        <View style={shared.row}>
+          <Text accessibilityLiveRegion="polite" style={shared.text}>
+            {copy['probe.on']}
+          </Text>
+          <Button label={copy['probe.stop']} onPress={stopPenProbe} />
+        </View>
+      ) : null}
       {problem ? (
         <Text accessibilityLiveRegion="polite" style={shared.text}>
           {PROBLEM_TEXT[problem]}

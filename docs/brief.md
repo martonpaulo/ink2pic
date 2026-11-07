@@ -729,6 +729,13 @@ word gap is about 33 px. Every stroke of the chosen line is logged with its `num
 whether it was kept, so the next device round can be replayed
 ([#79](https://github.com/martonpaulo/ink2pic/issues/79)).
 
+Probe pen and page and Lasso last word are spike controls in the Log view, shown while
+`PROBE_CONTROLS` in `src/config.ts` is true: true for build 16, where the owner tests them, and
+false once the [#75](https://github.com/martonpaulo/ink2pic/issues/75) spike ends. While the probe
+listens, the view shows «Probe on» and a Stop probe button. The probe reads the page again at each
+pen-up and removes its pen-up and motion listeners when the view closes (lifecycle 3), so a closed
+«o» or «0» written later never puts a lasso on the note.
+
 ---
 
 ## 9. Implementation plan

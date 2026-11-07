@@ -4,7 +4,9 @@
  * never changes or deletes a stroke. Every line starts with «probe» so the report finds them.
  *
  * Once armed (by Probe in the Log view), each pen-up logs the last element and the pen; a circle
- * drawn around earlier strokes is lassoed natively with the view closed. Probe also lassoes the
+ * drawn around earlier strokes is lassoed natively. The page is read again at each pen-up, so a
+ * page or note change is followed. The listeners stop with Stop probe or when the view closes
+ * (lifecycle 3), so the probe never costs SDK calls or lassoes a closed «o» once the view is gone. Probe also lassoes the
  * page's last picture and reads the lasso back. Lasso last word reads the page's strokes, with no
  * Probe first, and lassoes the last word by position. Both close the view after a lasso that took,
  * so the person sees whether the native lasso stays; a lasso that did not take is said on screen.
@@ -33,6 +35,7 @@ import {
   recycleElement,
   strokePoints,
 } from '../sdk/pen';
+import {LifeState, onLifecycle} from '../sdk/buttons';
 import {closePluginView} from '../sdk/plugin';
 import {getSettings} from '../storage/settings';
 import {SPACING_SCALES} from '../settings/settings';
@@ -72,23 +75,38 @@ type SdkElement = {
 let stops: (() => void)[] = [];
 /** When the last pen-up arrived, for the pause the log shows. */
 let lastAt: number | null = null;
-let context: PageContext | null = null;
 let motion: {points: PenPoint[]; toolType: number} | null = null;
 /** Pen-ups are handled one after another, in the order they arrive. */
 let queue: Promise<void> = Promise.resolve();
+
+const armedListeners = new Set<(armed: boolean) => void>();
 
 export function probeArmed(): boolean {
   return stops.length > 0;
 }
 
-/** Stops listening and forgets the strokes (tests; the plugin keeps the probe for its life). */
+/** Calls `listener` when the probe is armed or stopped; returns the stop function. */
+export function onProbeArmed(listener: (armed: boolean) => void): () => void {
+  armedListeners.add(listener);
+  return () => armedListeners.delete(listener);
+}
+
+function tellArmed(): void {
+  armedListeners.forEach(listener => listener(probeArmed()));
+}
+
+/** Stops listening and forgets the strokes: Stop probe, the view's close, and tests. */
 export function stopPenProbe(): void {
+  const wasArmed = probeArmed();
   stops.forEach(stop => stop());
   stops = [];
   lastAt = null;
-  context = null;
   motion = null;
   queue = Promise.resolve();
+  if (wasArmed) {
+    log('probe: listeners off');
+    tellArmed();
+  }
 }
 
 /** Resolves when every pen-up received so far is handled (tests). */
@@ -108,8 +126,7 @@ async function readContext(): Promise<PageContext | null> {
   if (!size.ok) {
     return null;
   }
-  context = {path: path.value, page: page.value, size: size.value};
-  return context;
+  return {path: path.value, page: page.value, size: size.value};
 }
 
 function sample(points: PenPoint[]): PenPoint[] {
@@ -181,7 +198,8 @@ async function handlePenUp(elements: object[], at: number): Promise<void> {
       .map(describe)
       .join('; ')}`,
   );
-  const page = context ?? (await readContext());
+  // Read at each pen-up: the person may have turned the page or opened another note.
+  const page = await readContext();
   const last = await logged('getLastElement', getLastElement);
   if (!last.ok || last.value === null) {
     return;
@@ -337,6 +355,16 @@ async function arm(): Promise<void> {
       : `probe: motion listener failed: ${moves.code} ${moves.message}`,
   );
   stops = [penUp, moves].flatMap(result => (result.ok ? [result.value] : []));
+  if (stops.length > 0) {
+    // The view closed: the listeners go with it (lifecycle 3, official docs).
+    const life = onLifecycle(state => {
+      if (state === LifeState.stop) {
+        stopPenProbe();
+      }
+    });
+    stops.push(life);
+    tellArmed();
+  }
 }
 
 /**

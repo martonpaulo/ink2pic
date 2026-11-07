@@ -60,6 +60,8 @@ export const copy = {
   // Outside the brief's table: the #75 device spike in the Log view, removed when the spike ends.
   'probe.run': 'Probe pen and page',
   'probe.lastWord': 'Lasso last word',
+  'probe.on': 'Probe on: each stroke is logged until the view closes.',
+  'probe.stop': 'Stop probe',
   'probe.noStrokes':
     'No handwriting on this page yet. Write a word, then try again.',
   'probe.lassoFailed':

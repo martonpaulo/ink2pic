@@ -1,6 +1,7 @@
 import {PluginCommAPI, PluginFileAPI, PluginManager} from 'sn-plugin-lib';
 import {
   lassoLastWord,
+  probeArmed,
   probeIdle,
   runProbe,
   stopPenProbe,
@@ -45,6 +46,8 @@ function circle(): Point[] {
 }
 
 let penUp: (msg: unknown) => void = () => {};
+let life: (msg: unknown) => void = () => {};
+const removed: string[] = [];
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -53,12 +56,19 @@ beforeEach(() => {
   mocked(PluginManager.registerEventListener).mockImplementation(
     (_event: string, _order: number, listener: {onMsg: typeof penUp}) => {
       penUp = listener.onMsg;
-      return {remove: jest.fn()};
+      return {remove: jest.fn(() => removed.push('pen-up'))};
     },
   );
   mocked(PluginManager.registerMotionListener).mockReturnValue({
-    remove: jest.fn(),
+    remove: jest.fn(() => removed.push('motion')),
   });
+  mocked(PluginManager.registerPluginLifeListener).mockImplementation(
+    (listener: {onMsg: typeof life}) => {
+      life = listener.onMsg;
+      return {remove: jest.fn(() => removed.push('life'))};
+    },
+  );
+  removed.length = 0;
   mocked(PluginCommAPI.getCurrentFilePath).mockResolvedValue(
     success('/Note/a.note'),
   );
@@ -212,4 +222,27 @@ it('reads a stroke’s points in parts and none for another element', async () =
     value: points,
   });
   expect(await strokePoints({type: 200})).toEqual({ok: true, value: []});
+});
+
+it('reads the page again at each pen-up, so a page change is followed (#75)', async () => {
+  mocked(PluginFileAPI.getElements).mockResolvedValue(success([]));
+  await runProbe();
+  mocked(PluginCommAPI.getCurrentPageNum).mockClear();
+  await write(zigzag(100), 1);
+  mocked(PluginCommAPI.getCurrentPageNum).mockResolvedValue(success(4));
+  await write(zigzag(150), 2);
+  expect(PluginCommAPI.getCurrentPageNum).toHaveBeenCalledTimes(2);
+  expect(PluginFileAPI.getPageSize).toHaveBeenLastCalledWith('/Note/a.note', 4);
+});
+
+it('removes the pen and motion listeners when the view closes (lifecycle 3, #75)', async () => {
+  mocked(PluginFileAPI.getElements).mockResolvedValue(success([]));
+  await runProbe();
+  expect(probeArmed()).toBe(true);
+  life({state: 2});
+  expect(probeArmed()).toBe(true);
+  life({state: 3});
+  expect(probeArmed()).toBe(false);
+  expect(removed.sort()).toEqual(['life', 'motion', 'pen-up']);
+  expect(logLines().join('\n')).toMatch(/probe: listeners off/);
 });
