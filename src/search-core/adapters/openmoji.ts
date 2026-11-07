@@ -9,8 +9,8 @@ import INDEX from '../data/openmoji-index.json';
 import {lookupLanguages, normalise} from '../query';
 import {PAGE_SIZE, SearchResult, SourceOutcome, sourceId} from '../types';
 
-const GITHUB_RAW = 'https://raw.githubusercontent.com';
-const PICTURES = `${GITHUB_RAW}/hfg-gmuend/openmoji/master/black/618x618`;
+/** The pinned release's pictures, as the index build recorded them (#99): never `master`. */
+const PICTURES = INDEX.pictures;
 /** The one size the pictures come in: 618 x 618 PNG, 9.5 to 17 KB (research A). */
 export const OPENMOJI_WIDTH = 618;
 const LICENSE = 'CC BY-SA 4.0';

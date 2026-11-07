@@ -8,7 +8,9 @@
  *   node scripts/build-openmoji-index.cjs [--cache <dir>] [--check]
  *
  * --cache keeps the downloads in <dir> and reads them from there next time. --check builds the
- * index and fails when it differs from the committed file. Behind a proxy, Node needs
+ * index and fails when it differs from the committed file, or when the first symbol's picture at
+ * the pinned commit is not a PNG. The index records that pictures URL, so the plugin fetches
+ * the pictures of the same release as its keywords (#99). Behind a proxy, Node needs
  * NODE_USE_ENV_PROXY=1 (and NODE_EXTRA_CA_CERTS for its certificate). The plugin never fetches
  * these files: only this script does.
  */
@@ -57,6 +59,9 @@ const SOURCES = {
   },
 };
 const CLDR_LANGUAGES = ['pt', 'es', 'zh'];
+/** The black 618 px pictures of the pinned OpenMoji release, `<HEX>.png` each. */
+const PICTURES = `${RAW}/hfg-gmuend/openmoji/${OPENMOJI}/black/618x618`;
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 /**
  * Left out (#67): flags, skin-tone parts and variants, OpenMoji's and Unicode's extras (brand
@@ -189,9 +194,21 @@ function build(data) {
     sources: Object.fromEntries(
       Object.entries(SOURCES).map(([name, {url}]) => [name, url]),
     ),
+    pictures: PICTURES,
     languages: ['en', ...CLDR_LANGUAGES],
     entries,
   };
+}
+
+/** Fails unless the first symbol's picture answers as a PNG at the recorded pictures URL. */
+async function checkPicture(index) {
+  const hex = index.entries[0].split(' ')[0];
+  const url = `${index.pictures}/${hex}.png`;
+  const response = await fetch(url);
+  const head = Buffer.from(await response.arrayBuffer()).subarray(0, 4);
+  if (!response.ok || !head.equals(PNG_SIGNATURE)) {
+    throw new Error(`${url}: HTTP ${response.status}, not a PNG`);
+  }
 }
 
 async function main() {
@@ -208,6 +225,7 @@ async function main() {
     if (fs.readFileSync(OUT, 'utf8') !== text) {
       throw new Error(`${OUT} differs from a fresh build (${size})`);
     }
+    await checkPicture(JSON.parse(text));
     console.log(`openmoji index: up to date (${size})`);
     return;
   }

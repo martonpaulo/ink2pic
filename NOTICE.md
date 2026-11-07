@@ -31,8 +31,9 @@ these files, each pinned to a commit and a SHA-256 in the script ([#67](https://
   (<https://www.unicode.org/license.txt>). Taken: each emoji's name (`tts`) and keywords
   (`default`), folded.
 
-The pictures, `https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/black/618x618/<HEX>.png`,
-are OpenMoji's, CC BY-SA 4.0: each result and each saved picture records the credit «OpenMoji» and
+The pictures, `https://raw.githubusercontent.com/hfg-gmuend/openmoji/f9fc506a3f913be9897ab0181d611d4c910a4104/black/618x618/<HEX>.png`
+at the same pinned commit as the keywords, recorded as `pictures` in the index and checked by `--check`
+([#99](https://github.com/martonpaulo/ink2pic/issues/99)), are OpenMoji's, CC BY-SA 4.0: each result and each saved picture records the credit «OpenMoji» and
 the license. The copies kept for offline use in `MyStyle/Ink2Pic/symbols/` are unchanged OpenMoji
 pictures under the same CC BY-SA 4.0 licence; Settings names it before the download
 ([#91](https://github.com/martonpaulo/ink2pic/issues/91)).

@@ -92,7 +92,8 @@ describe('the OpenMoji symbols (#67)', () => {
       attribution: 'OpenMoji',
       mime: 'image/png',
     });
-    const url = `https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/black/618x618/${hexes(
+    // The pinned 17.0.0 release, as the keywords (#99): never `master`.
+    const url = `https://raw.githubusercontent.com/hfg-gmuend/openmoji/f9fc506a3f913be9897ab0181d611d4c910a4104/black/618x618/${hexes(
       [face],
     )}.png`;
     expect(face.thumbUrl).toBe(url);
