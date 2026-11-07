@@ -63,13 +63,20 @@ describe('journeys (#78)', () => {
     expect(j.log().join('\n')).toMatch(/insert best: /);
   });
 
-  // Not run (#78): offline, OpenMoji answers from its bundled index while every network source
-  // fails, so searchState (src/search-core/state.ts) gives `partial`, not `offline`: the grid
-  // shows OpenMoji tiles whose pictures need the network, with the source-down sentence instead
-  // of the offline one. A product bug in the search state, which #82 is changing; make this
-  // journey a test once it is fixed: Find picture shows copy['error.offline'], no tile, and
-  // Insert picture inserts nothing.
-  it.todo('offline: Find picture shows the no-internet sentence, Insert picture inserts nothing');
+  it('offline: Find picture shows the no-internet sentence, Insert picture inserts nothing', async () => {
+    // OpenMoji answers from its bundled index, but its pictures need the network too (#82).
+    const j = lassoedSoup();
+    j.host.online = false;
+    await j.press(LASSO_BUTTON_ID);
+    await j.settle(() => j.shows(copy['error.offline']));
+    expect(j.tiles()).toEqual([]);
+    j.end();
+    const k = lassoedSoup();
+    k.host.online = false;
+    await k.press(INSERT_BUTTON_ID);
+    await k.settle(() => k.shows(copy['error.offline']) || k.host.view === 'hidden');
+    expect(k.host.pictures()).toEqual([]);
+  });
 
   // Which page shows the source-down sentence is #82's rule, so this journey does not check it.
   it('one source failing: the other sources fill the grid, and a pick still inserts', async () => {

@@ -229,4 +229,5 @@ export const openmojiPictures: PictureHost = {
 export const openmojiAdapter: SourceAdapter = {
   name: 'openmoji',
   search: searchOpenmoji,
+  localIndex: true,
 };

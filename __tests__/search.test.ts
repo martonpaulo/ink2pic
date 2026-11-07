@@ -541,6 +541,55 @@ describe('the source-down line shows only on a thin page (#82)', () => {
     expect(await kind([])).toBe('partial');
   });
 
+  // OpenMoji answers from its bundled index, with no request (#67).
+  const offline = (name: string) =>
+    answering(name, {
+      ok: false,
+      kind: 'network',
+      message: 'Network request failed',
+    });
+  const symbols = (...results: SearchResult[]) =>
+    answering('openmoji', {ok: true, results});
+  const offlineKind = async (...results: SearchResult[]) =>
+    searchState(
+      await searchAll(
+        'soup',
+        [offline('openclipart'), offline('commons'), symbols(...results)],
+        {correct: false},
+      ),
+    ).kind;
+
+  it('offline, a local index alone is no answer: the state is offline (#82)', async () => {
+    expect(await offlineKind(result('o1'))).toBe('offline');
+  });
+
+  it('offline, a saved symbol is an answer (#82, #91)', async () => {
+    const saved = {...result('o2'), offlinePicture: true as const};
+    expect(await offlineKind(result('o1'), saved)).toBe('partial');
+  });
+
+  it('a local index beside one answering network source still counts it (#82)', async () => {
+    const outcome = await searchAll(
+      'soup',
+      [
+        answering('openclipart', {ok: true, results: page('a')}),
+        down,
+        symbols(result('o1')),
+      ],
+      {correct: false},
+    );
+    expect(searchState(outcome).kind).toBe('ready');
+  });
+
+  it('a source down for another reason than the network is not offline (#82)', async () => {
+    const outcome = await searchAll(
+      'soup',
+      [down, offline('openclipart'), symbols(result('o1'))],
+      {correct: false},
+    );
+    expect(searchState(outcome).kind).toBe('partial');
+  });
+
   it('a failed supplement on a thin page says so too', async () => {
     const wikidata = {
       ...answering('wikidata', {ok: false, kind: 'timeout', message: 'x'}),

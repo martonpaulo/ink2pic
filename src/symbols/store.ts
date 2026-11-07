@@ -6,7 +6,7 @@
  */
 import {log, logged} from '../log/memory';
 import {
-  FailureKind,
+  networkDown,
   openmojiPictureUrl,
   SearchOutcome,
   SearchResult,
@@ -27,8 +27,6 @@ export const DOWNLOAD_PARALLEL = 3;
 /** 1,447 PNGs at 618 px measured about 15 MB (#91): 10.4 KB each on average. */
 export const SYMBOL_BYTES = 10400;
 const BYTES_PER_MB = 1000 * 1000;
-/** Failure kinds that mean the device has no network (as `state.ts` reads them). */
-const OFFLINE_KINDS: ReadonlySet<FailureKind> = new Set(['network', 'timeout']);
 
 /** The saved symbols' codes; null until the folder is listed. */
 let saved: Set<string> | null = null;
@@ -140,21 +138,6 @@ export async function symbolUri(result: SearchResult): Promise<string> {
   return (await save(hex).catch(() => false))
     ? `${FILE_PREFIX}${symbolPath(hex)}`
     : result.thumbUrl;
-}
-
-/** True when every source that needs the network failed for the network (#82). */
-function networkDown(outcome: SearchOutcome): boolean {
-  const others = Object.entries(outcome.statuses).filter(
-    ([name]) => name !== 'openmoji',
-  );
-  return (
-    others.length > 0 &&
-    others.every(
-      ([, status]) =>
-        (status.state === 'failed' || status.state === 'skipped') &&
-        OFFLINE_KINDS.has(status.kind),
-    )
-  );
 }
 
 /**

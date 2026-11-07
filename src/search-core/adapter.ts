@@ -52,4 +52,11 @@ export type SourceAdapter = {
    * does not keep the search out of the cache.
    */
   supplement?: true;
+  /**
+   * Matches the word against data shipped in the plugin, with no request, while its pictures
+   * may still need the network (OpenMoji). With every other source down for the network, its
+   * answer counts only when a result's picture is saved (`offlinePicture`, #91); else the search
+   * shows as offline (#82).
+   */
+  localIndex?: true;
 };

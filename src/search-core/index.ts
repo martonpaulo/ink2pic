@@ -38,7 +38,7 @@ export type {Scorer} from './rank';
 export {DEFAULT_ADAPTERS, fullUrl, insertUrl, isSourceName} from './registry';
 export {searchAll} from './search';
 export type {SearchOptions, SearchOutcome, SourceStatus} from './search';
-export {searchState} from './state';
+export {networkDown, searchState} from './state';
 export type {SearchState, SearchStateKind} from './state';
 export {PAGE_SIZE, sourceId} from './types';
 export type {Failure, FailureKind, SearchResult, SourceName} from './types';
