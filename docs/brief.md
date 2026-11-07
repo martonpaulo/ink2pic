@@ -217,6 +217,7 @@ All signatures below were read from `sn-plugin-lib@0.2.3` source (`src/`) [CONFI
 - `showPluginView()`, `closePluginView()`.
 - `hasPermission(permission)`, `requestPermission(permission, desc?)`.
 - `registerPluginLifeListener(...)` (lifecycle events).
+- `registerEventListener('event_pen_up', registerType, listener)`: the only event the docs list; its message is the `Element[]` just written. `registerMotionListener(registerType, listener)`: `MotionEvent`s in screen pixels, `action` 0 down, 1 up, 2 move, 3 cancel [CONFIRMED in docs and source; whether they arrive while the view is closed is TO TEST, [#75](https://github.com/martonpaulo/ink2pic/issues/75)]. Elements carry no time and no rect: a stroke's rect comes from its `stroke.points` accessor.
 
 ### 4.2 `FileUtils` (`src/module/NativeFileUtils.ts`, TurboModule `RTNFileUtils`)
 
@@ -243,6 +244,7 @@ Complete interface: `exists`, `getExternalDirPath`, `makeDir`, `getExportPath`, 
   (official docs); Ink2Pic lassoes the picture it placed
   ([#73](https://github.com/martonpaulo/ink2pic/issues/73), section 10.5).
 - `cancelRecognize()`.
+- `getPenInfo()`: `{type, color, width}`; there is no call to set the pen. `lassoElements(rect)`: a native lasso over a rect inside `getPageSize` [CONFIRMED in docs; what it selects and whether the host returns to the pen after it is TO TEST, [#75](https://github.com/martonpaulo/ink2pic/issues/75)].
 - `getCurrentFilePath()`, `getCurrentPageNum()`, `getPageDisplaySize()`, `reloadFile()`.
 - `insertSticker(path)` (`.sticker` file), `saveStickerByLasso(path)` (strokes and geometries only), `convertElement2Sticker({machineType, elements, stickerPath})`.
 - `insertPageElements`, `modifyPageElements`, `deletePageElements`, `batchUpdatePageElements`.
@@ -250,6 +252,7 @@ Complete interface: `exists`, `getExternalDirPath`, `makeDir`, `getExportPath`, 
 ### 4.6 `PluginFileAPI` (`src/sdk/PluginFileAPI.ts`)
 
 - `insertElements(notePath, page, elements)`, `getElements`, `replaceElements`, `modifyElements`, `deleteElements`.
+- `getLastElement()`: the current page's last element. `getElements(page, notePath)` lists pictures too, with `picture.picturePath` and `picture.rect` in the type definitions [CONFIRMED in source; whether the host fills `picturePath`, there and in `getLassoElements`, is TO TEST, [#75](https://github.com/martonpaulo/ink2pic/issues/75)].
 - `getPageSize(notePath, page)`, `getLayers`, `insertLayer`, `createNote`, `generateNotePng`.
 - Write APIs need an open note context. From the config/settings screen they return error `102` [REPORTED, apclark31].
 

@@ -14,6 +14,8 @@ export const PluginManager = {
   ),
   registerButtonListener: jest.fn(() => ({remove: jest.fn()})),
   registerPluginLifeListener: jest.fn(() => ({remove: jest.fn()})),
+  registerEventListener: jest.fn(() => ({remove: jest.fn()})),
+  registerMotionListener: jest.fn(() => ({remove: jest.fn()})),
 };
 
 export const PluginCommAPI = mocks(
@@ -27,6 +29,7 @@ export const PluginCommAPI = mocks(
   'getCurrentPageNum',
   'createElement',
   'insertPageElements',
+  'getPenInfo',
 );
 
 export const PluginNoteAPI = mocks(
@@ -35,7 +38,12 @@ export const PluginNoteAPI = mocks(
   'saveCurrentNote',
 );
 
-export const PluginFileAPI = mocks('getPageSize', 'insertElements');
+export const PluginFileAPI = mocks(
+  'getPageSize',
+  'insertElements',
+  'getLastElement',
+  'getElements',
+);
 
 export const FileUtils = mocks(
   'exists',

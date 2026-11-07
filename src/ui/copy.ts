@@ -56,6 +56,9 @@ export const copy = {
   'error.unexpected': 'Something went wrong. Close Ink2Pic and open it again.',
   // Outside the brief's table: the starting screen (#12, build 0.1.0 (7)).
   'app.starting': 'Starting…',
+  // Outside the brief's table: the #75 device spike in the Log view, removed when the spike ends.
+  'probe.run': 'Probe pen and page',
+  'probe.lastWord': 'Lasso last word',
   // Outside the brief's table: the empty Library tab (#15).
   'library.empty': 'No saved pictures yet. Insert one from a search.',
 } as const;

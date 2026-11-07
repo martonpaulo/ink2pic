@@ -2,6 +2,7 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {logLines, onLog} from '../log/memory';
+import {ProbeBar} from './ProbeBar';
 import {shared} from './styles';
 
 /**
@@ -14,11 +15,15 @@ export function LogView(): React.JSX.Element {
   const [lines, setLines] = useState<string[]>(logLines);
   useEffect(() => onLog(setLines), []);
   return (
-    <View style={styles.frame}>
-      <Text testID="log" style={shared.textSmall}>
-        {lines.slice(-LOG_VIEW_LINES).join('\n')}
-      </Text>
-    </View>
+    <>
+      {/* Outside the clipped frame, so a long log never hides it (#75 spike). */}
+      <ProbeBar />
+      <View style={styles.frame}>
+        <Text testID="log" style={shared.textSmall}>
+          {lines.slice(-LOG_VIEW_LINES).join('\n')}
+        </Text>
+      </View>
+    </>
   );
 }
 
