@@ -74,7 +74,9 @@ describe('the settings file (#68)', () => {
   it('logs each problem of a hand-edited file', async () => {
     const path = '/s/settings.json';
     const storage = memory({[path]: '{"languages": ["en", "klingon"]}'});
-    expect((await loadSettings(storage, path, null)).languages).toEqual(['en']);
+    expect(
+      (await loadSettings(storage, path, null)).settings.languages,
+    ).toEqual(['en']);
     expect(logLines().join('\n')).toContain(
       'settings: language "klingon" is ignored',
     );
@@ -87,10 +89,39 @@ describe('the settings file (#68)', () => {
       },
       writeText: async () => {},
     };
-    expect(await loadSettings(storage, '/x', null)).toEqual(
-      defaultSettings(null),
-    );
+    expect(await loadSettings(storage, '/x', null)).toEqual({
+      settings: defaultSettings(null),
+      readFailure: 'Error: EACCES',
+    });
     expect(logLines().join('\n')).toContain('settings: cannot read /x');
+  });
+
+  it('never writes the defaults over a file it could not read (#99)', async () => {
+    const file = serializeSettings({...defaultSettings(null), size: 'large'});
+    const writeText = jest.fn(async () => null);
+    NativeModules.Ink2PicFiles = {
+      readText: jest.fn(async () => {
+        throw Object.assign(new Error('busy'), {code: 'IO'});
+      }),
+      writeText,
+    };
+    resetSettingsForTests();
+    expect((await getSettings()).size).toBe('medium');
+    await saveSettings({...defaultSettings(null), placement: 'beside'});
+    // The change lasts for the session; the file keeps the person's settings.
+    expect((await getSettings()).placement).toBe('beside');
+    expect(writeText).not.toHaveBeenCalled();
+    expect(logLines().join('\n')).toContain(
+      'settings: cannot read /storage/emulated/0/MyStyle/Ink2Pic/settings.json: IO: busy',
+    );
+    expect(logLines().join('\n')).toContain('settings: not saved');
+    // The next runtime reads the file again and saves as before.
+    NativeModules.Ink2PicFiles.readText = jest.fn(async () => file);
+    resetSettingsForTests();
+    expect((await getSettings()).size).toBe('large');
+    await saveSettings({...defaultSettings(null), size: 'small'});
+    expect(writeText).toHaveBeenCalledTimes(1);
+    delete NativeModules.Ink2PicFiles;
   });
 
   it('keeps the new order across a restart, written to MyStyle/Ink2Pic', async () => {
