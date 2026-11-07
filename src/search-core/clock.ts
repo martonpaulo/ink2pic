@@ -20,6 +20,26 @@ export function sleep(clock: Clock, ms: number): Promise<void> {
   });
 }
 
+/**
+ * The work's value, or undefined once `ms` passed (#100): the one time limit of the plugin. The
+ * work itself is not stopped; the timer is cancelled once it settles, and a rejection passes on.
+ */
+export async function withinLimit<T>(
+  work: Promise<T>,
+  ms: number,
+  clock: Clock = systemClock,
+): Promise<T | undefined> {
+  let cancel = () => {};
+  const expired = new Promise<undefined>(resolve => {
+    cancel = clock.after(ms, () => resolve(undefined));
+  });
+  try {
+    return await Promise.race([work, expired]);
+  } finally {
+    cancel();
+  }
+}
+
 /** One line for the caller's log; the core never decides where it goes. */
 export type Log = (line: string) => void;
 

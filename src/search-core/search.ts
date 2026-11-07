@@ -4,7 +4,7 @@
  */
 import type {SourceAdapter, SourceContext} from './adapter';
 import type {Breaker} from './breaker';
-import {Clock, noLog, systemClock} from './clock';
+import {Clock, noLog, systemClock, withinLimit} from './clock';
 import {SOURCE_TIMEOUT_MS} from './fetcher';
 import {withoutAdult} from './filters/adult';
 import {isThin} from './pages';
@@ -65,16 +65,6 @@ function withTimeout(
   clock: Clock,
   timeoutMs: number,
 ): Promise<SourceOutcome> {
-  let cancel = () => {};
-  const expired = new Promise<SourceOutcome>(resolve => {
-    cancel = clock.after(timeoutMs, () =>
-      resolve({
-        ok: false,
-        kind: 'timeout',
-        message: `no answer in ${timeoutMs} ms`,
-      }),
-    );
-  });
   // A thrown error is a fault in the adapter's code: a fetch failure arrives as an outcome (#104).
   const answered = source.search(query, ctx).catch(
     (error: unknown): SourceOutcome => {
@@ -83,7 +73,14 @@ function withTimeout(
       return {ok: false, kind: 'fault', message};
     },
   );
-  return Promise.race([answered, expired]).finally(cancel);
+  return withinLimit(answered, timeoutMs, clock).then(
+    (outcome): SourceOutcome =>
+      outcome ?? {
+        ok: false,
+        kind: 'timeout',
+        message: `no answer in ${timeoutMs} ms`,
+      },
+  );
 }
 
 function status(outcome: SourceOutcome): SourceStatus {

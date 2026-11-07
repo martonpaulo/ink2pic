@@ -4,6 +4,7 @@
  * (#36). The previous handler still runs afterwards.
  */
 import {log, logLines} from '../log/memory';
+import {withinLimit} from '../search-core';
 import {writeText} from '../storage/files';
 import {logsDir} from '../storage/paths';
 
@@ -54,14 +55,7 @@ export function catchCrashes(): void {
     }
     // A fatal error ends the process: crash.log, the only trace, gets a moment to land first.
     // The timer is cleared once the write lands, so nothing outlives the handler (#56).
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const moment = new Promise(resolve => {
-      timer = setTimeout(resolve, CRASH_WRITE_MS);
-    });
-    Promise.race([written, moment]).then(() => {
-      clearTimeout(timer);
-      previous(error, isFatal);
-    });
+    withinLimit(written, CRASH_WRITE_MS).then(() => previous(error, isFatal));
   });
   log('crash handler: ok');
 }

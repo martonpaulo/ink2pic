@@ -7,7 +7,8 @@ import {PAGE_SIZE, pageCount, pageOf} from '../src/search-core';
 import type {SearchResult} from '../src/search-core';
 import {copy} from '../src/ui/copy';
 import {metrics} from '../src/ui/metrics';
-import {ResultsGrid, THUMB_TIMEOUT_MS} from '../src/ui/ResultsGrid';
+import {THUMB_TIMEOUT_MS} from '../src/search/thumbs';
+import {ResultsGrid} from '../src/ui/ResultsGrid';
 
 const result = (n: number): SearchResult => ({
   id: `openclipart:${n}`,

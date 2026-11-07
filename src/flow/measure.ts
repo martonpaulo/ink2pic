@@ -19,17 +19,18 @@ import {
   orderMeasured,
   pixelKind,
   Prepared,
+  withinLimit,
 } from '../search-core';
-import {thumbPath, thumbUri} from '../search/thumbs';
+import {THUMB_TIMEOUT_MS, thumbPath, thumbUri} from '../search/thumbs';
 import {getSettings} from '../storage/settings';
 import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';
 
 /**
- * At most this long for the downloads and measures, the grid's own limit for a page
- * (THUMB_TIMEOUT_MS): page 1 waits for pages 1 and 2 at most that long.
+ * At most this long for the downloads and measures, the grid's own limit for a page: page 1
+ * waits for pages 1 and 2 at most that long.
  */
-export const MEASURE_LIMIT_MS = 8000;
+export const MEASURE_LIMIT_MS = THUMB_TIMEOUT_MS;
 /**
  * At most this long for a later page's measure and conversion, after its download, so the page
  * shows within the grid's limit (THUMB_TIMEOUT_MS). DEFAULT: TO TEST on the device.
@@ -97,20 +98,6 @@ const DEVICE: MeasureDeps = {
 };
 
 const LATER: MeasureDeps = {...DEVICE, limitMs: LATER_MEASURE_LIMIT_MS};
-
-/** The work's value, or undefined once `ms` passed; the work itself is not stopped. */
-async function withinLimit<T>(
-  work: Promise<T>,
-  ms: number,
-): Promise<T | undefined> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timedOut = new Promise<undefined>(resolve => {
-    timer = setTimeout(() => resolve(undefined), ms);
-  });
-  const value = await Promise.race([work, timedOut]);
-  clearTimeout(timer);
-  return value;
-}
 
 /**
  * Measures the thumbnail at `uri` and prepares it in the look `chooseLook` gives; null when it is

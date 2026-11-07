@@ -4,6 +4,7 @@
  * log reader. The session log file is #21.
  */
 import {fail, Result, TIMEOUT_CODE} from '../sdk/result';
+import {withinLimit} from '../search-core';
 
 /** Lines kept in memory and in the file: enough for a whole opening, small enough to rewrite (#45). */
 export const LOG_MAX_LINES = 2000;
@@ -130,17 +131,9 @@ export async function logged<T>(
   if (canClosePlugin(label)) {
     await afterCall();
   }
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const expired = new Promise<Result<T>>(resolve => {
-    timer = setTimeout(
-      () =>
-        resolve(fail(TIMEOUT_CODE, `TIMEOUT: no answer in ${timeoutMs} ms`)),
-      timeoutMs,
-    );
-  });
-  const result = await Promise.race([call(), expired]).finally(() =>
-    clearTimeout(timer),
-  );
+  const result =
+    (await withinLimit(call(), timeoutMs)) ??
+    fail(TIMEOUT_CODE, `TIMEOUT: no answer in ${timeoutMs} ms`);
   const took = Date.now() - at;
   log(
     result.ok

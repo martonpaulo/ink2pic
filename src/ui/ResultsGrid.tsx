@@ -14,7 +14,12 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import {USER_AGENT} from '../config';
 import {isContourUri} from '../flow/measure';
-import {cachedThumbUri, needsDownload, thumbUri} from '../search/thumbs';
+import {
+  cachedThumbUri,
+  needsDownload,
+  THUMB_TIMEOUT_MS,
+  thumbUri,
+} from '../search/thumbs';
 import {MEASURED_RESULTS, PAGE_SIZE} from '../search-core';
 import type {SearchResult} from '../search-core';
 import {Button} from './Button';
@@ -31,12 +36,6 @@ import {
   type TileEvent,
 } from './tiles';
 
-/**
- * A page shows at the latest after this, without its unanswered thumbnails (#24, #64).
- * shortcut: each round of replacements gets its own wait, so a server that never answers costs
- * one wait per round; bound the total if a device report shows a page waiting that long.
- */
-export const THUMB_TIMEOUT_MS = 8000;
 /** Two tiles per row; the rows follow from PAGE_SIZE: three for six. */
 const COLUMNS = 2;
 const ROWS = Array.from(

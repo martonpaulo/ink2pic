@@ -13,6 +13,13 @@ import {savedSymbolPath, symbolUri} from '../symbols/store';
 
 /** Most thumbnail files kept; the oldest is removed first. DEFAULT: about 100 KB each, 30 MB. */
 export const THUMB_LIMIT = 300;
+/**
+ * A page shows at the latest after this, without its unanswered thumbnails (#24, #64); the
+ * measures of pages 1 and 2 take at most as long (`MEASURE_LIMIT_MS`).
+ * shortcut: each round of replacements gets its own wait, so a server that never answers costs
+ * one wait per round; bound the total if a device report shows a page waiting that long.
+ */
+export const THUMB_TIMEOUT_MS = 8000;
 const THUMB_DIR = 'thumbs';
 const WEB_PREFIX = 'https://';
 const FILE_PREFIX = 'file://';
