@@ -25,6 +25,8 @@ const THUMB_WIDTH = 330;
 /** Enough for two or three result pages, small enough to stay polite (brief section 5.2). */
 const MIN_LIMIT = 12;
 const MAX_LIMIT = 18;
+/** The data saver's thumbnail width, a predefined one (#70). */
+const SAVER_THUMB_WIDTH = 250;
 /**
  * CirrusSearch keyword for SVG and other drawings [CONFIRMED 2026-11-06, live]: it keeps photos,
  * audio, video and PDF scans out of the results (#43).
@@ -262,7 +264,19 @@ export async function searchCommons(
   ctx: SourceContext,
 ): Promise<SourceOutcome> {
   const parse = (text: string) => parseSearchResponse(text, query);
-  const drawings = await ask(searchUrl(query, {drawings: true}), ctx, parse);
+  // The data saver asks for the fewest results and smaller thumbnails (#70).
+  const size = ctx.dataSaver
+    ? {limit: MIN_LIMIT, thumbWidth: SAVER_THUMB_WIDTH}
+    : {};
+  if (ctx.photos) {
+    // «Photos too» (#70): every picture in one search, photos not kept behind drawings.
+    return ask(searchUrl(query, size), ctx, parse);
+  }
+  const drawings = await ask(
+    searchUrl(query, {...size, drawings: true}),
+    ctx,
+    parse,
+  );
   // Only plain pictures of the subject fill the page: a signature, quote posters and logos
   // must not keep the real photos out (#71).
   if (
@@ -272,7 +286,7 @@ export async function searchCommons(
   ) {
     return drawings;
   }
-  const plain = await ask(searchUrl(query), ctx, parse);
+  const plain = await ask(searchUrl(query, size), ctx, parse);
   if (!plain.ok) {
     return drawings;
   }

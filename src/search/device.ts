@@ -19,17 +19,30 @@ import {
 } from '../search-core';
 import {pluginFolder} from '../storage/session';
 import {getSettings} from '../storage/settings';
+import {searchVariant, Settings, sourceOn} from '../settings/settings';
 import {deviceStorage} from '../storage/text';
 
 /** In memory for the plugin's run: a source that keeps failing is skipped for a while (#65). */
 const breaker = createBreaker();
 
-/** The search context on the device, with the person's query languages (#68). */
+/**
+ * The search context on the device, with the person's query languages (#68), style and data
+ * saver (#70).
+ */
 export function deviceContext(
-  languages: readonly string[],
+  settings: Settings,
   fetch: FetchLike = globalThis.fetch,
 ): SourceContext {
-  return createContext({fetch, userAgent: USER_AGENT, log, languages});
+  return {
+    ...createContext({
+      fetch,
+      userAgent: USER_AGENT,
+      log,
+      languages: settings.languages,
+    }),
+    photos: settings.style === 'photos',
+    dataSaver: settings.dataSaver,
+  };
 }
 
 export async function searchCached(
@@ -38,9 +51,12 @@ export async function searchCached(
   context?: SourceContext,
   {exact = false}: {exact?: boolean} = {},
 ): Promise<SearchOutcome> {
-  const ctx = context ?? deviceContext((await getSettings()).languages);
+  const settings = await getSettings();
+  const ctx = context ?? deviceContext(settings);
+  // Only the sources the person left on (#70); one always is.
+  const active = sources.filter(source => sourceOn(settings, source.name));
   const run = (q: string) =>
-    searchAll(q, sources, {ctx, correct: !exact, breaker});
+    searchAll(q, active, {ctx, correct: !exact, breaker});
   if (exact) {
     // The cached answer may be the corrected one: the person asked for the word as typed.
     return run(query);
@@ -53,8 +69,8 @@ export async function searchCached(
   const cached = await cachedSearch(query, run, {
     storage: deviceStorage,
     path: `${dir.value}/search-cache.json`,
-    // Another language order looks the word up elsewhere: a new search, not the cached one.
-    variant: ctx.languages.join(','),
+    // Other languages, sources or style find other pictures: a new search, not the cached one.
+    variant: searchVariant(settings),
   });
   if (cached.problem) {
     log(`search cache: ${cached.problem}`);

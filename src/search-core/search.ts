@@ -8,7 +8,7 @@ import {Clock, noLog, systemClock} from './clock';
 import {SOURCE_TIMEOUT_MS} from './fetcher';
 import {withoutAdult} from './filters/adult';
 import {fallbackQueries, normalise} from './query';
-import {rankForEink} from './rank';
+import {DEFAULT_SCORERS, PHOTO_SCORERS, rankForEink} from './rank';
 import type {FailureKind, SearchResult, SourceOutcome} from './types';
 
 export type SourceStatus =
@@ -182,6 +182,7 @@ async function searchOnce(
   const results = rankForEink(
     outcomes.map(o => (o.ok ? withoutAdult(o.results) : [])),
     query,
+    ctx.photos ? PHOTO_SCORERS : DEFAULT_SCORERS,
   );
   const failed = outcomes.filter(o => !o.ok).length;
   const mainFailed = outcomes.some((o, i) => !o.ok && !sources[i].supplement);

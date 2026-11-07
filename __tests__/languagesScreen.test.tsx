@@ -163,7 +163,7 @@ describe('the Settings entry (#68)', () => {
     }
   }
 
-  it('opens the Languages screen for a click that came before the view mounted, and saves a tap', async () => {
+  it('opens Settings for a click that came before the view mounted, and saves a Languages tap', async () => {
     files[settingsPath()] = JSON.stringify({languages: ['zh', 'es', 'en']});
     startConfigQueue();
     const click = (PluginManager.registerConfigButtonListener as jest.Mock).mock
@@ -176,6 +176,13 @@ describe('the Settings entry (#68)', () => {
     await settle();
     expect(logLines().join('\n')).toContain(
       `button ${CONFIG_BUTTON_ID} (pending)`,
+    );
+    // The Settings screen first (#70), then its Languages screen.
+    expect(texts(tree)).toContain(copy['settings.title']);
+    await act(async () =>
+      buttons(tree)
+        .find(b => b.label === copy['settings.languagesOpenLabel'])
+        ?.press(),
     );
     expect(texts(tree)).toContain('1. 中文 (Chinese)');
     // The host's replay within its 1000 ms window is a duplicate.

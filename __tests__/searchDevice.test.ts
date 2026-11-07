@@ -7,6 +7,7 @@ import type {SourceAdapter} from '../src/search-core';
 import {fullUrl} from '../src/search-core/registry';
 import {settingsPath} from '../src/storage/paths';
 import {resetSettingsForTests, saveSettings} from '../src/storage/settings';
+import {defaultSettings} from '../src/settings/settings';
 
 const files: Record<string, string> = {};
 const native = {
@@ -81,11 +82,50 @@ describe('the search languages (#68)', () => {
     const sources: SourceAdapter[] = [{name: 'commons', search}];
     await searchCached('gato', sources);
     expect(seen).toEqual([['pt', 'en']]);
-    await saveSettings({languages: ['en', 'pt']});
+    await saveSettings({...defaultSettings(null), languages: ['en', 'pt']});
     await searchCached('gato', sources);
     expect(seen).toEqual([
       ['pt', 'en'],
       ['en', 'pt'],
     ]);
+  });
+});
+
+describe('the search settings (#70)', () => {
+  const answer = (name: 'openclipart' | 'commons') =>
+    jest.fn(async (_query: string, ctx) => ({
+      ok: true as const,
+      results: [
+        {
+          id: `${name}:1`,
+          source: name,
+          title: `${ctx.photos ? 'photo' : 'drawing'} ${ctx.dataSaver}`,
+          thumbUrl: `https://example.org/${name}.png`,
+          license: 'CC0',
+          attribution: name,
+        },
+      ],
+    }));
+
+  it('asks only the sources left on, with the style and the data saver', async () => {
+    const openclipart = answer('openclipart');
+    const commons = answer('commons');
+    const sources: SourceAdapter[] = [
+      {name: 'openclipart', search: openclipart},
+      {name: 'commons', search: commons},
+    ];
+    await saveSettings({
+      ...defaultSettings(null),
+      sourcesOff: ['openclipart'],
+      style: 'photos',
+      dataSaver: true,
+    });
+    const outcome = await searchCached('lamp', sources);
+    expect(openclipart).not.toHaveBeenCalled();
+    expect(outcome.results.map(r => r.title)).toEqual(['photo true']);
+    // Turned on again: a new search, not the answer cached without it.
+    await saveSettings(defaultSettings(null));
+    await searchCached('lamp', sources);
+    expect(openclipart).toHaveBeenCalledTimes(1);
   });
 });

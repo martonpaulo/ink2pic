@@ -2,7 +2,7 @@
  * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
  * search; the lasso button first turns the lassoed word into the query (#13). A tap on a result
  * inserts it (#12). «Insert picture» inserts the best result with no grid (#74). The plugin's
- * Settings entry opens the Languages screen (#68). Every step is logged; the log shows only behind
+ * Settings entry opens the Settings screen (#70) and its Languages screen (#68). Every step is logged; the log shows only behind
  * the Log button (#36).
  *
  * @format
@@ -43,13 +43,11 @@ import {
 } from './src/sdk/buttons';
 import {closePluginView} from './src/sdk/plugin';
 import type {SearchResult} from './src/search-core';
-import {
-  LanguageCode,
-  LanguagesAction,
-  languagesStep,
-} from './src/settings/languages';
+import {clearLibrary} from './src/library/device';
+import {Settings, SettingsAction, settingsStep} from './src/settings/settings';
 import {getSettings, saveSettings} from './src/storage/settings';
 import {LanguagesScreen} from './src/ui/LanguagesScreen';
+import {SettingsScreen} from './src/ui/SettingsScreen';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
 import {StatusScreen} from './src/ui/StatusScreen';
@@ -60,8 +58,8 @@ type Screen =
   | {name: 'failed'}
   /** One line: «Adding…» while Insert picture runs, then its failure, if any (#74). */
   | {name: 'note'; text: string}
-  /** The plugin's Settings entry: the query languages, saved at every tap (#68). */
-  | {name: 'languages'; languages: readonly LanguageCode[]}
+  /** The plugin's Settings entry, each tap saved at once (#70), and its Languages screen (#68). */
+  | {name: 'settings' | 'languages'; settings: Settings}
   | {
       name: 'onboarding';
       buttonId: number;
@@ -128,8 +126,7 @@ function App(): React.JSX.Element {
   ) => {
     if (buttonId === CONFIG_BUTTON_ID) {
       place.current = null;
-      const settings = await getSettings();
-      show(flow, {name: 'languages', languages: settings.languages});
+      show(flow, {name: 'settings', settings: await getSettings()});
       return;
     }
     if (buttonId === INSERT_BUTTON_ID) {
@@ -306,31 +303,59 @@ function App(): React.JSX.Element {
     return inserted;
   };
 
-  /** One tap: the screen redraws once with the new list, then the file is written (#68). */
-  const changeLanguages = async (
-    current: readonly LanguageCode[],
-    action: LanguagesAction,
+  /** One tap: the screen redraws once with the new settings, then the file is written (#68, #70). */
+  const changeSettings = async (
+    name: 'settings' | 'languages',
+    current: Settings,
+    action: SettingsAction,
   ) => {
-    const next = languagesStep(current, action);
+    // A reset restores the default of the system language the host sent last.
+    const applied: SettingsAction =
+      action.type === 'reset'
+        ? {type: 'reset', system: systemLanguage()}
+        : action;
+    const next = settingsStep(current, applied);
     if (next === current) {
       return;
     }
-    log(`languages: ${action.type} -> ${next.join(', ')}`);
-    setScreen({name: 'languages', languages: next});
-    await saveSettings({...(await getSettings()), languages: next});
+    log(`settings: ${JSON.stringify(action)}`);
+    setScreen({name, settings: next});
+    await saveSettings(next);
   };
 
   switch (screen.name) {
+    case 'settings':
+      return (
+        <SettingsScreen
+          settings={screen.settings}
+          onChange={action =>
+            changeSettings('settings', screen.settings, action)
+          }
+          onLanguages={() =>
+            setScreen({name: 'languages', settings: screen.settings})
+          }
+          onClear={clearLibrary}
+          onClose={() => closePluginView()}
+        />
+      );
     case 'languages':
       return (
         <LanguagesScreen
-          languages={screen.languages}
-          onChange={action => changeLanguages(screen.languages, action)}
-          onReset={() =>
-            changeLanguages(screen.languages, {
-              type: 'reset',
-              system: systemLanguage(),
+          languages={screen.settings.languages}
+          onChange={action =>
+            changeSettings('languages', screen.settings, {
+              type: 'languages',
+              action,
             })
+          }
+          onReset={() =>
+            changeSettings('languages', screen.settings, {
+              type: 'languages',
+              action: {type: 'reset', system: systemLanguage()},
+            })
+          }
+          onBack={() =>
+            setScreen({name: 'settings', settings: screen.settings})
           }
           onClose={() => closePluginView()}
         />

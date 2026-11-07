@@ -68,3 +68,49 @@ describe('placeRect (#20, #39)', () => {
     expect(placed(edge, picture, page).bottom).toBe(2560);
   });
 });
+
+describe('the placement setting (#70)', () => {
+  const word = {left: 100, top: 200, right: 300, bottom: 260};
+
+  it('goes in place of the word from its top-left corner', () => {
+    expect(placeRect(word, picture, page, 'replace')).toEqual({
+      left: 100,
+      top: 200,
+      right: 740,
+      bottom: 793,
+    });
+  });
+
+  it('goes beside the word, to its right, top-aligned', () => {
+    expect(placeRect(word, picture, page, 'beside')).toEqual({
+      left: 300 + PLACE_GAP,
+      top: 200,
+      right: 300 + PLACE_GAP + 640,
+      bottom: 793,
+    });
+  });
+
+  it('goes to the left when the right has less room', () => {
+    const atRight = {left: 1500, top: 200, right: 1800, bottom: 260};
+    const rect = placed(atRight, picture, page, 'beside');
+    expect(rect.right).toBe(1500 - PLACE_GAP);
+    expect(rect.right - rect.left).toBe(640);
+  });
+
+  it('goes below when neither side has room', () => {
+    const wide = {left: 50, top: 200, right: 1880, bottom: 260};
+    expect(placeRect(wide, picture, page, 'beside')).toEqual(
+      placeRect(wide, picture, page, 'below'),
+    );
+  });
+
+  it('gives no rect in place of a word at the very bottom', () => {
+    const low = {
+      left: 100,
+      top: 2560 - MIN_PLACE_BAND + 1,
+      right: 300,
+      bottom: 2559,
+    };
+    expect(placeRect(low, picture, page, 'replace')).toBeNull();
+  });
+});

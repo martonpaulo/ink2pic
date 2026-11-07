@@ -8,7 +8,7 @@
 import {getLibrary, recordInsert} from '../library/device';
 import {findItem} from '../library/library';
 import {logged, log} from '../log/memory';
-import {lassoElements, Rect} from '../sdk/lasso';
+import {deleteLassoElements, lassoElements, Rect} from '../sdk/lasso';
 import {insertImage} from '../sdk/note';
 import {fail, ok, Result, THROWN_CODE, TIMEOUT_CODE} from '../sdk/result';
 import {insertUrl, SearchResult, sourceId} from '../search-core';
@@ -17,10 +17,44 @@ import {prepareForEink} from '../storage/image';
 import {insertDownloadPath, libraryDir, safeFileName} from '../storage/paths';
 import {pluginFolder} from '../storage/session';
 import {atStep, Done} from './failure';
-import {LassoPlace, placeAtLasso} from './place';
+import {SIZE_WIDTHS} from '../settings/settings';
+import {getSettings} from '../storage/settings';
+import {LassoPlace, placeAtLasso, Placement} from './place';
 
-/** About one third of the 1920 px page (brief section 7): the prepared picture's width. */
-export const INSERT_WIDTH = 640;
+/** About one third of the 1920 px page (brief section 7): the default prepared width. */
+export const INSERT_WIDTH = SIZE_WIDTHS.medium;
+
+/** What the person chose in Settings for an insert (#70). */
+export type InsertOptions = {
+  /** The prepared picture's width in page pixels. */
+  width: number;
+  placement: Placement;
+  /** «All contour»: every picture is inserted as a contour drawing. */
+  contour: boolean;
+};
+
+async function savedOptions(): Promise<InsertOptions> {
+  const settings = await getSettings();
+  return {
+    width: SIZE_WIDTHS[settings.size],
+    placement: settings.placement,
+    contour: settings.style === 'contour',
+  };
+}
+
+/**
+ * The size the picture is placed at: no wider than the chosen width, keeping its proportions. A
+ * library picture saved at a larger size shrinks; one saved smaller is never enlarged.
+ */
+export function placedSize(
+  size: {width: number; height: number},
+  width: number,
+): {width: number; height: number} {
+  if (size.width <= width) {
+    return size;
+  }
+  return {width, height: Math.round((size.height * width) / size.width)};
+}
 
 /** The file extension insertImage accepts (png, jpg, jpeg), from the image URL. */
 export function imageExtension(url: string): string {
@@ -44,6 +78,7 @@ type Saved = {
 async function download(
   result: SearchResult,
   contour: boolean,
+  width: number,
 ): Promise<Result<Saved>> {
   const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
@@ -60,7 +95,7 @@ async function download(
   }
   const prepared = await logged(
     `prepareForEink(${raw}${contour ? ', contour' : ''})`,
-    () => prepareForEink(raw, `${base}.png`, INSERT_WIDTH, 'png', contour),
+    () => prepareForEink(raw, `${base}.png`, width, 'png', contour),
   );
   if (prepared.ok) {
     return ok({path: `${base}.png`, size: prepared.value, record: true});
@@ -76,6 +111,7 @@ async function download(
 async function picture(
   result: SearchResult,
   contour: boolean,
+  width: number,
 ): Promise<Result<Saved>> {
   if (result.localPath) {
     return ok({
@@ -93,7 +129,7 @@ async function picture(
         : null;
     return ok({path: known.path, size, record: false});
   }
-  return download(result, contour);
+  return download(result, contour, width);
 }
 
 /**
@@ -103,9 +139,15 @@ async function picture(
 async function insertInNote(
   saved: Saved,
   place: LassoPlace | null,
+  options: InsertOptions,
 ): Promise<Result<Rect | null>> {
   if (place && saved.size) {
-    const placed = await placeAtLasso(saved.path, saved.size, place);
+    const placed = await placeAtLasso(
+      saved.path,
+      placedSize(saved.size, options.width),
+      place,
+      options.placement,
+    );
     // After a TIMEOUT the host may still insert it: a fallback could add a second copy (#33).
     if (placed.ok || placed.code === TIMEOUT_CODE) {
       return placed;
@@ -142,19 +184,43 @@ async function lassoPlaced(rect: Rect | null): Promise<void> {
   }
 }
 
+/**
+ * «In place of the word» (#70): the lassoed handwriting is deleted only after the picture was
+ * placed at the word, on the person's own tap with that setting on; logged. Whether the lasso
+ * still holds the word after the insert is TO TEST on the device. A failure keeps the word.
+ */
+async function deleteWord(rect: Rect | null): Promise<void> {
+  if (!rect) {
+    log('deleteLassoElements: skipped, the picture is not at the word');
+    return;
+  }
+  const deleted = await logged(
+    'deleteLassoElements (in place of the word)',
+    () => deleteLassoElements(),
+  );
+  if (deleted.ok && deleted.value !== true) {
+    log('deleteLassoElements answered false: the word stays');
+  }
+}
+
 export async function insertPicture(
   result: SearchResult,
   query: string,
   place: LassoPlace | null = null,
   contour = false,
+  options?: InsertOptions,
 ): Promise<Done<string>> {
-  const saved = await picture(result, contour);
+  const chosen = options ?? (await savedOptions());
+  const saved = await picture(result, contour || chosen.contour, chosen.width);
   if (!saved.ok) {
     return atStep('download', saved);
   }
-  const inserted = await insertInNote(saved.value, place);
+  const inserted = await insertInNote(saved.value, place, chosen);
   if (!inserted.ok) {
     return atStep('place', inserted);
+  }
+  if (place && chosen.placement === 'replace') {
+    await deleteWord(inserted.value);
   }
   await lassoPlaced(inserted.value);
   if (saved.value.record) {

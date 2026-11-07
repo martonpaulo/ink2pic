@@ -509,7 +509,8 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 - Baseline [CONFIRMED API]: `insertImage(path)`, host default placement, the user moves it with the system lasso.
 - Goal [TO TEST, spike S5]: place the image where the handwritten word was, using `getLassoRect()` for the position and a Picture element with `rect` via `insertElements`, then optionally delete the handwritten word with `deleteLassoElements()` (or by `numInPage` if the lasso context expired). This is the "magic" moment and the biggest differentiator. Only ship it if it works reliably. Otherwise keep the baseline.
 - Capture `getLassoRect()` and the stroke identifiers **before** any navigation, because lasso context is ephemeral.
-- Handwritten word after insertion: **kept** by default [DEFAULT]. Deleting it is enabled only after spike S5 proves rect placement works, and then becomes a single toggle remembered across sessions.
+- Handwritten word after insertion: **kept** by default [DEFAULT]. The Settings screen's «Where the picture goes» chooses Below (default), Beside (to the right, top-aligned, else to the left, else below) or In place of word: the picture is placed from the word's top-left corner and, only after it was placed there by `insertPageElements` on the person's tap, `deleteLassoElements()` deletes the lassoed handwriting, logged; a failed or host-placed insert keeps the word ([#70](https://github.com/martonpaulo/ink2pic/issues/70)). Whether the lasso still holds the word after the insert, and whether the delete leaves the new picture, is TO TEST on the device.
+- Size: Small 400, Medium 640 (default), Large 960 page pixels; the picture is prepared at that width, and a library picture saved larger shrinks to it, never enlarged ([#70](https://github.com/martonpaulo/ink2pic/issues/70)).
 
 ### 8.4 Results screen (e-ink rules)
 
@@ -571,7 +572,7 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 
 ### 8.9 No settings in the flow
 
-Defaults are chosen so the user never needs to adjust. The plugin's own Settings entry (`registerConfigButton`) opens the Languages screen, outside the flow: the query languages in the order they are tried, each tap saved at once to `MyStyle/Ink2Pic/settings.json`, and a Reset to the default, the system language then English ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
+Defaults are chosen so the user never needs to adjust; every default is today's behaviour. The plugin's own Settings entry (`registerConfigButton`) opens the Settings screen, outside the flow ([#70](https://github.com/martonpaulo/ink2pic/issues/70)): picture size, where the picture goes, picture style (Drawings first; Photos too, which stops ranking photos below drawings and asks Commons for every picture at once; All as contour, which shows and inserts every picture as a contour drawing), the sources on or off (one always stays on), the data saver (12 results per source, thumbnails of 250 px on Commons and 200 px on Openclipart), Clear library list (an empty `library.json`, never a file deleted: Ink2Pic has no FILE:DELETE) and Reset all, each asked first. Each option is one row of value buttons, the current one with the selected bar; every tap is saved at once and used by the next search or insert, and the search cache keys an answer by the options that change it. Its Languages row opens the Languages screen: the query languages in the order they are tried, each tap saved at once to `MyStyle/Ink2Pic/settings.json`, and a Reset to the default, the system language then English ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
 
 ### 8.10 User-facing copy
 
@@ -631,6 +632,40 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `language.es` | Español |
 | `language.en` | English |
 | `language.pt` | Português |
+| `settings.title` | Settings |
+| `settings.back` | ‹ Settings |
+| `settings.backLabel` | Back to Settings |
+| `settings.languages` | Languages |
+| `settings.languagesOpen` | Change › |
+| `settings.languagesOpenLabel` | Change the languages |
+| `settings.size` | Picture size |
+| `settings.size.small` | Small |
+| `settings.size.medium` | Medium |
+| `settings.size.large` | Large |
+| `settings.placement` | Where the picture goes |
+| `settings.placement.below` | Below |
+| `settings.placement.replace` | In place of word |
+| `settings.placement.beside` | Beside |
+| `settings.placementNote` | In place of word deletes the lassoed handwriting when you tap a picture. |
+| `settings.style` | Picture style |
+| `settings.style.drawings` | Drawings first |
+| `settings.style.photos` | Photos too |
+| `settings.style.contour` | All as contour |
+| `settings.sources` | Picture sources (one stays on) |
+| `source.openclipart` | Openclipart |
+| `source.commons` | Commons |
+| `source.wikidata` | Wikipedia |
+| `source.openmoji` | OpenMoji |
+| `settings.dataSaver` | Data saver: fewer and smaller pictures |
+| `settings.dataSaver.off` | Off |
+| `settings.dataSaver.on` | On |
+| `settings.clear` | Clear library list |
+| `settings.clearQuestion` | Clear the library list and recent searches? The picture files stay in MyStyle/Ink2Pic/library/. |
+| `settings.clearConfirm` | Clear list |
+| `settings.cleared` | The library list is cleared. The picture files stay in MyStyle/Ink2Pic/library/. |
+| `settings.clearFailed` | Could not clear the library list. Try again. |
+| `settings.reset` | Reset all |
+| `settings.resetQuestion` | Reset every setting to the default? |
 
 Permission request descriptions (`requestPermission(permission, desc)`) reuse the `error.permission.*` texts.
 

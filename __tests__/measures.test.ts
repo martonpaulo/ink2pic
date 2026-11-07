@@ -342,6 +342,19 @@ describe('measureFirstPages (#66)', () => {
     expect(measured.contourThumbs.has('line')).toBe(false);
   });
 
+  it('shows every measured picture as its contour drawing under All contour (#70)', async () => {
+    const measured = await measureFirstPages(list, '/p', 'x', {
+      ...deps(),
+      allContour: async () => true,
+    });
+    expect(converted.sort()).toEqual([
+      '/p/thumbs/dark -> /p/thumbs/dark.contour.png at 400',
+      '/p/thumbs/gloss -> /p/thumbs/gloss.contour.png at 400',
+      '/p/thumbs/line -> /p/thumbs/line.contour.png at 400',
+    ]);
+    expect(measured.contourThumbs.has('line')).toBe(true);
+  });
+
   it('shows and inserts the picture as it is when the conversion fails', async () => {
     const failing = deps();
     failing.analyzer = {
@@ -379,7 +392,9 @@ describe('measureFirstPages (#66)', () => {
       expect(converted).toEqual([
         '/p/thumbs/dark -> /p/thumbs/dark.contour.png at 400',
       ]);
-      expect(logLines().join('\n')).toContain('contour dark: 7 ms, now outline');
+      expect(logLines().join('\n')).toContain(
+        'contour dark: 7 ms, now outline',
+      );
     });
 
     it('shows an outline, a failed measure and a web thumbnail as found', async () => {

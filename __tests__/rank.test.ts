@@ -264,3 +264,20 @@ describe('silhouettes and frames (#65)', () => {
     );
   });
 });
+
+it('does not rank a photo below a drawing under Photos too (#70)', () => {
+  const {PHOTO_SCORERS} = jest.requireActual(
+    '../src/search-core/rank',
+  ) as typeof import('../src/search-core/rank');
+  const photo: SearchResult = {
+    id: 'commons:Apple photo.jpg',
+    source: 'commons',
+    title: 'Apple photo',
+    thumbUrl: 'https://upload.wikimedia.org/apple.jpg',
+    license: 'CC0',
+    attribution: 'Commons',
+  };
+  expect(einkScore(photo, 'apple', PHOTO_SCORERS)).toBeGreaterThan(
+    einkScore(photo, 'apple'),
+  );
+});

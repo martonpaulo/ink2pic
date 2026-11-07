@@ -8,6 +8,12 @@ import {SearchResult, SourceOutcome, sourceFailure, sourceId} from '../types';
 const ORIGIN = 'https://openclipart.org';
 /** Grid thumbnails sized for the tile (brief section 8.5). */
 const THUMB_WIDTH = 400;
+/**
+ * The data saver's thumbnails and results per search (#70): 200 px is the size the search page
+ * itself uses, about 12 KB (brief section 5.1).
+ */
+const SAVER_THUMB_WIDTH = 200;
+const SAVER_RESULTS = 12;
 /** The width Openclipart serves for an insert: 640 px answers a redirect to it (#48). */
 export const OPENCLIPART_FULL_WIDTH = 800;
 const LICENSE = 'CC0 1.0';
@@ -78,9 +84,21 @@ export async function searchOpenclipart(
   ctx: SourceContext,
 ): Promise<SourceOutcome> {
   const page = await ctx.fetch(searchUrl(query));
-  return page.ok
-    ? parseSearchPage(page.text)
-    : sourceFailure(page.kind, page.message);
+  if (!page.ok) {
+    return sourceFailure(page.kind, page.message);
+  }
+  const parsed = parseSearchPage(page.text);
+  if (!parsed.ok || !ctx.dataSaver) {
+    return parsed;
+  }
+  // The page is one request either way: fewer, smaller thumbnails are what the saver saves.
+  return {
+    ...parsed,
+    results: parsed.results.slice(0, SAVER_RESULTS).map(result => ({
+      ...result,
+      thumbUrl: imageUrl(sourceId(result.id), SAVER_THUMB_WIDTH),
+    })),
+  };
 }
 
 export const openclipartPictures: PictureHost = {

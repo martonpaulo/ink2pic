@@ -12,6 +12,10 @@ import {copy} from '../../src/ui/copy';
 import {Onboarding} from '../../src/ui/Onboarding';
 import {SearchScreen} from '../../src/ui/SearchScreen';
 import {StatusScreen} from '../../src/ui/StatusScreen';
+import {LanguagesScreen} from '../../src/ui/LanguagesScreen';
+import {SettingsScreen} from '../../src/ui/SettingsScreen';
+import {defaultSettings, Settings} from '../../src/settings/settings';
+import type {LanguageCode} from '../../src/settings/languages';
 import {PERMISSIONS} from '../../src/onboarding/permissions';
 
 export type ScreenRender = {name: string; render: () => Promise<ReactTestRenderer>};
@@ -97,6 +101,13 @@ const search = (word: string, sources: SourceAdapter[]) =>
     />,
   );
 
+const settingsScreen = (settings: Settings = defaultSettings(null)) =>
+  mount(<SettingsScreen settings={settings} onChange={() => {}} onLanguages={() => {}} onClear={async () => true} onClose={() => {}} />);
+const languagesScreen = (languages: LanguageCode[]) =>
+  mount(<LanguagesScreen languages={languages} onChange={() => {}} onReset={() => {}} onBack={() => {}} onClose={() => {}} />);
+/** Every option away from its default, so each row shows another selected value. */
+const CHANGED: Settings = {languages: ['zh', 'es', 'en', 'pt'], size: 'large', placement: 'replace', style: 'contour', sourcesOff: ['commons'], dataSaver: true};
+
 // One line per screen, so adding one is one line.
 // prettier-ignore
 export const SCREENS: ScreenRender[] = [
@@ -112,6 +123,14 @@ export const SCREENS: ScreenRender[] = [
   {name: 'onboarding', render: () => mount(<Onboarding missing={PERMISSIONS} onDone={() => {}} onClose={() => {}} />)},
   {name: 'status-adding', render: () => mount(<StatusScreen text={copy['insert.running']} onClose={() => {}} />)},
   {name: 'status-starting', render: () => mount(<StatusScreen text={copy['app.starting']} onClose={() => {}} />)},
+  {name: 'settings', render: () => settingsScreen()},
+  {name: 'settings-changed', render: () => settingsScreen(CHANGED)},
+  {name: 'settings-clear-question', render: async () => press(await settingsScreen(), copy['settings.clear'])},
+  {name: 'settings-cleared', render: async () => press(await press(await settingsScreen(), copy['settings.clear']), copy['settings.clearConfirm'])},
+  {name: 'settings-reset-question', render: async () => press(await settingsScreen(), copy['settings.reset'])},
+  {name: 'languages', render: () => languagesScreen(['zh', 'es', 'en', 'pt'])},
+  {name: 'languages-one', render: () => languagesScreen(['en'])},
+  {name: 'languages-reset-question', render: async () => press(await languagesScreen(['es', 'en']), copy['languages.reset'])},
   {name: 'status-failed', render: () => mount(<StatusScreen text={copy['error.unexpected']} onClose={() => {}} />)},
 ];
 

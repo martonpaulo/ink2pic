@@ -16,6 +16,16 @@ export type SourceContext = {
    * app owns the setting and its default, never the core.
    */
   languages: readonly string[];
+  /**
+   * The person's «Photos too» style (#70): photos are not ranked below drawings, and Commons
+   * asks for every picture at once instead of drawings first. Absent means drawings first.
+   */
+  photos?: boolean;
+  /**
+   * The person's data saver (#70): each source asks for fewer results and smaller thumbnails,
+   * for a weak Wi-Fi. Absent means off.
+   */
+  dataSaver?: boolean;
 };
 
 /** How the pictures of a source that owns its results are fetched and kept. */

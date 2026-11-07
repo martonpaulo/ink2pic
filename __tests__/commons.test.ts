@@ -245,6 +245,20 @@ describe('drawings and canonical files (#43)', () => {
     expect(fetch.mock.calls[0][0]).toContain('filetype%3Adrawing');
   });
 
+  it('asks for every picture at once under Photos too (#70)', async () => {
+    const fetch = jest.fn().mockResolvedValue(ok(pages(1)));
+    await searchCommons('apple', {...ctx(fetch), photos: true});
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][0]).not.toContain('filetype');
+  });
+
+  it('asks for fewer results and smaller thumbnails with the data saver (#70)', async () => {
+    const fetch = jest.fn().mockResolvedValue(ok(pages(PAGE_SIZE)));
+    await searchCommons('apple', {...ctx(fetch), dataSaver: true});
+    expect(fetch.mock.calls[0][0]).toContain('gsrlimit=12');
+    expect(fetch.mock.calls[0][0]).toContain('iiurlwidth=250');
+  });
+
   it('adds a plain search when the drawings do not fill a page', async () => {
     const fetch = jest
       .fn()

@@ -20,6 +20,7 @@ import {
   reorderByMeasures,
 } from '../search-core';
 import {thumbUri} from '../search/thumbs';
+import {getSettings} from '../storage/settings';
 import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';
 
@@ -65,12 +66,15 @@ export type MeasureDeps = {
   /** The thumbnail's URI: `file://<path>` once it is on the device. */
   thumb: (result: SearchResult, thumbDir: string) => Promise<string>;
   limitMs: number;
+  /** The person's «All contour» style (#70): every measured thumbnail becomes a contour drawing. */
+  allContour?: () => Promise<boolean>;
 };
 
 const DEVICE: MeasureDeps = {
   analyzer: deviceAnalyzer,
   thumb: thumbUri,
   limitMs: MEASURE_LIMIT_MS,
+  allContour: async () => (await getSettings()).style === 'contour',
 };
 
 const LATER: MeasureDeps = {...DEVICE, limitMs: LATER_MEASURE_LIMIT_MS};
@@ -100,6 +104,7 @@ async function measureFile(
   deps: MeasureDeps,
   query: string,
   late: () => boolean = () => false,
+  allContour = false,
 ): Promise<Measured | null> {
   if (!uri.startsWith(FILE_PREFIX)) {
     log(`pixels ${result.id}: not on the device, not measured`);
@@ -116,7 +121,7 @@ async function measureFile(
       DIGITS,
     )} in ${Math.round(m.ms)} ms`,
   );
-  if (!needsContour(m, query) || late()) {
+  if ((!allContour && !needsContour(m, query)) || late()) {
     return {measures: m, contour: null};
   }
   const path = uri.slice(FILE_PREFIX.length);
@@ -157,9 +162,10 @@ export async function measureThumb(
   let uri = result.thumbUrl;
   try {
     uri = await deps.thumb(result, thumbDir);
+    const contourAll = (await deps.allContour?.()) ?? false;
     let ended = false;
     const found = await withinLimit(
-      measureFile(result, uri, deps, query, () => ended),
+      measureFile(result, uri, deps, query, () => ended, contourAll),
       deps.limitMs,
     );
     ended = true;
@@ -188,11 +194,14 @@ export async function measureFirstPages(
   }
   const started = Date.now();
   const found = new Map<string, Measured>();
+  const contourAll = (await deps.allContour?.()) ?? false;
   const all = Promise.all(
     results.slice(0, MEASURED_RESULTS).map(result =>
       deps
         .thumb(result, thumbDir)
-        .then(uri => measureFile(result, uri, deps, query))
+        .then(uri =>
+          measureFile(result, uri, deps, query, undefined, contourAll),
+        )
         .then(measured => {
           if (measured) {
             found.set(result.id, measured);

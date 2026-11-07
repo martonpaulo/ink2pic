@@ -94,6 +94,21 @@ describe('searchOpenclipart', () => {
     expect(fetch.mock.calls[0][1].headers['User-Agent']).toMatch(/^Ink2Pic\//);
   });
 
+  it('keeps fewer, smaller thumbnails with the data saver (#70)', async () => {
+    const fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(fixture('openclipart-soup.html')),
+    });
+    const outcome = await searchOpenclipart('soup', {
+      ...ctx(fetch),
+      dataSaver: true,
+    });
+    const results = outcome.ok ? outcome.results : [];
+    expect(results).toHaveLength(12);
+    expect(results[0].thumbUrl).toMatch(/\/image\/200px\//);
+  });
+
   it('passes a fetch failure through', async () => {
     const fetch = jest
       .fn()

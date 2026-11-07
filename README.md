@@ -89,12 +89,24 @@ The Library also works with no internet, and shows your recent search words as b
 Ink2Pic never deletes your files. Builds before 0.1.0 (13) also kept a `*.source.*` copy of each
 picture in `MyStyle/Ink2Pic/library/`; you can delete those copies with the file manager.
 
-### Languages
+### Settings
 
-Ink2Pic looks a word up in your languages, in your order: Chinese, Spanish, English and
-Portuguese are supported. Open **Settings > Apps > Plugins > Ink2Pic > Settings** to add, remove or
-move a language; the first one is tried first. Every tap is saved at once. **Reset** goes back to
-the device's language, then English.
+Open **Settings > Apps > Plugins > Ink2Pic > Settings** to change how Ink2Pic works. Every tap is
+saved at once; nobody needs to open Settings, because every default is how Ink2Pic works out of
+the box.
+
+- **Languages**: Ink2Pic looks a word up in your languages, in your order: Chinese, Spanish,
+  English and Portuguese are supported. Add, remove or move a language; the first one is tried
+  first. **Reset** goes back to the device's language, then English.
+- **Picture size**: Small, Medium (about one third of the page) or Large.
+- **Where the picture goes**: Below the word, Beside it, or In place of the word. In place of the
+  word deletes the lassoed handwriting when you tap a picture.
+- **Picture style**: Drawings first, Photos too, or All as contour.
+- **Picture sources**: turn Openclipart, Commons or Wikipedia off; one always stays on.
+- **Data saver**: fewer and smaller pictures, for a weak Wi-Fi.
+- **Clear library list** empties the Library and the recent searches. The picture files stay in
+  `MyStyle/Ink2Pic/library/`.
+- **Reset all** goes back to every default.
 
 ### Log
 

@@ -311,3 +311,114 @@ describe('the inserted picture is left lassoed (#73)', () => {
     expect(lasso).not.toHaveBeenCalled();
   });
 });
+
+describe('the insert options from Settings (#70)', () => {
+  const place = {
+    rect: {left: 100, top: 200, right: 300, bottom: 260},
+    page: 3,
+    pageSize: {width: 1920, height: 2560},
+  };
+  const insertElements = PluginCommAPI.insertPageElements as jest.Mock;
+  const remove = PluginCommAPI.deleteLassoElements as jest.Mock;
+  const placedAt = () => insertElements.mock.calls[0][0][0].picture.rect;
+
+  beforeEach(() => {
+    (PluginCommAPI.createElement as jest.Mock).mockResolvedValue({
+      success: true,
+      result: {uuid: 'u'},
+    });
+    insertElements.mockResolvedValue({success: true, result: true});
+    (PluginCommAPI.lassoElements as jest.Mock).mockResolvedValue({
+      success: true,
+      result: true,
+    });
+    remove.mockResolvedValue({success: true, result: true});
+  });
+
+  it('prepares the picture at the chosen width', async () => {
+    await insertPicture(result, 'soup', place, false, {
+      width: 960,
+      placement: 'below',
+      contour: false,
+    });
+    expect(image.prepareForEink.mock.calls[0][2]).toBe(960);
+  });
+
+  it('inserts every picture as a contour drawing under All contour', async () => {
+    await insertPicture(result, 'soup', place, false, {
+      width: 640,
+      placement: 'below',
+      contour: true,
+    });
+    expect(image.prepareForEink.mock.calls[0][4]).toBe(true);
+  });
+
+  it('shrinks a larger library picture to the chosen width', async () => {
+    const local = {
+      ...result,
+      localPath: '/l.png',
+      localSize: {width: 960, height: 900},
+    };
+    await insertPicture(local, 'soup', place, false, {
+      width: 480,
+      placement: 'below',
+      contour: false,
+    });
+    const rect = placedAt();
+    expect(rect.right - rect.left).toBe(480);
+    expect(rect.bottom - rect.top).toBe(450);
+  });
+
+  it('deletes the word after the picture is placed at it, in place of the word', async () => {
+    expect(
+      (
+        await insertPicture(result, 'soup', place, false, {
+          width: 640,
+          placement: 'replace',
+          contour: false,
+        })
+      ).ok,
+    ).toBe(true);
+    expect(placedAt().top).toBe(200);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove.mock.invocationCallOrder[0]).toBeGreaterThan(
+      insertElements.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('keeps the word when the insert fails or the picture is not at it', async () => {
+    const options = {
+      width: 640,
+      placement: 'replace' as const,
+      contour: false,
+    };
+    insertElements.mockResolvedValue({success: true, result: false});
+    (PluginNoteAPI.insertImage as jest.Mock).mockResolvedValue({
+      success: true,
+      result: false,
+    });
+    expect(
+      (await insertPicture(result, 'soup', place, false, options)).ok,
+    ).toBe(false);
+    // The host placed it with insertImage: not at the word.
+    (PluginNoteAPI.insertImage as jest.Mock).mockResolvedValue({
+      success: true,
+      result: true,
+    });
+    expect(
+      (await insertPicture(result, 'soup', place, false, options)).ok,
+    ).toBe(true);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('never deletes the word below or beside it', async () => {
+    for (const placement of ['below', 'beside'] as const) {
+      await insertPicture(result, 'soup', place, false, {
+        width: 640,
+        placement,
+        contour: false,
+      });
+    }
+    expect(remove).not.toHaveBeenCalled();
+  });
+});

@@ -155,6 +155,11 @@ export const DEFAULT_SCORERS: readonly Scorer[] = [
   symbolScorer,
 ];
 
+/** «Photos too» (#70): every scorer but the one that ranks a photo below a drawing. */
+export const PHOTO_SCORERS: readonly Scorer[] = DEFAULT_SCORERS.filter(
+  scorer => scorer !== photoScorer,
+);
+
 function total(
   result: SearchResult,
   intent: QueryIntent,

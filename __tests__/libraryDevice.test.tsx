@@ -25,6 +25,7 @@ const native = {
     return null;
   }),
   listDir: jest.fn(async () => []),
+  deleteFile: jest.fn(),
 };
 
 const item = (n: number): LibraryItem => ({
@@ -107,4 +108,20 @@ it('keeps the Library page when the screen renders again', async () => {
   act(() => tree.root.findByType(TextInput).props.onChangeText('so'));
   expect(pageNumber()).toBe('2 / 2');
   act(() => tree.unmount());
+});
+
+it('clears the list and the recent searches, never a file (#70)', async () => {
+  const {clearLibrary, recordInsert} = jest.requireActual(
+    '../src/library/device',
+  ) as typeof import('../src/library/device');
+  await recordInsert(item(1));
+  await recordSearch('soup');
+  expect(await clearLibrary()).toBe(true);
+  expect(JSON.parse(files[SHARED_LIBRARY])).toEqual({
+    version: LIBRARY_VERSION,
+    items: [],
+    recentSearches: [],
+  });
+  expect(await getLibrary()).toEqual({items: [], recentSearches: []});
+  expect(native.deleteFile).not.toHaveBeenCalled();
 });

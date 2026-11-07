@@ -24,6 +24,8 @@ export type LanguagesScreenProps = {
   onChange: (action: LanguagesAction) => void;
   /** Restores the product default, after the person confirmed. */
   onReset: () => void;
+  /** Back to the Settings screen it was opened from (#70). */
+  onBack?: () => void;
   onClose: () => void;
 };
 
@@ -79,6 +81,7 @@ export function LanguagesScreen({
   languages,
   onChange,
   onReset,
+  onBack,
   onClose,
 }: LanguagesScreenProps): React.JSX.Element {
   const [showLog, setShowLog] = useState(false);
@@ -90,6 +93,13 @@ export function LanguagesScreen({
         logShown={showLog}
         onLog={() => setShowLog(!showLog)}
         onClose={onClose}>
+        {onBack && (
+          <Button
+            label={copy['settings.back']}
+            accessibilityLabel={copy['settings.backLabel']}
+            onPress={onBack}
+          />
+        )}
         <Text
           accessibilityRole="header"
           style={[shared.textLarge, styles.title]}>

@@ -20,6 +20,14 @@ export function lassoElements(rect: Rect): Promise<Result<boolean>> {
   return attempt(() => PluginCommAPI.lassoElements(rect));
 }
 
+/**
+ * Deletes the lassoed elements (official docs, «deleteLassoElements»): only after the person's own
+ * tap, for «In place of the word» (#70); `true` means they were deleted.
+ */
+export function deleteLassoElements(): Promise<Result<boolean>> {
+  return attempt(() => PluginCommAPI.deleteLassoElements());
+}
+
 /** Uses the device's recognition language; there is no language parameter (brief section 4.5). */
 export function recognizeElements(
   elements: object[],

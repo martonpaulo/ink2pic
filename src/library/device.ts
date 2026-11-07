@@ -152,6 +152,30 @@ export async function recordSearch(query: string): Promise<void> {
   await save(addRecentSearch(await getLibrary(), query));
 }
 
+/**
+ * Clears the library list and the recent searches, on the person's confirmed tap in Settings
+ * (#70): library.json is written empty, so the folder is not listed again (#61). The picture files
+ * stay in MyStyle/Ink2Pic/library: deleting them would need FILE:DELETE, which Ink2Pic does not
+ * declare.
+ */
+export async function clearLibrary(): Promise<boolean> {
+  const path = await libraryPath();
+  if (!path.ok) {
+    return false;
+  }
+  const written = await logged('clear library.json', () =>
+    saveLibrary(deviceStorage, path.value, emptyLibrary()).then(
+      () => ok(true),
+      error => fail(THROWN_CODE, String(error)),
+    ),
+  );
+  if (written.ok) {
+    current = emptyLibrary();
+    writable = true;
+  }
+  return written.ok;
+}
+
 export function resetLibraryForTests(): void {
   current = null;
   writable = false;
