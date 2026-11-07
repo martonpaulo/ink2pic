@@ -22,7 +22,7 @@ import {
   pixelKind,
   reorderByMeasures,
 } from '../search-core';
-import {thumbUri} from '../search/thumbs';
+import {thumbPath, thumbUri} from '../search/thumbs';
 import {getSettings} from '../storage/settings';
 import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';
@@ -38,7 +38,10 @@ export const MEASURE_LIMIT_MS = 8000;
  */
 export const LATER_MEASURE_LIMIT_MS = 2000;
 const FILE_PREFIX = 'file://';
-/** The converted thumbnail, beside the stored one in the private folder, counted by its store. */
+/**
+ * The converted thumbnail, in the private thumbs/ folder under the result's own name, counted by
+ * its store; never beside a shared file such as a saved symbol, which cannot be deleted (#103).
+ */
 const CONTOUR_SUFFIX = '.contour.png';
 /** A faint picture's darkened thumbnail (#81): not a contour drawing, so it inserts darkened too. */
 const DARKENED_SUFFIX = '.dark.png';
@@ -107,11 +110,13 @@ async function withinLimit<T>(
 /**
  * Measures the thumbnail at `uri` and converts it when `needsContour` says so; null when it is
  * not on the device or cannot be measured. A conversion is skipped once `late()` says the
- * result is no longer awaited: it would change nothing shown.
+ * result is no longer awaited: it would change nothing shown. A converted or darkened copy goes
+ * to `pluginDir`'s thumbs/ folder, keyed by the result id (#103).
  */
 async function measureFile(
   result: SearchResult,
   uri: string,
+  pluginDir: string,
   deps: MeasureDeps,
   query: string,
   late: () => boolean = () => false,
@@ -137,11 +142,11 @@ async function measureFile(
   }
   if (!allContour && !needsContour(m, query)) {
     return isFaintLines(m)
-      ? darkenFile(result, uri, deps, m)
+      ? darkenFile(result, uri, pluginDir, deps, m)
       : {measures: m, contour: null};
   }
   const path = uri.slice(FILE_PREFIX.length);
-  const dest = `${path}${CONTOUR_SUFFIX}`;
+  const dest = `${thumbPath(pluginDir, result)}${CONTOUR_SUFFIX}`;
   const converted = await deps.analyzer.toContour(
     path,
     dest,
@@ -176,6 +181,7 @@ async function measureFile(
 async function darkenFile(
   result: SearchResult,
   uri: string,
+  pluginDir: string,
   deps: MeasureDeps,
   m: Measures,
 ): Promise<Measured> {
@@ -183,7 +189,7 @@ async function darkenFile(
     return {measures: m, contour: null};
   }
   const path = uri.slice(FILE_PREFIX.length);
-  const dest = `${path}${DARKENED_SUFFIX}`;
+  const dest = `${thumbPath(pluginDir, result)}${DARKENED_SUFFIX}`;
   const darkened = await deps.analyzer.darken(path, dest, CONTOUR_THUMB_WIDTH);
   if (!darkened.ok) {
     log(`darken ${result.id}: ${darkened.message}`);
@@ -218,7 +224,7 @@ export async function measureThumb(
     const contourAll = (await deps.allContour?.()) ?? false;
     let ended = false;
     const found = await withinLimit(
-      measureFile(result, uri, deps, query, () => ended, contourAll),
+      measureFile(result, uri, thumbDir, deps, query, () => ended, contourAll),
       deps.limitMs,
     );
     ended = true;
@@ -265,7 +271,15 @@ export async function measureFirstPages(
     firstPages.map((result, index) =>
       uris[index]
         .then(uri =>
-          measureFile(result, uri, deps, query, undefined, contourAll),
+          measureFile(
+            result,
+            uri,
+            thumbDir,
+            deps,
+            query,
+            undefined,
+            contourAll,
+          ),
         )
         .then(measured => {
           if (measured) {

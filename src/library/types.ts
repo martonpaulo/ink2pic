@@ -16,6 +16,11 @@ export type LibraryItem = {
   /** The width asked of the source; null when unknown. */
   width: number | null;
   height: number | null;
+  /**
+   * True when the file was prepared as a contour drawing (#66): it is reused only for an insert
+   * of the same style (#103). A library.json written before #103 has no flag: read as false.
+   */
+  contour: boolean;
 };
 
 export type Library = {items: LibraryItem[]; recentSearches: string[]};

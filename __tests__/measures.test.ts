@@ -576,6 +576,41 @@ describe('measureFirstPages (#66)', () => {
     expect(measured.contourThumbs.has('line')).toBe(true);
   });
 
+  it('writes derived thumbnails to the private thumbs folder, never beside a shared symbol (#103)', async () => {
+    const symbol = '/storage/emulated/0/MyStyle/Ink2Pic/symbols/1F600.png';
+    const greyLines = {...outline, darkest: 190, faintLines: true};
+    const darkened: string[] = [];
+    const base = deps();
+    const shared = {
+      ...base,
+      thumb: async (item: SearchResult) =>
+        `file://${item.id === 'openmoji:1F600' ? symbol : `/p/thumbs/${item.id}`}`,
+      analyzer: {
+        ...base.analyzer,
+        measure: async (path: string) =>
+          path === symbol ? ok(greyLines) : base.analyzer.measure(path),
+        darken: async (src: string, dest: string, width: number) => {
+          darkened.push(`${src} -> ${dest} at ${width}`);
+          return ok({width: 330, height: 400, ms: 5});
+        },
+      },
+    };
+    const moji = {...result('openmoji:1F600'), source: 'openmoji' as const};
+    await measureFirstPages([moji], '/p', 'smile', shared);
+    expect(darkened).toEqual([
+      `${symbol} -> /p/thumbs/openmoji-1F600.dark.png at 400`,
+    ]);
+    expect(
+      await measureThumb(moji, '/p', 'smile', {
+        ...shared,
+        allContour: async () => true,
+      }),
+    ).toBe('file:///p/thumbs/openmoji-1F600.contour.png');
+    expect(converted).toEqual([
+      `${symbol} -> /p/thumbs/openmoji-1F600.contour.png at 400`,
+    ]);
+  });
+
   it('shows and inserts the picture as it is when the conversion fails', async () => {
     const failing = deps();
     failing.analyzer = {

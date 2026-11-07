@@ -5,7 +5,7 @@ import {
   insertPicture,
   startEarlyDownload,
 } from '../src/flow/insertPicture';
-import {logLines, startLog} from '../src/log/memory';
+import {CALL_TIMEOUT_MS, logLines, startLog} from '../src/log/memory';
 import {resetSessionForTests} from '../src/storage/session';
 import {resetLibraryForTests} from '../src/library/device';
 import {closeLogFileForTests} from '../src/storage/logFile';
@@ -52,6 +52,104 @@ beforeEach(() => {
   (PluginNoteAPI.insertImage as jest.Mock).mockResolvedValue({
     success: true,
     result: true,
+  });
+});
+
+/** library.json holding Ladle saved as `saved` (#103); `contour` absent as before #103. */
+function libraryHolds(saved: {contour?: boolean} = {}): void {
+  native.readText.mockImplementation(async (file: string) =>
+    file.endsWith('/library.json')
+      ? JSON.stringify({
+          version: 1,
+          recentSearches: [],
+          items: [
+            {
+              id: 'openclipart:340609',
+              source: 'openclipart',
+              sourceId: '340609',
+              sourceUrl: 'https://openclipart.org/image/800px/340609',
+              query: 'ladle',
+              license: 'CC0 1.0',
+              attribution: 'Openclipart',
+              savedAt: '2026-11-06T00:00:00.000Z',
+              path: `/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609${
+                saved.contour ? '.contour' : ''
+              }.png`,
+              width: 640,
+              height: 593,
+              ...saved,
+            },
+          ],
+        })
+      : null,
+  );
+}
+
+describe('a library picture is reused only in its own style (#103)', () => {
+  const dir = '/storage/emulated/0/MyStyle/Ink2Pic/library';
+
+  it('prepares a contour drawing again when the library holds the picture plain', async () => {
+    libraryHolds({contour: false});
+    expect(await insertPicture(result, 'soup', null, true)).toEqual({
+      ok: true,
+      value: `${dir}/openclipart-340609.contour.png`,
+    });
+    expect(native.downloadToFile).toHaveBeenCalledTimes(1);
+    expect(image.prepareForEink.mock.calls[0].slice(1, 5)).toEqual([
+      `${dir}/openclipart-340609.contour.png`,
+      640,
+      'png',
+      true,
+    ]);
+    const saved = native.writeText.mock.calls.find(call =>
+      call[0].endsWith('/library.json'),
+    );
+    expect(JSON.parse(saved[1]).items[0]).toMatchObject({
+      path: `${dir}/openclipart-340609.contour.png`,
+      contour: true,
+    });
+  });
+
+  it('prepares it plain again when the library holds its contour drawing', async () => {
+    libraryHolds({contour: true});
+    await insertPicture(result, 'soup');
+    expect(image.prepareForEink.mock.calls[0].slice(1, 5)).toEqual([
+      `${dir}/openclipart-340609.png`,
+      640,
+      'png',
+      false,
+    ]);
+  });
+
+  it('reuses the contour drawing for a contour insert', async () => {
+    libraryHolds({contour: true});
+    expect(await insertPicture(result, 'soup', null, true)).toEqual({
+      ok: true,
+      value: `${dir}/openclipart-340609.contour.png`,
+    });
+    expect(native.downloadToFile).not.toHaveBeenCalled();
+    expect(image.prepareForEink).not.toHaveBeenCalled();
+  });
+
+  it('reads an item saved before #103 as plain', async () => {
+    libraryHolds();
+    await insertPicture(result, 'soup', null, true);
+    expect(image.prepareForEink.mock.calls[0][4]).toBe(true);
+  });
+
+  it('downloads early when the library holds only the other style', async () => {
+    libraryHolds({contour: true});
+    const early = startEarlyDownload(result);
+    expect(await early.raw).toEqual({
+      ok: true,
+      value: '/data/plugin/insert-early.png',
+    });
+  });
+
+  it('downloads nothing early when the library holds the style asked for', async () => {
+    libraryHolds({contour: false});
+    expect(await startEarlyDownload(result).raw).toBeNull();
+    expect(native.downloadToFile).not.toHaveBeenCalled();
   });
 });
 
@@ -197,12 +295,44 @@ describe('insertPicture (#12)', () => {
     // Downloaded again into the library under its own name: the note app may not read the
     // private folder, and a file in MyStyle is never replaced (#62).
     const kept =
-      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.png';
+      '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.original.png';
     expect(done).toEqual({ok: true, value: kept});
     expect(native.downloadToFile.mock.calls.map(call => call[1])).toEqual([
       '/data/plugin/insert-download.png',
       kept,
     ]);
+  });
+
+  it('never downloads into the prepared file after a prepare TIMEOUT (#103)', async () => {
+    startLog();
+    jest.useFakeTimers();
+    try {
+      // The image module never answers: it may still write the prepared file later.
+      image.prepareForEink.mockReturnValue(new Promise(() => {}));
+      const done = insertPicture(result, 'soup');
+      await jest.advanceTimersByTimeAsync(CALL_TIMEOUT_MS);
+      const prepared = image.prepareForEink.mock.calls[0][1];
+      expect(prepared).toBe(
+        '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.png',
+      );
+      const kept =
+        '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.original.png';
+      expect(await done).toEqual({ok: true, value: kept});
+      const written = native.downloadToFile.mock.calls.map(call => call[1]);
+      expect(written).toEqual(['/data/plugin/insert-download.png', kept]);
+      expect(written).not.toContain(prepared);
+      expect(logLines().join('\n')).toMatch(/TIMEOUT/);
+      // Recorded unprepared: a later contour insert prepares it again.
+      const saved = native.writeText.mock.calls.find(call =>
+        call[0].endsWith('/library.json'),
+      );
+      expect(JSON.parse(saved[1]).items[0]).toMatchObject({
+        path: kept,
+        contour: false,
+      });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('inserts a picture already in the library from disk (#48)', async () => {

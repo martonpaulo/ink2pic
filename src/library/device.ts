@@ -25,7 +25,7 @@ const LIBRARY_FILE = 'library.json';
 /** The rebuild from the folder is checked once per session. */
 let rebuildChecked = false;
 /** A prepared picture: `<source>-<source id>.png`, as insertPicture names it. */
-const PICTURE_FILE = /^(openclipart|commons|openmoji)-([^.]+)\.png$/;
+const PICTURE_FILE = /^(openclipart|commons|openmoji)-([^.]+)(\.contour)?\.png$/;
 /** What the file name cannot tell about a picture from an older build. */
 const UNKNOWN = 'unknown';
 /** One second apart: rebuilt items keep the folder's order, which stands in for their dates. */
@@ -76,6 +76,7 @@ export function itemsFromFiles(
         path: `${dir}/${name}`,
         width: null,
         height: null,
+        contour: match[3] !== undefined,
       },
     ];
   });

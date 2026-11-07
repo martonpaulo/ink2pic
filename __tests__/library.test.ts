@@ -23,6 +23,7 @@ const item = (n: number, query = 'soup'): LibraryItem => ({
   path: `/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-${n}.png`,
   width: 640,
   height: 593,
+  contour: false,
 });
 
 function memoryStorage(files: Record<string, string> = {}): TextStorage {
@@ -41,8 +42,8 @@ describe('items', () => {
       'openclipart:2',
       'openclipart:1',
     ]);
-    expect(findItem(library, 'openclipart:1')?.sourceId).toBe('1');
-    expect(findItem(library, 'commons:9')).toBeUndefined();
+    expect(findItem(library, 'openclipart:1', false)?.sourceId).toBe('1');
+    expect(findItem(library, 'commons:9', false)).toBeUndefined();
   });
 
   it('replaces a duplicate and moves it to the front', () => {
@@ -79,7 +80,28 @@ describe('stored format', () => {
     expect(parseLibrary(text)).toEqual({ok: true, library});
   });
 
+  it('reads an item saved before #103, with no style, as plain', () => {
+    const old: Partial<LibraryItem> = {...item(1)};
+    delete old.contour;
+    const text = JSON.stringify({version: 1, items: [old], recentSearches: []});
+    expect(parseLibrary(text)).toEqual({
+      ok: true,
+      library: {items: [item(1)], recentSearches: []},
+    });
+  });
+
+  it('finds a picture only in the style asked for (#103)', () => {
+    const library = addItem(emptyLibrary(), {...item(1), contour: true});
+    expect(findItem(library, 'openclipart:1', true)).toBeDefined();
+    expect(findItem(library, 'openclipart:1', false)).toBeUndefined();
+  });
+
   it.each([
+    [
+      'a style that is not a boolean',
+      '{"version":1,"items":[{"id":"x","source":"x","sourceId":"x","sourceUrl":"x","query":"x","license":"x","attribution":"x","savedAt":"x","path":"x","width":null,"height":null,"contour":"yes"}],"recentSearches":[]}',
+      'a library item is malformed',
+    ],
     ['not JSON', '{', 'the library file is not JSON'],
     [
       'an unknown version',

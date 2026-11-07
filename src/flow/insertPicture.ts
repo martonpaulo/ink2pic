@@ -80,11 +80,19 @@ export type EarlyDownload = {
   raw: Promise<Result<string> | null>;
 };
 
-/** Starts the leading picture's download before it is known to win (#88). Never rejects. */
+/**
+ * Starts the leading picture's download before it is known to win (#88). Never rejects. A
+ * library file is reused only in the style «All contour» asks for (#103): the tile's own style
+ * is not known yet, and a download it does not need is dropped.
+ */
 export function startEarlyDownload(result: SearchResult): EarlyDownload {
   const started = Date.now();
   const raw = (async (): Promise<Result<string> | null> => {
-    if (result.localPath || findItem(await getLibrary(), result.id)) {
+    if (result.localPath) {
+      return null;
+    }
+    const {contour} = await savedOptions();
+    if (findItem(await getLibrary(), result.id, contour)) {
       return null;
     }
     const dir = await pluginFolder();
@@ -128,13 +136,24 @@ type Saved = {
   size: {width: number; height: number} | null;
   /** True for a new library file, recorded once the insert succeeds. */
   record: boolean;
+  /** True when the file is a contour drawing; an unprepared fallback never is (#103). */
+  contour: boolean;
 };
+
+/** The contour drawing's library file has its own name: a plain file never changes style (#103). */
+const CONTOUR_NAME = '.contour';
+/**
+ * The name the unprepared picture is kept under when the preparation fails. Never the prepared
+ * file's: after a TIMEOUT the image module may still be writing that one (#103).
+ */
+const ORIGINAL_NAME = '.original';
 
 /**
  * Downloads the picture to the private temporary file, then prepares it for e-ink into the library
- * file, as a contour drawing when `contour` (#66). When the preparation fails, the picture is downloaded again straight into the library under
- * its own name, because the note app may not read the private folder (brief section 6.6), and it
- * is recorded like a prepared one; the failure is in the log (#62).
+ * file, as a contour drawing when `contour` (#66). When the preparation fails, the picture is
+ * downloaded again straight into the library under its own name, because the note app may not
+ * read the private folder (brief section 6.6), and it is recorded like a prepared one; the
+ * failure is in the log (#62).
  */
 async function download(
   result: SearchResult,
@@ -144,6 +163,7 @@ async function download(
 ): Promise<Result<Saved>> {
   const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
+  const preparedPath = `${base}${contour ? CONTOUR_NAME : ''}.png`;
   const dir = await pluginFolder();
   if (!dir.ok) {
     return dir;
@@ -166,17 +186,24 @@ async function download(
   const at = Date.now();
   const prepared = await logged(
     `prepareForEink(${raw}${contour ? ', contour' : ''})`,
-    () => prepareForEink(from, `${base}.png`, width, 'png', contour),
+    () => prepareForEink(from, preparedPath, width, 'png', contour),
   );
   logTime('conversion', at);
   if (prepared.ok) {
-    return ok({path: `${base}.png`, size: prepared.value, record: true});
+    return ok({
+      path: preparedPath,
+      size: prepared.value,
+      record: true,
+      contour,
+    });
   }
-  const kept = `${base}.${imageExtension(url)}`;
+  const kept = `${base}${ORIGINAL_NAME}.${imageExtension(url)}`;
   const again = await logged(`downloadToFile(${url} -> ${kept})`, () =>
     downloadToFile(url, kept),
   );
-  return again.ok ? ok({path: kept, size: null, record: true}) : again;
+  return again.ok
+    ? ok({path: kept, size: null, record: true, contour: false})
+    : again;
 }
 
 /** A library picture, a search result already in the library, else a download. */
@@ -191,16 +218,21 @@ async function picture(
       path: result.localPath,
       size: result.localSize ?? null,
       record: false,
+      contour: false,
     });
   }
-  const known = findItem(await getLibrary(), result.id);
+  const known = findItem(await getLibrary(), result.id, contour);
   if (known) {
-    log(`library: ${result.id} is on the device, no download`);
+    log(
+      `library: ${result.id}${
+        contour ? ' (contour)' : ''
+      } is on the device, no download`,
+    );
     const size =
       known.width !== null && known.height !== null
         ? {width: known.width, height: known.height}
         : null;
-    return ok({path: known.path, size, record: false});
+    return ok({path: known.path, size, record: false, contour});
   }
   return download(result, contour, width, early);
 }
@@ -322,6 +354,7 @@ export async function insertPicture(
       path: saved.value.path,
       width: saved.value.size?.width ?? null,
       height: saved.value.size?.height ?? null,
+      contour: saved.value.contour,
     });
     logTime('write', at);
   }

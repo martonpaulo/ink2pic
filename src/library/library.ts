@@ -20,11 +20,15 @@ export function addItem(library: Library, item: LibraryItem): Library {
   };
 }
 
+/** The saved picture of `id` in the requested style; another style is prepared again (#103). */
 export function findItem(
   library: Library,
   id: string,
+  contour: boolean,
 ): LibraryItem | undefined {
-  return library.items.find(item => item.id === id);
+  return library.items.find(
+    item => item.id === id && item.contour === contour,
+  );
 }
 
 export function addRecentSearch(library: Library, query: string): Library {
@@ -58,7 +62,10 @@ const STRING_FIELDS = [
 ] as const;
 const NUMBER_FIELDS = ['width', 'height'] as const;
 
-function isItem(value: unknown): value is LibraryItem {
+/** An item as stored: `contour` is absent in a file written before #103. */
+type StoredItem = Omit<LibraryItem, 'contour'> & {contour?: boolean};
+
+function isItem(value: unknown): value is StoredItem {
   if (value === null || typeof value !== 'object') {
     return false;
   }
@@ -67,8 +74,18 @@ function isItem(value: unknown): value is LibraryItem {
     STRING_FIELDS.every(field => typeof record[field] === 'string') &&
     NUMBER_FIELDS.every(
       field => record[field] === null || typeof record[field] === 'number',
-    )
+    ) &&
+    (record.contour === undefined || typeof record.contour === 'boolean')
   );
+}
+
+/**
+ * Before #103 the style was not recorded: an old item reads as plain.
+ * shortcut: a contour picture saved before #103 is then reused as plain; upgrade only if the
+ * owner reports one.
+ */
+function withStyle(item: StoredItem): LibraryItem {
+  return {...item, contour: item.contour ?? false};
 }
 
 /** A stored library; anything unreadable is a failure, never an empty library. */
@@ -101,6 +118,9 @@ export function parseLibrary(text: string): ParsedLibrary {
   }
   return {
     ok: true,
-    library: {items: root.items, recentSearches: root.recentSearches},
+    library: {
+      items: root.items.map(withStyle),
+      recentSearches: root.recentSearches,
+    },
   };
 }

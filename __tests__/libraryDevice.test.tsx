@@ -6,6 +6,7 @@ import {FileUtils, PluginManager} from 'sn-plugin-lib';
 import {resetSessionForTests} from '../src/storage/session';
 import {
   getLibrary,
+  itemsFromFiles,
   recordSearch,
   resetLibraryForTests,
 } from '../src/library/device';
@@ -40,6 +41,7 @@ const item = (n: number): LibraryItem => ({
   path: `/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-${n}.png`,
   width: 640,
   height: 593,
+  contour: false,
 });
 
 beforeEach(() => {
@@ -124,4 +126,18 @@ it('clears the list and the recent searches, never a file (#70)', async () => {
   });
   expect(await getLibrary()).toEqual({items: [], recentSearches: []});
   expect(native.deleteFile).not.toHaveBeenCalled();
+});
+
+describe('a library rebuilt from its folder (#61)', () => {
+  it('keeps each file\'s style from its name (#103)', () => {
+    const items = itemsFromFiles('/lib', [
+      'openclipart-1.png',
+      'openclipart-1.contour.png',
+      'openclipart-2.original.png',
+    ]);
+    expect(items.map(one => [one.path, one.contour])).toEqual([
+      ['/lib/openclipart-1.png', false],
+      ['/lib/openclipart-1.contour.png', true],
+    ]);
+  });
 });

@@ -560,7 +560,7 @@ The minimum is the Supernote's own system text: the note title in the bottom bar
 
 ### 8.6 Library
 
-- Every inserted image is saved automatically with metadata: source, source id or URL, query, license short name, attribution, date, file path, dimensions.
+- Every inserted image is saved automatically with metadata: source, source id or URL, query, license short name, attribution, date, file path, dimensions, and its style. A saved picture is inserted again only in the style asked for: a contour drawing is its own file, `<id>.contour.png`, beside the plain `<id>.png`, and the other style is prepared again. When the e-ink preparation fails or times out, the unprepared download is kept as `<id>.original.<ext>`, never in the file the image module may still write ([#103](https://github.com/martonpaulo/ink2pic/issues/103)).
 - **Library tab** works offline and is the fallback when there is no network.
 - Recent searches shown as one-tap buttons.
 
