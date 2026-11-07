@@ -220,6 +220,18 @@ describe('journeys (#78)', () => {
     expect(picture.rect.left).toBe(placed[2].rect.left);
   });
 
+  it('Lasso last word on «Quem foi Miguel de Cervantes ?» lassoes the name, not the «?» (#109)', async () => {
+    journey = startJourney();
+    const j = journey;
+    const line = ['Quem', 'foi', 'Miguel', 'de', 'Cervantes', '?'];
+    line.forEach((text, i) =>
+      j.host.write(text, {left: 100 + i * 220, top: 400, right: 260 + i * 220, bottom: 460}),
+    );
+    const {lassoLastWord} = require('../src/flow/penProbe');
+    expect(await lassoLastWord()).toBeNull();
+    expect(j.host.lassoed().map(e => e.text)).toEqual(['Miguel', 'de', 'Cervantes']);
+  });
+
   it('Lasso last word on «ontem eu viajei até a China» lassoes «China» alone, with no titles check (#87)', async () => {
     journey = startJourney();
     const j = journey;

@@ -479,20 +479,39 @@ async function choosePhrase(
   if (!text.ok) {
     return null;
   }
-  const written = text.value.trim().split(/\s+/u).filter(Boolean);
+  const tokens = text.value.trim().split(/\s+/u).filter(Boolean);
   log(`probe phrase: recognised "${text.value.trim()}"`);
-  if (written.length !== line.words.length) {
+  if (tokens.length !== line.words.length) {
     log(
-      `probe phrase: ${written.length} recognised words, ${line.words.length} by position; the last word alone`,
+      `probe phrase: ${tokens.length} recognised words, ${line.words.length} by position; the last word alone`,
     );
     return null;
   }
+  const {written, words} = withoutPunctuation(tokens, line);
   const chosen = await resolvePhrase(written.join(' '), deviceContext(settings));
   if (chosen === null) {
     return null;
   }
-  const word = selectLastWords(strokes, line, chosen.words, page.size);
+  const word = selectLastWords(strokes, words, chosen.words, page.size);
   return word && {word, query: chosen.query};
+}
+
+const WORDLIKE = /[\p{L}\p{N}]/u;
+
+/**
+ * The recognised tokens and the position words, both without the tokens that hold no letter or
+ * digit (#109): a separate «?» is a word by position, but the phrase check drops it, so its count
+ * of trailing words would start one word late. `tokens` has one token per position word.
+ */
+export function withoutPunctuation(
+  tokens: string[],
+  line: LineWords,
+): {written: string[]; words: LineWords} {
+  const keep = tokens.map(token => WORDLIKE.test(token));
+  return {
+    written: tokens.filter((_, i) => keep[i]),
+    words: {...line, words: line.words.filter((_, i) => keep[i])},
+  };
 }
 
 /**

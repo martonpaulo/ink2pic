@@ -71,6 +71,11 @@ export const LASSO_MARGIN_SHARE = 0.25;
  * 53 × 52 rect and true for 88 × 52 (build 15) [TO TEST, brief section 10.5].
  */
 export const LASSO_MIN_SHARE = 2.5;
+/**
+ * The lasso's smallest side in page pixels, whatever the letter height: one dot has none, and
+ * lassoElements took 88 × 52 (build 15, #109).
+ */
+export const LASSO_MIN_SIDE = 88;
 
 type Measured = {num: number; rect: Rect};
 
@@ -236,16 +241,37 @@ export function lineMeasures(
   };
 }
 
+/** How many strokes before a trailing stroke it is weighed against as a mark: an i-dot and a t-bar. */
+export const SEED_LOOKBACK = 2;
+
+/**
+ * Whether the stroke at `at` is a mark against the strokes just before it (#109): shorter than
+ * MARK_SHARE of the tallest of them, and not below it. Only the newest strokes count, never the
+ * page: a small word after a large heading or a drawing is the newest line.
+ */
+function isTrailingMark(measured: Measured[], at: number): boolean {
+  const before = measured.slice(Math.max(0, at - SEED_LOOKBACK), at);
+  if (before.length === 0) {
+    return false;
+  }
+  const tallest = before.reduce((a, b) =>
+    height(b.rect) > height(a.rect) ? b : a,
+  ).rect;
+  const rect = measured[at].rect;
+  return (
+    height(rect) < height(tallest) * MARK_SHARE &&
+    (rect.top + rect.bottom) / 2 <= tallest.bottom
+  );
+}
+
 /** The strokes of the newest line, by numInPage, ending at the first stroke of another line. */
 function newestLine(measured: Measured[]): {
   line: Measured[];
   band: Rect;
   end: Measured | null;
 } {
-  const heights = measured.map(stroke => height(stroke.rect));
-  const typical = median(heights);
   let seed = measured.length - 1;
-  while (seed > 0 && heights[seed] < typical * MARK_SHARE) {
+  while (seed > 0 && isTrailingMark(measured, seed)) {
     seed--;
   }
   const letters = [measured[seed].rect];
@@ -359,7 +385,7 @@ export function padToPage(
   page: PageSize,
 ): Rect {
   const margin = letterHeight * LASSO_MARGIN_SHARE;
-  const least = letterHeight * LASSO_MIN_SHARE;
+  const least = Math.max(letterHeight * LASSO_MIN_SHARE, LASSO_MIN_SIDE);
   const grow = (low: number, high: number) =>
     Math.max(margin, (least - (high - low)) / 2);
   const x = grow(rect.left, rect.right);

@@ -713,7 +713,10 @@ measured on the chosen line (owner, 2026-11-07).
 
 1. Read the page with `getElements(page, notePath)`, with no Probe armed, keep the newest 60
    strokes, read their points, and recycle every element read.
-2. Start at the newest stroke that is not a mark and walk back by `numInPage` while the strokes sit
+2. Start at the newest stroke that is not a mark: a trailing stroke is skipped while it is shorter
+   than 0.6 of the taller of the two strokes before it and not below it, never weighed against the
+   whole page, so a small word after a heading or a drawing is still the newest line
+   ([#109](https://github.com/martonpaulo/ink2pic/issues/109)). Walk back by `numInPage` while the strokes sit
    on its line. The line's band is the median top and bottom of its letters. A stroke is a letter
    when it overlaps the band by at least 0.3 of the lower of the two heights, so a tall «C», «f» or
    «h» stays in. A stroke shorter than 0.6 of the band whose bottom lies at most one band height
@@ -723,8 +726,11 @@ measured on the chosen line (owner, 2026-11-07).
    gap: `spacing × max(0.8 × letter height, 3 × median letter gap)`, where the letter height is
    the median letter height and the letter gaps are the line's gaps under 0.8 of it.
 4. The word holding the newest letter is chosen, with every mark nearer to it than to another word.
+   For a phrase, a recognised token with no letter or digit (a separate «?») is dropped with its
+   position word before the trailing words are counted.
 5. The rect is padded by 0.25 of the letter height, grown to at least 2.5 letter heights on each
-   side and kept within the page. `lassoElements` answered false for a 53 × 52 rect and true for
+   side, and to at least 88 px whatever the letter height (one dot has none), and kept within the
+   page. `lassoElements` answered false for a 53 × 52 rect and true for
    88 × 52 on build 15 [TO TEST: the smallest rect it takes]. A false answer is logged and shown.
 
 The Word spacing setting sets `spacing`: Tight 0.7, Normal 1, Wide 1.4 [INFERENCE: tuned on one

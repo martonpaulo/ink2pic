@@ -4,6 +4,7 @@ import {
   insideLoop,
   isClosedLoop,
   LASSO_MIN_SHARE,
+  LASSO_MIN_SIDE,
   lineMeasures,
   lineWords,
   padToPage,
@@ -253,6 +254,26 @@ describe('the Word spacing setting scales the measured word gap', () => {
   });
 });
 
+describe('the newest line after larger strokes (#109)', () => {
+  it('lassoes a small word written after a large heading, not the heading', () => {
+    const heading = Array.from({length: 12}, (_, i) =>
+      stroke(i + 1, {left: 100 + i * 80, top: 100, right: 160 + i * 80, bottom: 200}),
+    );
+    const word = Array.from({length: 4}, (_, i) =>
+      stroke(i + 13, {left: 100 + i * 40, top: 400, right: 134 + i * 40, bottom: 440}),
+    );
+    expect(kept([...heading, ...word], NORMAL)).toEqual([13, 14, 15, 16]);
+  });
+
+  it('lassoes «cat» written after a drawing, not the drawing', () => {
+    const drawing = Array.from({length: 20}, (_, i) =>
+      stroke(i + 1, {left: 100 + (i % 10) * 90, top: 1000 + (i % 3) * 20, right: 180 + (i % 10) * 90, bottom: 1150}),
+    );
+    const cat = handwrite('cat', 1400, 21);
+    expect(kept([...drawing, ...cat], NORMAL)).toEqual(cat.map(s => s.num));
+  });
+});
+
 describe('the lasso rect', () => {
   it('pads a one-letter rect to the size lassoElements took on the device', () => {
     // 53 × 52 was refused on build 15 and 88 × 52 taken.
@@ -261,6 +282,16 @@ describe('the lasso rect', () => {
     expect(rect.right - rect.left).toBeGreaterThanOrEqual(88);
     expect(rect.left).toBeLessThan(785);
     expect(rect.right).toBeGreaterThan(838);
+  });
+
+  it('gives one dot a lasso lassoElements takes, never 0 × 0 (#109)', () => {
+    const rect = padToPage({left: 500, top: 700, right: 500, bottom: 700}, 0, page);
+    expect(rect.right - rect.left).toBeGreaterThanOrEqual(LASSO_MIN_SIDE);
+    expect(rect.bottom - rect.top).toBeGreaterThanOrEqual(LASSO_MIN_SIDE);
+    const dot = selectWord([stroke(1, {left: 500, top: 700, right: 500, bottom: 700}, 1)], page, NORMAL);
+    expect(dot).not.toBeNull();
+    expect(dot!.rect.right - dot!.rect.left).toBeGreaterThanOrEqual(88);
+    expect(dot!.rect.bottom - dot!.rect.top).toBeGreaterThanOrEqual(88);
   });
 
   it('keeps the lasso inside the page, as lassoElements requires', () => {
