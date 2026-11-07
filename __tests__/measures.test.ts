@@ -1,7 +1,8 @@
 import {
-  insertsContour,
+  isContourUri,
   measureFirstPages,
   MeasureDeps,
+  measureThumb,
 } from '../src/flow/measure';
 import {logLines, startLog} from '../src/log/memory';
 import {ok, fail, MODULE_CODE} from '../src/sdk/result';
@@ -337,8 +338,8 @@ describe('measureFirstPages (#66)', () => {
     expect(measured.contourThumbs.get('dark')).toBe(
       'file:///p/thumbs/dark.contour.png',
     );
-    expect(insertsContour(measured, 'dark')).toBe(true);
-    expect(insertsContour(measured, 'line')).toBe(false);
+    expect(isContourUri(measured.contourThumbs.get('dark') ?? '')).toBe(true);
+    expect(measured.contourThumbs.has('line')).toBe(false);
   });
 
   it('shows and inserts the picture as it is when the conversion fails', async () => {
@@ -348,7 +349,7 @@ describe('measureFirstPages (#66)', () => {
       toContour: async () => fail(MODULE_CODE, 'IO: disk full', 'IO'),
     };
     const measured = await measureFirstPages(list, '/p', 'x', failing);
-    expect(insertsContour(measured, 'dark')).toBe(false);
+    expect(measured.contourThumbs.has('dark')).toBe(false);
     expect(measured.measures.get('dark')).toBe(darkPainting);
     expect(logLines().join('\n')).toContain('contour dark: IO: disk full');
   });
@@ -369,5 +370,69 @@ describe('measureFirstPages (#66)', () => {
     const measured = await measureFirstPages(list, '/p', 'x', slow);
     expect([...measured.measures.keys()]).toEqual(['line']);
     expect(logLines().join('\n')).toContain('limit reached');
+  });
+  describe('a later page, as it loads (#72)', () => {
+    it('shows and inserts a dark picture as its contour drawing', async () => {
+      expect(await measureThumb(result('dark'), '/p', 'x', deps())).toBe(
+        'file:///p/thumbs/dark.contour.png',
+      );
+      expect(converted).toEqual([
+        '/p/thumbs/dark -> /p/thumbs/dark.contour.png at 400',
+      ]);
+      expect(logLines().join('\n')).toContain('contour dark: 7 ms, now outline');
+    });
+
+    it('shows an outline, a failed measure and a web thumbnail as found', async () => {
+      expect(await measureThumb(result('line'), '/p', 'x', deps())).toBe(
+        'file:///p/thumbs/line',
+      );
+      expect(await measureThumb(result('bad'), '/p', 'x', deps())).toBe(
+        'file:///p/thumbs/bad',
+      );
+      expect(await measureThumb(result('web'), '/p', 'x', deps())).toBe(
+        result('web').thumbUrl,
+      );
+      expect(converted).toEqual([]);
+    });
+
+    it('shows the picture as found when the conversion fails', async () => {
+      const failing = deps();
+      failing.analyzer = {
+        ...failing.analyzer,
+        toContour: async () => fail(MODULE_CODE, 'IO: disk full', 'IO'),
+      };
+      expect(await measureThumb(result('dark'), '/p', 'x', failing)).toBe(
+        'file:///p/thumbs/dark',
+      );
+    });
+
+    it('shows the picture as found at the limit, and a later contour changes nothing', async () => {
+      let finish!: () => void;
+      const slow = deps(5);
+      slow.analyzer = {
+        ...slow.analyzer,
+        measure: () =>
+          new Promise(resolve => {
+            finish = () => resolve(ok(darkPainting));
+          }),
+      };
+      expect(await measureThumb(result('dark'), '/p', 'x', slow)).toBe(
+        'file:///p/thumbs/dark',
+      );
+      expect(logLines().join('\n')).toContain('pixels dark: limit reached');
+      finish();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(converted).toEqual([]);
+    });
+
+    it('never rejects', async () => {
+      const broken: MeasureDeps = {
+        ...deps(),
+        thumb: () => Promise.reject(new Error('no disk')),
+      };
+      expect(await measureThumb(result('dark'), '/p', 'x', broken)).toBe(
+        result('dark').thumbUrl,
+      );
+    });
   });
 });

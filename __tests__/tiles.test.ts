@@ -2,6 +2,7 @@ import {PAGE_SIZE} from '../src/search/pages';
 import type {SearchResult} from '../src/search-core/types';
 import {
   initialTile,
+  keptTile,
   nextTile,
   type Tile,
   tilePage,
@@ -109,5 +110,43 @@ describe('tilePage (#64)', () => {
       pages: 1,
       empty: true,
     });
+  });
+});
+
+describe('a tile kept across results lists (#72)', () => {
+  const CONTOUR = `${FILE}.contour.png`;
+  const ready = (uri: string): Tile => ({status: 'ready', uri});
+
+  it('starts from the URI the list chose', () => {
+    expect(keptTile(undefined, FILE)).toEqual({
+      tile: {status: 'show', uri: FILE},
+      from: FILE,
+    });
+  });
+
+  it('follows the contour drawing a later list chose for a picture shown as found', () => {
+    expect(keptTile({tile: ready(FILE), from: FILE}, CONTOUR)).toEqual({
+      tile: {status: 'show', uri: CONTOUR},
+      from: CONTOUR,
+    });
+    expect(keptTile({tile: ready(CONTOUR), from: CONTOUR}, FILE).tile).toEqual(
+      {status: 'show', uri: FILE},
+    );
+  });
+
+  it('keeps a shown picture whose look did not change, so it fires no new load (#23)', () => {
+    const kept = {tile: ready(FILE), from: null};
+    expect(keptTile(kept, FILE)).toBe(kept);
+    expect(keptTile(kept, null)).toBe(kept);
+  });
+
+  it('keeps the web copy of a contour file that could not be shown: no retry loop', () => {
+    const kept = {tile: {status: 'retry', uri: WEB} as Tile, from: CONTOUR};
+    expect(keptTile(kept, CONTOUR)).toBe(kept);
+  });
+
+  it('keeps a failed tile out of every list (#64)', () => {
+    const kept = {tile: {status: 'failed'} as Tile, from: FILE};
+    expect(keptTile(kept, CONTOUR)).toBe(kept);
   });
 });

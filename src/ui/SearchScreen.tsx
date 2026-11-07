@@ -11,9 +11,9 @@ import {getLibrary} from '../library/device';
 import type {Library} from '../library/types';
 import {Done, failureText, StepFailure} from '../flow/failure';
 import {
-  insertsContour,
   measureFirstPages,
   MeasuredPages,
+  measureThumb,
   unmeasured,
 } from '../flow/measure';
 import {afterSearch, insteadLabel, runSearch, stateText} from '../flow/search';
@@ -92,18 +92,23 @@ export function SearchScreen({
     getLibrary().then(setLibrary);
   }, []);
 
-  const pick = async (result: SearchResult) => {
+  // Page 3 and later are measured as they load, for the word the shown results answer (#72).
+  const measureLater = useMemo(
+    () =>
+      thumbDir
+        ? (result: SearchResult) => measureThumb(result, thumbDir, searchedWord)
+        : undefined,
+    [thumbDir, searchedWord],
+  );
+
+  const pick = async (result: SearchResult, contour: boolean) => {
     if (inserting.current) {
       log(`picked ${result.id} while an insert runs: ignored`);
       return;
     }
     inserting.current = true;
     setStatus(copy['insert.running']);
-    const inserted = await onPick(
-      result,
-      query.trim(),
-      insertsContour(measured, result.id),
-    );
+    const inserted = await onPick(result, query.trim(), contour);
     inserting.current = false;
     if (inserted.ok) {
       setStatus(null);
@@ -266,6 +271,7 @@ export function SearchScreen({
           onPick={pick}
           thumbDir={thumbDir}
           contourThumbs={measured.contourThumbs}
+          measureLater={measureLater}
         />
       )}
     </Screen>

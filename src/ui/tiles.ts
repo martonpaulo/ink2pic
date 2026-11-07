@@ -4,6 +4,7 @@
  * retried once from the web when its file cannot be shown (#46), and a tile whose thumbnail fails
  * leaves the list, so the next result takes its place and the page count follows.
  */
+import {isContourUri} from '../flow/measure';
 import {pageCount, pageOf} from '../search/pages';
 import {webRetryUri} from '../search/thumbs';
 import type {SearchResult} from '../search-core';
@@ -34,6 +35,32 @@ export function initialTile(uri: string | null): Tile {
 /** The URI an Image renders for the tile, or null when nothing renders. */
 export function tileUri(tile: Tile): string | null {
   return 'uri' in tile ? tile.uri : null;
+}
+
+/** A tile's state kept by result id across results lists, with the URI its list chose. */
+export type KeptTile = {tile: Tile; from: string | null};
+
+/**
+ * The tile a results list shows for the URI it chose. A kept tile stays as it is, so a shown
+ * picture fires no new load (#23) and a failed one stays out (#64); it restarts from the chosen
+ * URI only when the list chose another look for its picture, its contour drawing or not, so what
+ * shows is what goes in (#72). Once per chosen URI: a contour file that falls back to its web
+ * copy keeps it.
+ */
+export function keptTile(
+  kept: KeptTile | undefined,
+  chosen: string | null,
+): KeptTile {
+  if (!kept) {
+    return {tile: initialTile(chosen), from: chosen};
+  }
+  const shown = tileUri(kept.tile);
+  const otherLook =
+    chosen !== null &&
+    chosen !== kept.from &&
+    shown !== null &&
+    isContourUri(chosen) !== isContourUri(shown);
+  return otherLook ? {tile: initialTile(chosen), from: chosen} : kept;
 }
 
 /**

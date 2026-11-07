@@ -152,6 +152,7 @@ describe('ResultsGrid', () => {
     act(() => tile.props.onPress());
     expect(onPick).toHaveBeenCalledWith(
       expect.objectContaining({id: 'openclipart:2'}),
+      false,
     );
   });
 
@@ -279,6 +280,100 @@ describe('ResultsGrid', () => {
     const tree = render();
     const source = tree.root.findAllByType(Image)[0].props.source;
     expect(source.headers['User-Agent']).toMatch(/^Ink2Pic\//);
+  });
+});
+
+describe('a later page measured as it loads (#72)', () => {
+  const contourOf = (n: number) => `file:///p/thumbs/openclipart-${n}.contour.png`;
+  const fileOf = (n: number) => `file:///p/thumbs/openclipart-${n}`;
+  const uris = (tree: ReactTestRenderer) =>
+    tree.root.findAllByType(Image).map(img => img.props.source.uri);
+  const openPage3 = (tree: ReactTestRenderer) => {
+    loadAll(tree);
+    act(() => navButton(tree, copy['nav.nextLabel']).props.onPress());
+    loadAll(tree);
+    act(() => navButton(tree, copy['nav.nextLabel']).props.onPress());
+  };
+
+  it('measures only the results after pages 1 and 2, and shows page 3 with its contour tiles', async () => {
+    const asked: string[] = [];
+    let finish!: () => void;
+    const measured = new Promise<void>(resolve => (finish = resolve));
+    const measureLater = jest.fn(async (item: SearchResult) => {
+      asked.push(item.id);
+      await measured;
+      const n = Number(item.id.split(':')[1]);
+      return n === 13 ? contourOf(n) : fileOf(n);
+    });
+    const onPick = jest.fn();
+    const tree = render({
+      results: many(14),
+      thumbDir: '/p',
+      measureLater,
+      onPick,
+    });
+    openPage3(tree);
+    // Nothing of page 3 renders before its measures: what shows is what goes in.
+    expect(asked).toEqual(['openclipart:13', 'openclipart:14']);
+    expect(uris(tree)).toEqual([]);
+    expect(gridOf(tree).props.style).toContainEqual(
+      expect.objectContaining({opacity: 0}),
+    );
+    await act(async () => finish());
+    expect(uris(tree)).toEqual([contourOf(13), fileOf(14)]);
+    loadAll(tree);
+    act(() => tree.root.findByProps({testID: 'tile-openclipart:13'}).props.onPress());
+    act(() => tree.root.findByProps({testID: 'tile-openclipart:14'}).props.onPress());
+    expect(onPick.mock.calls.map(call => call[1])).toEqual([true, false]);
+  });
+
+  it('inserts as found when the contour file cannot be shown and its web copy shows', async () => {
+    const onPick = jest.fn();
+    const tree = render({
+      results: many(13),
+      thumbDir: '/p',
+      measureLater: async () => contourOf(13),
+      onPick,
+    });
+    openPage3(tree);
+    await act(async () => {});
+    act(() => tree.root.findAllByType(Image)[0].props.onError());
+    expect(uris(tree)).toEqual([result(13).thumbUrl]);
+    loadAll(tree);
+    act(() => tree.root.findByProps({testID: 'tile-openclipart:13'}).props.onPress());
+    expect(onPick).toHaveBeenCalledWith(
+      expect.objectContaining({id: 'openclipart:13'}),
+      false,
+    );
+  });
+
+  it('shows the contour drawing a new list chose for a picture shown as found', () => {
+    const onPick = jest.fn();
+    const tree = render({results: many(2), onPick});
+    loadAll(tree);
+    expect(uris(tree)[0]).toBe(result(1).thumbUrl);
+    const again = many(2);
+    act(() =>
+      tree.update(
+        <ResultsGrid
+          results={again}
+          searching={false}
+          sourceDown={false}
+          onPick={onPick}
+          contourThumbs={new Map([[again[0].id, contourOf(1)]])}
+        />,
+      ),
+    );
+    expect(uris(tree)[0]).toBe(contourOf(1));
+    loadAll(tree);
+    expect(gridOf(tree).props.style).not.toContainEqual(
+      expect.objectContaining({opacity: 0}),
+    );
+    act(() => tree.root.findByProps({testID: 'tile-openclipart:1'}).props.onPress());
+    expect(onPick).toHaveBeenCalledWith(
+      expect.objectContaining({id: 'openclipart:1'}),
+      true,
+    );
   });
 });
 
