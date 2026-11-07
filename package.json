@@ -11,6 +11,7 @@
     "start": "react-native start",
     "icon": "node scripts/render-icon.cjs",
     "test:native": "node scripts/native-build.cjs --test",
+    "renders": "jest --config scripts/renders/jest.config.js",
     "build": "bash buildPlugin.sh && node scripts/native-build.cjs --package"
   },
   "dependencies": {
