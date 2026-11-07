@@ -85,6 +85,13 @@ let lastAt: number | null = null;
 let motion: {points: PenPoint[]; toolType: number} | null = null;
 /** Pen-ups are handled one after another, in the order they arrive. */
 let queue: Promise<void> = Promise.resolve();
+/** The arming under way: a second Probe tap waits for it instead of registering again (#111). */
+let arming: Promise<void> | null = null;
+/**
+ * Counts the Stop probes (#111): a pen-up whose handling began before the last stop lassoes
+ * nothing.
+ */
+let generation = 0;
 
 const armedListeners = new Set<(armed: boolean) => void>();
 
@@ -105,6 +112,7 @@ function tellArmed(): void {
 /** Stops listening and forgets the strokes: Stop probe, the view's close, and tests. */
 export function stopPenProbe(): void {
   const wasArmed = probeArmed();
+  generation++;
   stops.forEach(stop => stop());
   stops = [];
   lastAt = null;
@@ -197,7 +205,12 @@ async function lassoAndRead(rect: Rect, expected: string): Promise<boolean> {
   return true;
 }
 
-async function handlePenUp(elements: object[], at: number): Promise<void> {
+async function handlePenUp(
+  elements: object[],
+  at: number,
+  /** The generation the pen-up arrived in (#111). */
+  armedIn: number,
+): Promise<void> {
   const pause = lastAt === null ? 'first' : `${at - lastAt} ms after the last`;
   lastAt = at;
   log(
@@ -239,6 +252,10 @@ async function handlePenUp(elements: object[], at: number): Promise<void> {
         rect,
       )}, sample ${brief(sample(points.value), FIELDS_MAX)}`,
     );
+    if (armedIn !== generation) {
+      log('probe circle: the probe stopped meanwhile; nothing is lassoed');
+      return;
+    }
     await lassoAndRead(
       word.rect,
       `${word.strokes} stroke(s) inside the circle`,
@@ -359,17 +376,37 @@ function handleMotion(event: Motion): void {
   }
 }
 
-/** Starts the pen-up and motion listeners once; a failed registration is logged. */
-async function arm(): Promise<void> {
+/**
+ * Starts the pen-up and motion listeners once; a failed registration is logged. A call while an
+ * arming is under way waits for it (#111).
+ */
+function arm(): Promise<void> {
+  if (arming) {
+    log('probe: already arming');
+    return arming;
+  }
   if (probeArmed()) {
     log('probe: already listening');
+    return Promise.resolve();
+  }
+  arming = register().finally(() => {
+    arming = null;
+  });
+  return arming;
+}
+
+async function register(): Promise<void> {
+  const armedIn = generation;
+  await logged('getPenInfo (armed)', getPenInfo);
+  if (armedIn !== generation) {
+    log('probe: stopped while arming; no listener is registered');
     return;
   }
-  await logged('getPenInfo (armed)', getPenInfo);
   const penUp = onPenUp(elements => {
     const at = Date.now();
+    const arrivedIn = generation;
     queue = queue.then(() =>
-      handlePenUp(elements, at).catch(error =>
+      handlePenUp(elements, at, arrivedIn).catch(error =>
         log(`probe pen-up failed: ${String(error)}`),
       ),
     );
@@ -543,9 +580,15 @@ export async function lassoLastWord(): Promise<LastWordProblem | null> {
   if (!took) {
     return 'lassoFailed';
   }
-  if (phrase) {
+  if (phrase && page) {
     log(`probe phrase: searches "${phrase.query}"`);
-    rememberPick({query: phrase.query, rect: word.rect, strokes: word.strokes});
+    rememberPick({
+      query: phrase.query,
+      rect: word.rect,
+      strokes: word.strokes,
+      path: page.path,
+      page: page.page,
+    });
   }
   await logged('closePluginView', closePluginView);
   return null;

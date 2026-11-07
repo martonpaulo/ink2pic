@@ -130,7 +130,7 @@ export type HostOptions = {
   /** TO TEST (#73): whether the lasso lassoElements made survives closePluginView. */
   lassoSurvivesClose?: boolean;
   /**
-   * How the plugin's own module writes a shared file: `in-place` as ModuleWork.java does since
+   * How the plugin's own module writes a shared file: `in-place` as FileWrites.java does since
    * #62, or `replace` (a temporary file renamed over it) as before.
    */
   moduleWrites?: 'in-place' | 'replace';

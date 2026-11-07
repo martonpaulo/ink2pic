@@ -116,7 +116,10 @@ async function removeTemporary(pluginDir: string, path: string): Promise<void> {
 }
 
 /** Removes a dropped early download's file once its download ends (#93). Never rejects. */
-export function dropEarly(early: EarlyDownload): void {
+export function dropEarly(early: EarlyDownload | null): void {
+  if (!early) {
+    return;
+  }
   early.raw
     .then(async raw => {
       const dir = await pluginFolder();
@@ -130,12 +133,12 @@ export function dropEarly(early: EarlyDownload): void {
 /**
  * Starts the leading picture's download before it is known to win (#88). Never rejects. A
  * library file is reused only in the style «All contour» asks for (#103): the tile's own style
- * is not known yet, and a download it does not need is dropped.
+ * is not known yet, and a download it does not need is dropped. A saved symbol needs none (#111).
  */
 export function startEarlyDownload(result: SearchResult): EarlyDownload {
   const started = Date.now();
   const raw = (async (): Promise<Result<string> | null> => {
-    if (result.localPath) {
+    if (result.localPath || (await symbolFile(result))) {
       return null;
     }
     const {contour} = await savedOptions();
@@ -166,7 +169,11 @@ async function earlyFile(
   result: SearchResult,
   early: EarlyDownload | null,
 ): Promise<string | null> {
-  if (!early || early.id !== result.id) {
+  if (!early) {
+    return null;
+  }
+  if (early.id !== result.id) {
+    dropEarly(early);
     return null;
   }
   const waited = Date.now();
@@ -220,8 +227,12 @@ async function download(
   if (!dir.ok) {
     return dir;
   }
-  // A saved OpenMoji symbol needs no download (#91).
-  let raw = (await symbolFile(result)) ?? (await earlyFile(result, early));
+  // A saved OpenMoji symbol needs no download (#91), nor the early one (#111).
+  const symbol = await symbolFile(result);
+  if (symbol) {
+    dropEarly(early);
+  }
+  let raw = symbol ?? (await earlyFile(result, early));
   if (!raw) {
     raw = insertDownloadPath(dir.value, result.id, imageExtension(url));
     const path = raw;
@@ -261,7 +272,10 @@ async function download(
     : again;
 }
 
-/** A library picture, a search result already in the library, else a download. */
+/**
+ * A library picture, a search result already in the library, else a download. An early download
+ * that is not used is removed (#111).
+ */
 async function picture(
   result: SearchResult,
   contour: boolean,
@@ -269,6 +283,7 @@ async function picture(
   early: EarlyDownload | null,
 ): Promise<Result<Saved>> {
   if (result.localPath) {
+    dropEarly(early);
     return ok({
       path: result.localPath,
       size: result.localSize ?? null,
@@ -278,6 +293,7 @@ async function picture(
   }
   const known = findItem(await getLibrary(), result.id, contour);
   if (known) {
+    dropEarly(early);
     log(
       `library: ${result.id}${
         contour ? ' (contour)' : ''

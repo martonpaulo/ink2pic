@@ -1,18 +1,11 @@
 package com.ink2pic.files;
 
 import com.facebook.react.bridge.Promise;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
-/** What every Ink2Pic native module shares: its background worker and its atomic write. */
+/** What every Ink2Pic native module shares: its background worker; writes are in FileWrites. */
 final class ModuleWork {
-  static final int BUFFER = 16 * 1024;
-
   private ModuleWork() {}
 
   interface Job {
@@ -40,73 +33,5 @@ final class ModuleWork {
     } catch (RejectedExecutionException refused) {
       promise.reject("REJECTED", "the worker refused the job: " + refused.getMessage());
     }
-  }
-
-  /** Writes to `<target>.part`, then renames, so a failure never leaves half a file. */
-  static long writeAtomically(File target, InputStream input) throws Exception {
-    File parent = target.getParentFile();
-    if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
-      throw new IOException("cannot create folder " + parent);
-    }
-    if (SafePaths.isShared(target)) {
-      return writeInPlace(target, input);
-    }
-    File part = SafePaths.partFile(target);
-    long total = 0;
-    try (OutputStream output = new FileOutputStream(part)) {
-      byte[] buffer = new byte[BUFFER];
-      int read;
-      while ((read = input.read(buffer)) != -1) {
-        total += read;
-        if (total > SafePaths.MAX_DOWNLOAD_BYTES) {
-          throw new SafePaths.Refused("TOO_LARGE", "over " + SafePaths.MAX_DOWNLOAD_BYTES + " bytes");
-        }
-        output.write(buffer, 0, read);
-      }
-    } catch (Exception error) {
-      part.delete();
-      throw error;
-    }
-    if (target.exists() && !target.delete()) {
-      part.delete();
-      throw new IOException("cannot replace " + target);
-    }
-    if (!part.renameTo(target)) {
-      part.delete();
-      throw new IOException("cannot rename " + part + " to " + target);
-    }
-    return total;
-  }
-
-  /** Adds `bytes` at the end of `target`, creating it and its folder when missing (#102). */
-  static void append(File target, byte[] bytes) throws IOException {
-    File parent = target.getParentFile();
-    if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
-      throw new IOException("cannot create folder " + parent);
-    }
-    try (OutputStream output = new FileOutputStream(target, true)) {
-      output.write(bytes);
-    }
-  }
-
-  /**
-   * Writes straight into a file in shared storage: no temporary file, no rename, no delete, which
-   * PluginHost refuses without FILE:DELETE (#62). shortcut: a write cut off midway leaves a partial
-   * file, which the next write replaces; upgrade if a device shows such a file.
-   */
-  static long writeInPlace(File target, InputStream input) throws Exception {
-    long total = 0;
-    try (OutputStream output = new FileOutputStream(target, false)) {
-      byte[] buffer = new byte[BUFFER];
-      int read;
-      while ((read = input.read(buffer)) != -1) {
-        total += read;
-        if (total > SafePaths.MAX_DOWNLOAD_BYTES) {
-          throw new SafePaths.Refused("TOO_LARGE", "over " + SafePaths.MAX_DOWNLOAD_BYTES + " bytes");
-        }
-        output.write(buffer, 0, read);
-      }
-    }
-    return total;
   }
 }

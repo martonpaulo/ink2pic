@@ -24,8 +24,16 @@ export type LassoQuery = {query: string; place: LassoPlace | null};
 /**
  * What Lasso last word chose (#87): the words it lassoed and what they search. Insert best picture on
  * that same lasso searches it with no second recognition; any other lasso is recognised as before.
+ * `path` and `page` are where it lassoed: the same rect on another page or note is another lasso
+ * (#111).
  */
-export type WordPick = {query: string; rect: Rect; strokes: number};
+export type WordPick = {
+  query: string;
+  rect: Rect;
+  strokes: number;
+  path: string;
+  page: number;
+};
 
 let pick: WordPick | null = null;
 
@@ -43,11 +51,24 @@ function within(inner: Rect, outer: Rect): boolean {
   );
 }
 
-/** The remembered pick when the lasso is the one it made: as many strokes, inside its rect. */
-function takePick(lassoed: number, rect: Result<Rect>): WordPick | null {
+/**
+ * The remembered pick when the lasso is the one it made: on its page of its note, as many strokes,
+ * inside its rect.
+ */
+function takePick(
+  lassoed: number,
+  rect: Result<Rect>,
+  path: string,
+  page: number,
+): WordPick | null {
   const chosen = pick;
   pick = null;
-  return chosen && rect.ok && lassoed === chosen.strokes && within(rect.value, chosen.rect)
+  return chosen &&
+    rect.ok &&
+    chosen.path === path &&
+    chosen.page === page &&
+    lassoed === chosen.strokes &&
+    within(rect.value, chosen.rect)
     ? chosen
     : null;
 }
@@ -88,7 +109,7 @@ export async function readLassoQuery(
   const place = rect.ok
     ? {rect: rect.value, page: page.value, pageSize: size.value}
     : null;
-  const picked = takePick(elements.value.length, rect);
+  const picked = takePick(elements.value.length, rect, path.value, page.value);
   if (picked) {
     log(`lasso query: "${picked.query}", as Lasso last word chose it`);
     return ok({query: picked.query, place});

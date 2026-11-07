@@ -129,7 +129,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
         throw new SafePaths.Refused(
             "ENCODE", "cannot encode " + (png ? PNG : JPG) + " for " + target);
       }
-      return ModuleWork.writeAtomically(target, new ByteArrayInputStream(encoded.toByteArray()));
+      return FileWrites.writeAtomically(target, new ByteArrayInputStream(encoded.toByteArray()));
     } finally {
       gray.recycle();
     }

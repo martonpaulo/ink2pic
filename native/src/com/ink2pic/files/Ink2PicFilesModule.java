@@ -93,7 +93,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
         throw new SafePaths.Refused("HTTP_" + status, "HTTP " + status + " for " + url);
       }
       try (InputStream input = connection.getInputStream()) {
-        return (double) ModuleWork.writeAtomically(target, input);
+        return (double) FileWrites.writeAtomically(target, input);
       }
     } finally {
       connection.disconnect();
@@ -114,7 +114,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     submit(promise, () -> {
       File target = SafePaths.checkPath(path);
       byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
-      ModuleWork.writeAtomically(target, new java.io.ByteArrayInputStream(bytes));
+      FileWrites.writeAtomically(target, new java.io.ByteArrayInputStream(bytes));
       return null;
     });
   }
@@ -128,7 +128,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   public void appendText(String path, String text, Promise promise) {
     submit(promise, () -> {
       File target = SafePaths.checkPath(path);
-      ModuleWork.append(target, text.getBytes(StandardCharsets.UTF_8));
+      FileWrites.append(target, text.getBytes(StandardCharsets.UTF_8));
       return null;
     });
   }
@@ -219,7 +219,7 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
       }
       try (InputStream input = new FileInputStream(target)) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] buffer = new byte[ModuleWork.BUFFER];
+        byte[] buffer = new byte[FileWrites.BUFFER];
         int read;
         while ((read = input.read(buffer)) != -1) {
           output.write(buffer, 0, read);
