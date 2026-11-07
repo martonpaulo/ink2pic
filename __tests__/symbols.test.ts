@@ -296,6 +296,34 @@ describe('offline symbols (#91)', () => {
     expect(file).toMatch(/symbols: 1447 of 1447 saved, 0 failed\n$/);
   });
 
+  it('lists the folder again after a failed listing, and downloads nothing meanwhile (#99)', async () => {
+    const host = started();
+    const [first] = await symbolResults();
+    await thumbUri(first, '/unused'); // saved
+    resetSymbolsForTests();
+    const total = symbolHexes().length;
+    jest
+      .spyOn(NativeModules.Ink2PicFiles, 'listSizes')
+      .mockRejectedValueOnce(new Error('EIO'));
+    expect(await symbolsStatus()).toEqual({total, saved: 0, unreadable: true});
+    const before = pictureRequests(host).length;
+    // A failure that is not cached: this listing works, so nothing is downloaded again.
+    jest
+      .spyOn(NativeModules.Ink2PicFiles, 'listSizes')
+      .mockRejectedValueOnce(new Error('EIO'));
+    expect(await downloadAllSymbols(() => {})).toEqual({
+      total,
+      saved: 0,
+      unreadable: true,
+      complete: false,
+      failed: 0,
+      stopped: true,
+    });
+    expect(pictureRequests(host).length).toBe(before);
+    expect(await symbolsStatus()).toEqual({total, saved: 1});
+    expect(savedSymbolPath(first)).not.toBeNull();
+  });
+
   // Last: its failed searches open the sources' breaker for the rest of the file.
   it('shows no symbol offline when none is saved', async () => {
     const host = started();

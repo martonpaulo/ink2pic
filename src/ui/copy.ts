@@ -133,6 +133,8 @@ export const copy = {
   'settings.dataSaver.off': 'Off',
   'settings.dataSaver.on': 'On',
   'settings.symbols': 'Offline symbols: {saved} of {total}',
+  'settings.symbolsUnreadable':
+    'Saved symbols cannot be read now. Open Settings again to retry.',
   'settings.symbolsDownload': 'Download symbols for offline use',
   'settings.symbolsQuestion':
     'Download {count} OpenMoji symbols, about {size} MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0.',

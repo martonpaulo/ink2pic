@@ -185,7 +185,12 @@ export function SettingsScreen({
     setBottom('downloading');
     const progress = (status: SymbolsStatus) => {
       setSymbolsNow(status);
-      setSymbolsLine(fill('settings.symbolsProgress', status));
+      setSymbolsLine(
+        fill('settings.symbolsProgress', {
+          saved: status.saved,
+          total: status.total,
+        }),
+      );
     };
     if (symbolsNow) {
       progress(symbolsNow);
@@ -280,13 +285,20 @@ export function SettingsScreen({
           {/* One row, label and action side by side: a second line would push the actions off. */}
           <View style={[shared.row, shared.listRow]}>
             <Text style={[shared.text, styles.grow]}>
-              {symbolsNow
-                ? fill('settings.symbols', symbolsNow)
+              {symbolsNow?.unreadable
+                ? copy['settings.symbolsUnreadable']
+                : symbolsNow
+                ? fill('settings.symbols', {
+                    saved: symbolsNow.saved,
+                    total: symbolsNow.total,
+                  })
                 : copy['source.openmoji']}
             </Text>
             <Button
               label={copy['settings.symbolsDownload']}
-              disabled={!symbolsNow || bottom === 'downloading'}
+              disabled={
+                !symbolsNow || symbolsNow.unreadable || bottom === 'downloading'
+              }
               onPress={askSymbols}
             />
           </View>

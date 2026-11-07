@@ -36,6 +36,8 @@ let listing: Promise<Set<string>> | null = null;
 const whole = new Set<string>();
 /** Settings' whole-folder check, once per session (#102). */
 let checkedAll: Promise<Set<string>> | null = null;
+/** Why the last listing failed, or null; Settings names it (#99). */
+let unlisted: string | null = null;
 /** One download per symbol: a second request for the same one joins the first. */
 const pending = new Map<string, Promise<boolean>>();
 
@@ -51,7 +53,8 @@ function isSymbol(result: SearchResult): boolean {
  * The saved symbols, listed once per session by name and size, with no file opened (#102): every
  * non-empty PNG. A file a cut-off download left is listed too; `isWhole` checks the one about to
  * be used (#91), and Settings checks the whole folder with `completeSymbols`.
- * A folder that cannot be listed counts as empty: pictures then come from the network, as before.
+ * A folder that cannot be listed is not cached as empty (#99): this call gets no symbol, its
+ * pictures come from the network, and the next call lists the folder again.
  */
 export function savedSymbols(): Promise<Set<string>> {
   if (saved) {
@@ -61,8 +64,12 @@ export function savedSymbols(): Promise<Set<string>> {
     listed => {
       if (!listed.ok) {
         log(`symbols: cannot list ${symbolsDir()}: ${listed.message}`);
+        unlisted = listed.message;
+        listing = null;
+        return new Set<string>();
       }
-      const files = listed.ok ? listed.value ?? [] : [];
+      unlisted = null;
+      const files = listed.value ?? [];
       const hexes = files
         .filter(file => file.name.endsWith(EXTENSION) && file.bytes > 0)
         .map(file => file.name.slice(0, -EXTENSION.length));
@@ -102,6 +109,11 @@ async function isWhole(hex: string): Promise<boolean> {
 function completeSymbols(): Promise<Set<string>> {
   checkedAll ??= (async () => {
     const known = await savedSymbols();
+    if (unlisted !== null) {
+      // Not listed: nothing to check, and the next call tries again (#99).
+      checkedAll = null;
+      return known;
+    }
     const checked = await logged('listCompletePngs symbols', () =>
       listCompletePngs(symbolsDir()),
     );
@@ -245,13 +257,20 @@ export async function markSavedSymbols(
   };
 }
 
-/** How many symbols exist and how many are saved, for Settings. */
-export type SymbolsStatus = {total: number; saved: number};
+/**
+ * How many symbols exist and how many are saved, for Settings; `unreadable` when the folder
+ * could not be listed, so the saved count is unknown, not zero (#99).
+ */
+export type SymbolsStatus = {total: number; saved: number; unreadable?: true};
 
 export async function symbolsStatus(): Promise<SymbolsStatus> {
   const known = await completeSymbols();
   const all = symbolHexes();
-  return {total: all.length, saved: all.filter(hex => known.has(hex)).length};
+  return {
+    total: all.length,
+    saved: all.filter(hex => known.has(hex)).length,
+    ...(unlisted !== null && {unreadable: true as const}),
+  };
 }
 
 /** The download size of the missing symbols, in whole megabytes, at least 1 when any is missing. */
@@ -290,6 +309,18 @@ export async function downloadAllSymbols(
 ): Promise<SymbolsDownload> {
   const known = await completeSymbols();
   const all = symbolHexes();
+  if (unlisted !== null) {
+    // The saved ones are unknown: downloading all 1,447 again is not the answer (#99).
+    log('symbols: the folder cannot be listed; no download');
+    return {
+      total: all.length,
+      saved: 0,
+      unreadable: true,
+      complete: false,
+      failed: 0,
+      stopped: true,
+    };
+  }
   const missing = all.filter(hex => !known.has(hex));
   let done = all.length - missing.length;
   const failed: string[] = [];
@@ -330,5 +361,6 @@ export function resetSymbolsForTests(): void {
   listing = null;
   whole.clear();
   checkedAll = null;
+  unlisted = null;
   pending.clear();
 }

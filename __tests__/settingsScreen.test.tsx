@@ -160,6 +160,19 @@ function fakeSymbols(saved: number, stopAt: number, failed = 0): SymbolsControl 
 
 const settled = () => act(async () => {});
 
+it('names a symbols folder that cannot be read, and offers no download (#99)', async () => {
+  const symbols: SymbolsControl = {
+    status: async () => ({total: 1447, saved: 0, unreadable: true}),
+    download: jest.fn(),
+  };
+  const {tree, press} = screen(defaultSettings(null), true, symbols);
+  await settled();
+  expect(texts(tree)).toContain(copy['settings.symbolsUnreadable']);
+  expect(texts(tree)).not.toContain('Offline symbols: 0 of 1,447');
+  await press(copy['settings.symbolsDownload']);
+  expect(symbols.download).not.toHaveBeenCalled();
+});
+
 it('states the size of the symbols before downloading them (#91)', async () => {
   const symbols = fakeSymbols(47, 1447);
   const download = jest.spyOn(symbols, 'download');
@@ -176,9 +189,7 @@ it('states the size of the symbols before downloading them (#91)', async () => {
   await press(copy['settings.symbolsConfirm']);
   expect(download).toHaveBeenCalledTimes(1);
   expect(texts(tree)).toContain(copy['settings.symbolsDone']);
-  expect(texts(tree)).toContain(
-    'Offline symbols: 1,447 of 1,447',
-  );
+  expect(texts(tree)).toContain('Offline symbols: 1,447 of 1,447');
 });
 
 it('reports how many symbols failed when the rest finished (#104)', async () => {
