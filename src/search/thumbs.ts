@@ -148,6 +148,13 @@ async function download(
       // The web URL gets one more try in the grid; the failure is already logged.
       return result.thumbUrl;
     }
+    if (saved.value === 0) {
+      // An empty answer is no picture: Openclipart image/400px/2370 answers 200 with no body.
+      // The file is removed and never counted as stored; the grid's web retry fails it (#65).
+      log(`thumbs: ${result.id} downloaded empty; not stored`);
+      await logged(`delete thumb ${path}`, () => deleteFile(path));
+      return result.thumbUrl;
+    }
     stored.add(path);
     return `${FILE_PREFIX}${path}`;
   } finally {

@@ -107,6 +107,16 @@ describe('thumbnail files (#16, #46)', () => {
     expect(cachedThumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
   });
 
+  it('treats an empty download as a failed thumbnail, never a stored one (#65)', async () => {
+    // Openclipart image/400px/2370 answers 200 with content-length 0 (research, 2026-11-06).
+    await prepareThumbs();
+    native.downloadThumbToFile.mockResolvedValue(0);
+    native.deleteFile.mockResolvedValue(true);
+    expect(await thumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
+    expect(cachedThumbUri(result(1), DIR)).toBe(result(1).thumbUrl);
+    expect(native.deleteFile).toHaveBeenCalledWith(`${THUMBS}/openclipart-1`);
+  });
+
   it('removes the oldest file first at the limit', async () => {
     native.listDir.mockResolvedValue(
       Array.from({length: THUMB_LIMIT}, (_, n) => `old-${n}`),
