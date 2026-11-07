@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
+    "test": "node scripts/test.cjs --passWithNoTests",
     "validate": "npm run lint && npm run typecheck && npm test && npm run test:native && python3 scripts/text_check.py && python3 scripts/issue_links.py && python3 scripts/dry_check.py",
     "start": "react-native start",
     "icon": "node scripts/render-icon.cjs",

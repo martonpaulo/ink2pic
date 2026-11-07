@@ -31,7 +31,11 @@ const ok = (result: unknown) => Promise.resolve({success: true, result});
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, 'log').mockImplementation(() => {});
-  global.fetch = jest.fn().mockRejectedValue(new Error('offline in tests'));
+  // Every source answers at once with an error that is not retried: an offline fetch is tried
+  // again after 400 ms, so its search would log after the test ends (#86).
+  global.fetch = jest
+    .fn()
+    .mockResolvedValue({ok: false, status: 404, text: async () => ''});
   (PluginManager.hasPermission as jest.Mock).mockResolvedValue(1);
   (PluginManager.getPluginDirPath as jest.Mock).mockResolvedValue('/p');
   (FileUtils.getExternalDirPath as jest.Mock).mockResolvedValue(['/s']);
@@ -104,6 +108,7 @@ it('takes a later press as a new opening, even with no lifecycle 3 (#34)', async
   }
   expect(tree.root.findByProps({testID: 'query'}).props.value).toBe('apple');
   act(() => tree.unmount());
+  now.mockRestore();
 });
 
 /** A host call that answers only when the test says so. */
