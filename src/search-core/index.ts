@@ -20,11 +20,13 @@ export {dropNearDuplicates} from './duplicates';
 export {createContext, createFetcher} from './fetcher';
 export type {Fetcher, FetchLike} from './fetcher';
 export {
+  chooseLook,
   isFaintLines,
   isSpeckled,
   lineArt,
   MEASURED_RESULTS,
   needsContour,
+  orderMeasured,
   pixelKind,
   pixelScorer,
   reorderByMeasures,
@@ -32,9 +34,11 @@ export {
 export type {
   ConvertedImage,
   ImageAnalyzer,
+  Look,
   Measured,
   Measures,
   PixelKind,
+  Prepared,
 } from './measures';
 export {pageCount, pageOf} from './pages';
 export {DEFAULT_SCORERS, rankForEink} from './rank';

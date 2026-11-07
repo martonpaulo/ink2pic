@@ -4,6 +4,7 @@
  * itself sits behind `ImageAnalyzer`, which the device implements in `src/storage/measures.ts`
  * and another project can supply; `pixelScorer` is one more `Scorer` of the ranker.
  */
+import {dropNearDuplicates} from './duplicates';
 import {readIntent} from './query';
 import {DEFAULT_SCORERS, intentFor, PHOTO_SCORERS, Scorer, total} from './rank';
 import {PAGE_SIZE, SearchResult} from './types';
@@ -404,4 +405,54 @@ export function reorderByMeasures(
     }
   }
   return [...ordered, ...queue, ...blank];
+}
+
+/**
+ * How a measured thumbnail is shown, and so inserted (owner decision D5 A): as its contour drawing,
+ * darkened (#81), or as found.
+ */
+export type Look = 'contour' | 'darkened' | 'found';
+
+/** A measured thumbnail: the measures its order uses (of what it shows) and its look. */
+export type Prepared = {measures: Measures; look: Look};
+
+/**
+ * The look of a thumbnail measured as `found` (#66, #81, #83): its contour drawing when
+ * `needsContour` names it or the person chose «All contour» (#70), unless that drawing is mostly
+ * speckle; else darkened when it is faint line work; else as found. Without `contour`, the
+ * drawing is not made yet, and 'contour' says to make it; call again with its measures.
+ */
+export function chooseLook(
+  found: Measures,
+  query: string,
+  allContour = false,
+  contour?: Measures,
+): Look {
+  if (allContour || needsContour(found, query)) {
+    return contour && isSpeckled(contour) ? 'found' : 'contour';
+  }
+  return isFaintLines(found) ? 'darkened' : 'found';
+}
+
+/**
+ * Pages 1 and 2 in the order the device shows them (#66, #89): `reorderByMeasures` over what each
+ * measured thumbnail shows, the contour drawings after the pictures shown as found (#83), then
+ * each near-duplicate once. `photos` is the person's «Photos too» style (#92).
+ */
+export function orderMeasured(
+  results: readonly SearchResult[],
+  prepared: ReadonlyMap<string, Prepared>,
+  query: string,
+  photos = false,
+): SearchResult[] {
+  const measures = new Map<string, Measures>();
+  const converted = new Set<string>();
+  for (const [id, {measures: m, look}] of prepared) {
+    measures.set(id, m);
+    if (look === 'contour') {
+      converted.add(id);
+    }
+  }
+  const ordered = reorderByMeasures(results, measures, query, converted, photos);
+  return dropNearDuplicates(ordered, measures);
 }

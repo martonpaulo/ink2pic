@@ -33,11 +33,15 @@ with the context the device builds, without the device's search cache, breaker a
 store, so each query is judged on its own. Then it takes the device's pixel step
 ([#66](https://github.com/martonpaulo/ink2pic/issues/66), [#81](https://github.com/martonpaulo/ink2pic/issues/81)), in `pixelorder.mjs`: the
 thumbnails of pages 1 and 2 are measured by the plugin's own `ThumbMeasures.java`, compiled from
-`native/src` with `LabPixels.java`, which decodes with ImageIO in place of Android; a picture that
-`needsContour` names is replaced by its contour drawing from the plugin's `Decolor.java` and
-`Contour.java`, unless the drawing `isSpeckled`; faint line work is replaced by its darkened copy
-(`EinkPixels.darken`); the search core's `reorderByMeasures` re-sorts them; and
-`dropNearDuplicates` leaves out near-duplicates by the plugin's `PerceptualHash.java`. Pages 1 and 2 in `results.json` are in the order
+`native/src` with `LabPixels.java`, which decodes with ImageIO in place of Android; then the search core's
+`chooseLook` and `orderMeasured`, the two functions the device calls
+([#100](https://github.com/martonpaulo/ink2pic/issues/100)), decide: a picture that needs it is
+replaced by its contour drawing from the plugin's `Decolor.java` and `Contour.java`, unless the
+drawing is speckled; faint line work is replaced by its darkened copy (`EinkPixels.darken`); the
+results are re-sorted, and near-duplicates by the plugin's `PerceptualHash.java` left out. The lab
+runs with the device's default style, «Drawings»: `pixelOrder` takes «All contour» and «Photos
+too» as `style`. The test `__tests__/labOrder.test.ts` checks that the lab and the device give
+the same order on the same measures. Pages 1 and 2 in `results.json` are in the order
 the device shows, and each tile's `pixels` holds its kind, its line-art score and the file it
 shows. It asks one query at a time, with the app's
 User-Agent and a pause after each query that reached the network. A query whose source was

@@ -11,16 +11,14 @@
  */
 import {log} from '../log/memory';
 import {
-  dropNearDuplicates,
+  chooseLook,
   ImageAnalyzer,
-  isFaintLines,
-  isSpeckled,
   lineArt,
   MEASURED_RESULTS,
   Measures,
-  needsContour,
+  orderMeasured,
   pixelKind,
-  reorderByMeasures,
+  Prepared,
 } from '../search-core';
 import {thumbPath, thumbUri} from '../search/thumbs';
 import {getSettings} from '../storage/settings';
@@ -69,8 +67,12 @@ export function isContourUri(uri: string): boolean {
   return uri.startsWith(FILE_PREFIX) && uri.endsWith(CONTOUR_SUFFIX);
 }
 
-/** What one thumbnail's measure found: the measures its order uses, and its contour drawing. */
-type Measured = {measures: Measures; contour: string | null};
+/** A measured thumbnail, with the file it shows when prepared: its contour drawing or darkened. */
+type PreparedThumb = Prepared & {thumb: string | null};
+
+function asFound(measures: Measures): PreparedThumb {
+  return {measures, look: 'found', thumb: null};
+}
 
 export type MeasureDeps = {
   analyzer: ImageAnalyzer;
@@ -108,7 +110,7 @@ async function withinLimit<T>(
 }
 
 /**
- * Measures the thumbnail at `uri` and converts it when `needsContour` says so; null when it is
+ * Measures the thumbnail at `uri` and prepares it in the look `chooseLook` gives; null when it is
  * not on the device or cannot be measured. A conversion is skipped once `late()` says the
  * result is no longer awaited: it would change nothing shown. A converted or darkened copy goes
  * to `pluginDir`'s thumbs/ folder, keyed by the result id (#103).
@@ -121,7 +123,7 @@ async function measureFile(
   query: string,
   late: () => boolean = () => false,
   allContour = false,
-): Promise<Measured | null> {
+): Promise<PreparedThumb | null> {
   if (!uri.startsWith(FILE_PREFIX)) {
     log(`pixels ${result.id}: not on the device, not measured`);
     return null;
@@ -138,12 +140,14 @@ async function measureFile(
     )} in ${Math.round(m.ms)} ms`,
   );
   if (late()) {
-    return {measures: m, contour: null};
+    return asFound(m);
   }
-  if (!allContour && !needsContour(m, query)) {
-    return isFaintLines(m)
-      ? darkenFile(result, uri, pluginDir, deps, m)
-      : {measures: m, contour: null};
+  const look = chooseLook(m, query, allContour);
+  if (look === 'darkened') {
+    return darkenFile(result, uri, pluginDir, deps, m);
+  }
+  if (look === 'found') {
+    return asFound(m);
   }
   const path = uri.slice(FILE_PREFIX.length);
   const dest = `${thumbPath(pluginDir, result)}${CONTOUR_SUFFIX}`;
@@ -155,7 +159,7 @@ async function measureFile(
   if (!converted.ok) {
     // Shown and inserted as it is: the grid never shows what is not inserted.
     log(`contour ${result.id}: ${converted.message}`);
-    return {measures: m, contour: null};
+    return asFound(m);
   }
   const again = await deps.analyzer.measure(dest);
   log(
@@ -163,14 +167,15 @@ async function measureFile(
       again.ok ? pixelKind(again.value) : again.message
     }`,
   );
-  if (again.ok && isSpeckled(again.value)) {
+  if (again.ok && chooseLook(m, query, allContour, again.value) === 'found') {
     // Mostly speckle: the picture is shown and inserted as it is (#83).
     log(`contour ${result.id}: speckled, shown as found`);
-    return {measures: m, contour: null};
+    return asFound(m);
   }
   return {
     measures: again.ok ? again.value : m,
-    contour: `${FILE_PREFIX}${dest}`,
+    look: 'contour',
+    thumb: `${FILE_PREFIX}${dest}`,
   };
 }
 
@@ -184,16 +189,16 @@ async function darkenFile(
   pluginDir: string,
   deps: MeasureDeps,
   m: Measures,
-): Promise<Measured> {
+): Promise<PreparedThumb> {
   if (!deps.analyzer.darken) {
-    return {measures: m, contour: null};
+    return asFound(m);
   }
   const path = uri.slice(FILE_PREFIX.length);
   const dest = `${thumbPath(pluginDir, result)}${DARKENED_SUFFIX}`;
   const darkened = await deps.analyzer.darken(path, dest, CONTOUR_THUMB_WIDTH);
   if (!darkened.ok) {
     log(`darken ${result.id}: ${darkened.message}`);
-    return {measures: m, contour: null};
+    return asFound(m);
   }
   const again = await deps.analyzer.measure(dest);
   log(
@@ -203,7 +208,8 @@ async function darkenFile(
   );
   return {
     measures: again.ok ? again.value : m,
-    contour: `${FILE_PREFIX}${dest}`,
+    look: 'darkened',
+    thumb: `${FILE_PREFIX}${dest}`,
   };
 }
 
@@ -231,7 +237,7 @@ export async function measureThumb(
     if (found === undefined) {
       log(`pixels ${result.id}: limit reached, shown as found`);
     }
-    return found?.contour ?? uri;
+    return found?.thumb ?? uri;
   } catch (error) {
     log(`pixels ${result.id}: ${String(error)}`);
     return uri;
@@ -256,7 +262,7 @@ export async function measureFirstPages(
     return unmeasured(results);
   }
   const started = Date.now();
-  const found = new Map<string, Measured>();
+  const found = new Map<string, PreparedThumb>();
   const contourAll = (await deps.allContour?.()) ?? false;
   const photos = (await deps.photos?.()) ?? false;
   const firstPages = results.slice(0, MEASURED_RESULTS);
@@ -292,12 +298,14 @@ export async function measureFirstPages(
   const late = (await withinLimit(all, deps.limitMs)) === undefined;
   returned = true;
   // Copies: a measure that ends after the limit changes nothing already shown.
+  const prepared = new Map<string, Prepared>();
   const used = new Map<string, Measures>();
   const contourThumbs = new Map<string, string>();
-  for (const [id, measured] of found) {
-    used.set(id, measured.measures);
-    if (measured.contour) {
-      contourThumbs.set(id, measured.contour);
+  for (const [id, {measures, look, thumb}] of found) {
+    prepared.set(id, {measures, look});
+    used.set(id, measures);
+    if (thumb) {
+      contourThumbs.set(id, thumb);
     }
   }
   log(
@@ -306,14 +314,9 @@ export async function measureFirstPages(
       MEASURED_RESULTS,
     )} measured in ${Date.now() - started} ms${late ? ', limit reached' : ''}`,
   );
-  // Shown as their contour drawing: they follow the pictures shown as found (#83).
-  const converted = new Set(
-    [...contourThumbs].filter(([, uri]) => isContourUri(uri)).map(([id]) => id),
-  );
-  const ordered = reorderByMeasures(results, used, query, converted, photos);
-  const distinct = dropNearDuplicates(ordered, used);
-  if (distinct.length < ordered.length) {
-    log(`pixels: ${ordered.length - distinct.length} near-duplicates left out`);
+  const distinct = orderMeasured(results, prepared, query, photos);
+  if (distinct.length < results.length) {
+    log(`pixels: ${results.length - distinct.length} near-duplicates left out`);
   }
   return {
     results: distinct,

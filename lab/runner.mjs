@@ -30,7 +30,7 @@ const HTTP_SERVER_ERROR = 500;
 /** What a source answers that is not its usual page or JSON: a captive portal, an outage page. */
 const MALFORMED_BODY = '<html><body>Service unavailable</body></html>';
 
-const {core, rank, measures, duplicates, config, copy} = product();
+const {core, rank, config, copy} = product();
 export const SOURCE_NAMES = core.DEFAULT_ADAPTERS.map(adapter => adapter.name);
 /**
  * shortcut: the device's query languages, copied from src/search/device.ts, which imports the
@@ -185,8 +185,7 @@ export async function runCases(
     const {results, shown} = await pixelOrder(
       outcome.results,
       item.query,
-      measures,
-      duplicates,
+      core,
       config.USER_AGENT,
     );
     out.push({

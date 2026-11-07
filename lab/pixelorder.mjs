@@ -1,7 +1,7 @@
 /**
  * The device's pixel step in the lab (#81): before page 1 shows, the device measures the
- * thumbnails of pages 1 and 2, turns the ones `needsContour` names into contour drawings, and
- * re-sorts them with `reorderByMeasures` (src/flow/measure.ts, #66). The measures and the drawing
+ * thumbnails of pages 1 and 2, turns the ones `chooseLook` names into contour drawings or darkens
+ * them, and re-sorts them with `orderMeasured` (src/flow/measure.ts, #66). The measures and the drawing
  * are the plugin's own Java (`LabPixels.java` over `native/src`); the decisions are the search
  * core's own functions. Without a JDK the lab stops: a text-only order is not what the device
  * shows.
@@ -62,28 +62,77 @@ function measureFiles(files) {
 }
 
 /**
- * `results` as the device orders them after the pixel step, with what each measured result shows:
- * `{results, shown}`, `shown` by result id holding its kind, line-art score, ink share and the
- * file the tile shows (the contour drawing when converted).
+ * The device's style (#70): «All contour» and «Photos too», both off as the device's default
+ * style, «Drawings», has them.
+ */
+export const DEFAULT_STYLE = {allContour: false, photos: false};
+
+/**
+ * The pure part of the pixel step: `results` in the order the device shows them, from each
+ * result's LabPixels entry (`entries`, by result id), through the search core's own `chooseLook`
+ * and `orderMeasured` (src/flow/measure.ts calls the same two). `{results, shown}`, `shown` by
+ * result id holding its kind, line-art score, ink share and the file the tile shows.
+ */
+export function orderEntries(
+  results,
+  entries,
+  query,
+  core,
+  style = DEFAULT_STYLE,
+) {
+  const {chooseLook, orderMeasured, pixelKind, lineArt} = core;
+  const prepared = new Map();
+  const shown = new Map();
+  for (const [id, {entry, file}] of entries) {
+    // A speckled contour is shown as found, faint lines darkened, as the device does (#81, #83).
+    const look = chooseLook(
+      entry.measures,
+      query,
+      style.allContour,
+      entry.contour,
+    );
+    const m =
+      look === 'contour'
+        ? entry.contour
+        : look === 'darkened'
+        ? entry.darkened
+        : entry.measures;
+    prepared.set(id, {measures: m, look});
+    shown.set(id, {
+      kind: pixelKind(entry.measures),
+      shownKind: pixelKind(m),
+      lineArt: Number(lineArt(m).toFixed(DIGITS)),
+      ink: Number(entry.measures.ink.toFixed(DIGITS + 1)),
+      converted: look === 'contour',
+      darkened: look === 'darkened',
+      darkest: entry.measures.darkest,
+      file:
+        look === 'contour'
+          ? entry.contourFile
+          : look === 'darkened'
+          ? entry.darkenedFile
+          : file,
+    });
+  }
+  // Near-duplicates leave the list, as on the device (#89).
+  return {
+    results: orderMeasured(results, prepared, query, style.photos),
+    shown,
+  };
+}
+
+/**
+ * `results` as the device orders them after the pixel step: the thumbnails of pages 1 and 2
+ * downloaded, measured by LabPixels, then `orderEntries`.
  */
 export async function pixelOrder(
   results,
   query,
-  measuresModule,
-  duplicatesModule,
+  core,
   userAgent,
+  style = DEFAULT_STYLE,
 ) {
-  const {
-    MEASURED_RESULTS,
-    needsContour,
-    isSpeckled,
-    isFaintLines,
-    pixelKind,
-    lineArt,
-    reorderByMeasures,
-  } = measuresModule;
-  const {dropNearDuplicates} = duplicatesModule;
-  const head = results.slice(0, MEASURED_RESULTS);
+  const head = results.slice(0, core.MEASURED_RESULTS);
   const files = new Map();
   for (const result of head) {
     const file = await thumbFile(result.thumbUrl, userAgent);
@@ -92,46 +141,12 @@ export async function pixelOrder(
     }
   }
   const measured = measureFiles([...new Set(files.values())]);
-  const used = new Map();
-  const shown = new Map();
+  const entries = new Map();
   for (const [id, file] of files) {
     const entry = measured.get(file);
-    if (!entry || entry.error) {
-      continue;
+    if (entry && !entry.error) {
+      entries.set(id, {entry, file});
     }
-    // A speckled contour is shown as found, as the device does (#83).
-    const converted =
-      needsContour(entry.measures, query) && !isSpeckled(entry.contour);
-    // Faint light-grey lines are shown darkened, as the device does (#81).
-    const darkened =
-      !converted &&
-      !needsContour(entry.measures, query) &&
-      (isFaintLines?.(entry.measures) ?? false);
-    const m = converted
-      ? entry.contour
-      : darkened
-      ? entry.darkened
-      : entry.measures;
-    used.set(id, m);
-    shown.set(id, {
-      kind: pixelKind(entry.measures),
-      shownKind: pixelKind(m),
-      lineArt: Number(lineArt(m).toFixed(DIGITS)),
-      ink: Number(entry.measures.ink.toFixed(DIGITS + 1)),
-      converted,
-      darkened,
-      darkest: entry.measures.darkest,
-      file: converted
-        ? entry.contourFile
-        : darkened
-        ? entry.darkenedFile
-        : file,
-    });
   }
-  const converted = new Set(
-    [...shown].filter(([, tile]) => tile.converted).map(([id]) => id),
-  );
-  // Near-duplicates leave the list, as on the device (#89).
-  const ordered = reorderByMeasures(results, used, query, converted);
-  return {results: dropNearDuplicates(ordered, used), shown};
+  return orderEntries(results, entries, query, core, style);
 }
