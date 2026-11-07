@@ -4,8 +4,8 @@
  * thumbnail fails, from its file and then from the web, leaves the list: the next result takes its
  * place and the page count follows, so a page shows only pictures, never a title (#64). A thumbnail
  * not yet stored is downloaded to its file first and the tile renders the file: one request each
- * (#46). Nothing is inserted above the tiles: the page's loading line lies over the hidden grid,
- * and the screen's own status line carries the source note, so no tile shrinks or repaints (#50).
+ * (#46). The grid says no sentence: it reports its note (searching, empty, loading) and the
+ * screen's one status line says it, so no tile shrinks or repaints (#50, #98).
  * A transparent picture lies on paper white, never on black: the tile and the image are white
  * behind it (#64). Page 3 and later are measured as they load, before they show: a tile waits for
  * its contour drawing when it needs one, and a pick says whether the tile shows one (#72).
@@ -45,18 +45,16 @@ const ROWS = Array.from(
 );
 const THUMB_HEADERS = {'User-Agent': USER_AGENT};
 
+/** What the grid area lacks, for the screen's status line to say; null when the page shows. */
+export type GridNote = 'searching' | 'empty' | 'loading' | null;
+
 export type ResultsGridProps = {
   results: SearchResult[];
   searching: boolean;
-  /**
-   * A source failed while another answered: with no result, this note replaces the empty text;
-   * with results, the screen's status line says it (#50).
-   */
-  sourceDown: boolean;
+  /** Called with each new note, and with null when the grid goes (#98). */
+  onNote?: (note: GridNote) => void;
   /** `contour`: the tile shows the contour drawing, so that is what is inserted (#66, #72). */
   onPick: (result: SearchResult, contour: boolean) => void;
-  /** Shown when there is no result; the search's own text by default. */
-  emptyText?: string;
   /** The plugin folder whose stored thumbnails the grid reads and fills (#16); none for files. */
   thumbDir?: string | null;
   /** Thumbnails shown as the contour drawing that is inserted (#66): result id to file URI. */
@@ -71,9 +69,8 @@ export type ResultsGridProps = {
 export function ResultsGrid({
   results,
   searching,
-  sourceDown,
+  onNote,
   onPick,
-  emptyText = copy['search.empty'],
   thumbDir = null,
   contourThumbs,
   measureLater,
@@ -171,16 +168,22 @@ export function ResultsGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, thumbDir, thumbUris]);
 
-  if (searching) {
-    return <Text style={shared.text}>{copy['search.running']}</Text>;
-  }
   // A list whose every thumbnail failed shows no picture, so it reads as no result.
-  if (cut.empty) {
-    return (
-      <Text style={shared.text}>
-        {sourceDown ? copy['error.sourceDown'] : emptyText}
-      </Text>
-    );
+  const note: GridNote = searching
+    ? 'searching'
+    : cut.empty
+    ? 'empty'
+    : ready
+    ? null
+    : 'loading';
+  useEffect(() => {
+    onNote?.(note);
+  }, [note, onNote]);
+  useEffect(() => () => onNote?.(null), [onNote]);
+
+  // The area stays empty: the status line says the state's sentence (#98).
+  if (note === 'searching' || note === 'empty') {
+    return <View testID="grid-area" style={styles.screen} />;
   }
 
   return (
@@ -226,10 +229,6 @@ export function ResultsGrid({
             </View>
           ))}
         </View>
-        {/* The search has ended: only this page's thumbnails are loading (#35). */}
-        {!ready && (
-          <Text style={[shared.text, styles.over]}>{copy['page.loading']}</Text>
-        )}
       </View>
       <View style={[shared.row, styles.nav]}>
         <Button
@@ -256,7 +255,6 @@ const styles = StyleSheet.create({
   screen: {flex: 1, alignSelf: 'stretch', backgroundColor: metrics.paper},
   area: {flex: 1},
   grid: {flex: 1, gap: metrics.tileGap},
-  over: {position: 'absolute', top: 0, left: 0, right: 0},
   row: {flex: 1, flexDirection: 'row', gap: metrics.tileGap},
   hidden: {opacity: 0},
   tile: {flex: 1, backgroundColor: metrics.paper},

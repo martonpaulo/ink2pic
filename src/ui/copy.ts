@@ -24,7 +24,8 @@ export const copy = {
   'nav.nextLabel': 'Next page',
   'insert.running': 'Adding to your note…',
   'error.offline': 'No internet. Showing your library.',
-  'error.sourceDown': 'A picture source did not answer. Try again later for more pictures.',
+  'error.sourceDown':
+    'A picture source did not answer. Try again later for more pictures.',
   'error.permission.internet':
     'Ink2Pic needs Network Access to search pictures.',
   'error.permission.files':
@@ -34,7 +35,8 @@ export const copy = {
   'error.recognition': 'Could not read the word. Type it instead.',
   'onboarding.1': 'Write a word in your note.',
   'onboarding.2': 'Circle it with the lasso.',
-  'onboarding.3': 'Tap ••• on the lasso toolbar, then Find picture.',
+  'onboarding.3':
+    'Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one.',
   'onboarding.start': 'Start',
   // Outside the brief's table: the close button of the plugin view (#3).
   'action.close': 'Close',
@@ -68,11 +70,15 @@ export const copy = {
     'The lasso did not take the word. Open the log for the details.',
   // Outside the brief's table: the empty Library tab (#15).
   'library.empty': 'No saved pictures yet. Insert one from a search.',
+  // Outside the brief's table: the empty Library tab with no network (#98).
+  'library.emptyOffline':
+    'No saved pictures yet. Connect to Wi-Fi, then search again.',
   // The Languages screen, from the plugin's Settings entry (#68).
   'languages.title': 'Languages',
   'languages.hint': 'The first language is tried first.',
-  'languages.inUse': 'IN USE',
-  'languages.addSection': 'ADD A LANGUAGE',
+  'languages.inUse': 'In use',
+  'languages.addSection': 'Add a language',
+  'languages.oneStays': 'One language always stays.',
   'languages.up': '↑',
   'languages.down': '↓',
   'languages.remove': 'Remove',

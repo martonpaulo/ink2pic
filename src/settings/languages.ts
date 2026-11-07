@@ -94,7 +94,7 @@ export function languagesStep(
   }
 }
 
-/** The supported languages not in use, in the table's order: the screen's ADD A LANGUAGE rows. */
+/** The supported languages not in use, in the table's order: the screen's «Add a language» rows. */
 export function addableLanguages(
   list: readonly LanguageCode[],
 ): LanguageCode[] {

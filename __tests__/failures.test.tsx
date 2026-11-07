@@ -51,7 +51,7 @@ const texts = (tree: ReactTestRenderer) =>
   tree.root.findAllByType(Text).map(t => t.props.children);
 
 describe('visible failures (#19)', () => {
-  it('no network: says so and opens the library', async () => {
+  it('no network and an empty library: says to connect, not to insert from a search (#98)', async () => {
     const tree = await render([
       source('a', {
         ok: false,
@@ -60,9 +60,8 @@ describe('visible failures (#19)', () => {
       }),
       source('b', {ok: false, kind: 'timeout', message: 'no answer'}),
     ]);
-    expect(texts(tree)).toEqual(
-      expect.arrayContaining([copy['error.offline'], copy['library.empty']]),
-    );
+    expect(texts(tree)).toContain(copy['library.emptyOffline']);
+    expect(texts(tree)).not.toContain(copy['library.empty']);
     act(() => tree.unmount());
   });
 
@@ -81,12 +80,13 @@ describe('visible failures (#19)', () => {
     act(() => tree.unmount());
   });
 
-  it('one source down and nothing found: names the failure', async () => {
+  it('one source down and nothing found: says the sources did not answer, not «more pictures» (#98)', async () => {
     const tree = await render([
       source('a', {ok: false, kind: 'throttled', message: 'HTTP 429'}),
       source('b', {ok: true, results: []}),
     ]);
-    expect(texts(tree)).toContain(copy['error.sourceDown']);
+    expect(texts(tree)).toContain(copy['error.sourcesDown']);
+    expect(texts(tree)).not.toContain(copy['error.sourceDown']);
     act(() => tree.unmount());
   });
 

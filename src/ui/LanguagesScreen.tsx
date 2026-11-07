@@ -139,6 +139,10 @@ export function LanguagesScreen({
               />
             </View>
           ))}
+          {/* Remove is off for the last language: say why (#98). */}
+          {languages.length === 1 && (
+            <Text style={shared.text}>{copy['languages.oneStays']}</Text>
+          )}
           {addableLanguages(languages).length > 0 && (
             <Text accessibilityRole="header" style={shared.text}>
               {copy['languages.addSection']}

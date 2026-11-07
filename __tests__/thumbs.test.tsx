@@ -192,7 +192,6 @@ describe('the grid with stored thumbnails (#16, #46)', () => {
         <ResultsGrid
           results={results}
           searching={false}
-          sourceDown={false}
           onPick={jest.fn()}
           thumbDir={DIR}
           contourThumbs={contourThumbs}

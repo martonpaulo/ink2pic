@@ -2,7 +2,8 @@
  * Search and Library (brief sections 8.2, 8.6, 8.8): the recognized word in an editable field,
  * already submitted; the results grid; the Library tab with saved pictures and recent searches,
  * which also opens by itself when there is no network; and the live log. One status line under
- * the bar is always there, so a message never moves or shrinks the tiles on e-ink (#50).
+ * the bar is always there, so a message never moves or shrinks the tiles on e-ink (#50); it says
+ * every state's sentence, and the grid area says none (#98).
  */
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Keyboard, StyleSheet, Text, TextInput, View} from 'react-native';
@@ -21,6 +22,7 @@ import {log} from '../log/memory';
 import {
   SearchOutcome,
   SearchResult,
+  SearchState,
   searchState,
   SourceAdapter,
 } from '../search-core';
@@ -28,12 +30,61 @@ import {Button} from './Button';
 import {copy} from './copy';
 import {LogView} from './LogView';
 import {metrics} from './metrics';
-import {ResultsGrid} from './ResultsGrid';
+import {GridNote, ResultsGrid} from './ResultsGrid';
 import {Screen} from './Screen';
 import {shared} from './styles';
 import {ToolBar} from './ToolBar';
 
 type View_ = 'results' | 'library' | 'log';
+
+export type StatusLineInput = {
+  /** A set message: an insert, a failure, the offline sentence. */
+  status: string | null;
+  view: View_;
+  /** The shown grid's note; null in the log view or with no grid. */
+  note: GridNote;
+  /** The results view before any search: no grid, nothing searching. */
+  noSearch: boolean;
+  /** The shown search's state; null before any. */
+  state: SearchState | null;
+};
+
+/** The one status line's sentence for each state (#50, #98); empty when nothing is to say. */
+export function statusLine({
+  status,
+  view,
+  note,
+  noSearch,
+  state,
+}: StatusLineInput): string {
+  if (view === 'library' && note === 'empty') {
+    // Offline, an empty library has nothing to insert: say how to get pictures (#98).
+    return status === copy['error.offline']
+      ? copy['library.emptyOffline']
+      : status ?? copy['library.empty'];
+  }
+  if (status !== null) {
+    return status;
+  }
+  if (note === 'searching') {
+    return copy['search.running'];
+  }
+  const loading = note === 'loading' ? copy['page.loading'] : '';
+  if (view !== 'results') {
+    return loading;
+  }
+  if (noSearch) {
+    return copy['search.needWord'];
+  }
+  if (note === 'empty') {
+    // No picture shows, so a source down reads as no answer, not as fewer pictures (#98).
+    return state?.kind === 'partial'
+      ? copy['error.sourcesDown']
+      : (state && stateText(state)) ?? copy['search.empty'];
+  }
+  // The search's note first; «Loading pictures…» only when the search has none.
+  return (state && stateText(state)) ?? loading;
+}
 
 export type SearchScreenProps = {
   /** The recognized word; empty when the sidebar opened the plugin. */
@@ -76,6 +127,9 @@ export function SearchScreen({
   const [searchedWord, setSearchedWord] = useState('');
   // The shown results' measures and contour thumbnails (#66).
   const [measured, setMeasured] = useState<MeasuredPages>(() => unmeasured([]));
+  // Each grid's note, for the status line (#98).
+  const [libraryNote, setLibraryNote] = useState<GridNote>(null);
+  const [resultsNote, setResultsNote] = useState<GridNote>(null);
   // One list per set of items: a new array on each render sent a Library page back to page 1
   // (#46); a new recent search keeps the items, so it keeps the page.
   const libraryItems = library?.items;
@@ -179,23 +233,23 @@ export function SearchScreen({
 
   const toggle = (next: View_) => setView(view === next ? 'results' : next);
 
-  // The one status line: a set message first, then what the results view lacks (#50). With no
-  // results, the grid itself says the state's sentence.
+  // The one status line says every state's sentence; the grid area says none (#50, #98).
   const state = outcome && searchState(outcome);
-  const stateLine = state && stateText(state);
-  const noSearch = view === 'results' && !searching && !outcome;
-  const resultsNote =
-    view === 'results' && !searching && (outcome?.results.length ?? 0) > 0;
-  const line =
-    status ??
-    (noSearch
-      ? copy['search.needWord']
-      : resultsNote && stateLine
-      ? stateLine
-      : '');
+  const note =
+    view === 'library' ? libraryNote : view === 'results' ? resultsNote : null;
+  const line = statusLine({
+    status,
+    view,
+    note,
+    noSearch: view === 'results' && !searching && !outcome,
+    state,
+  });
   // After a corrected search, the word as typed is one tap away; the field still holds it.
   const corrected =
-    status === null && resultsNote && state?.kind === 'corrected';
+    status === null &&
+    view === 'results' &&
+    (note === null || note === 'loading') &&
+    state?.kind === 'corrected';
 
   return (
     <Screen>
@@ -256,8 +310,7 @@ export function SearchScreen({
           <ResultsGrid
             results={libraryList}
             searching={!library}
-            sourceDown={false}
-            emptyText={copy['library.empty']}
+            onNote={setLibraryNote}
             onPick={pick}
           />
         </View>
@@ -266,8 +319,7 @@ export function SearchScreen({
         <ResultsGrid
           results={outcome?.results ?? []}
           searching={searching}
-          sourceDown={state?.kind === 'partial'}
-          emptyText={stateLine ?? copy['search.empty']}
+          onNote={setResultsNote}
           onPick={pick}
           thumbDir={thumbDir}
           contourThumbs={measured.contourThumbs}

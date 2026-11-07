@@ -88,6 +88,19 @@ describe('LanguagesScreen (#68)', () => {
     expect(remove?.disabled).toBe(true);
   });
 
+  it('says why Remove is off for the last language, and only then (#98)', () => {
+    expect(texts(screen(['en']).tree)).toContain(copy['languages.oneStays']);
+    expect(texts(screen(['zh', 'en']).tree)).not.toContain(
+      copy['languages.oneStays'],
+    );
+  });
+
+  it('writes its section labels in sentence case, as every other label (#98)', () => {
+    for (const key of ['languages.inUse', 'languages.addSection'] as const) {
+      expect(copy[key]).not.toBe(copy[key].toUpperCase());
+    }
+  });
+
   it('sends each tap as one step', () => {
     const {tree, onChange} = screen(['zh', 'en']);
     act(() =>

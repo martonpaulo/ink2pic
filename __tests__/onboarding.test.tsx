@@ -121,9 +121,9 @@ describe('Onboarding', () => {
     );
   });
 
-  it('says where Find picture is: in the ••• menu of the lasso toolbar (#50)', () => {
+  it('says where Insert picture and Find picture are: in the ••• menu of the lasso toolbar (#50, #98)', () => {
     expect(copy['onboarding.3']).toBe(
-      'Tap ••• on the lasso toolbar, then Find picture.',
+      'Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one.',
     );
     expect(texts(render())).toContain(copy['onboarding.3']);
   });

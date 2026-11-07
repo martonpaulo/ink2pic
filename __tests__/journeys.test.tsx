@@ -3,10 +3,20 @@
  * the host runs them, the search sources answered from the fixtures, files in the simulator's
  * storage. Each journey is one the device rounds tested by hand.
  */
-import {INSERT_BUTTON_ID, LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from '../src/buttons';
+import {
+  INSERT_BUTTON_ID,
+  LASSO_BUTTON_ID,
+  SIDEBAR_BUTTON_ID,
+} from '../src/buttons';
 import {copy} from '../src/ui/copy';
 import {Journey, startJourney} from './host/journey';
-import {GRANT, LIFE, PERMISSION, PICTURE_TYPE, REPLAY_MS} from './host/pluginHost';
+import {
+  GRANT,
+  LIFE,
+  PERMISSION,
+  PICTURE_TYPE,
+  REPLAY_MS,
+} from './host/pluginHost';
 
 const word = {left: 100, top: 200, right: 300, bottom: 260};
 
@@ -68,13 +78,16 @@ describe('journeys (#78)', () => {
     const j = lassoedSoup();
     j.host.online = false;
     await j.press(LASSO_BUTTON_ID);
-    await j.settle(() => j.shows(copy['error.offline']));
+    // The library is empty: the line says to connect, not «Showing your library» (#98).
+    await j.settle(() => j.shows(copy['library.emptyOffline']));
     expect(j.tiles()).toEqual([]);
     j.end();
     const k = lassoedSoup();
     k.host.online = false;
     await k.press(INSERT_BUTTON_ID);
-    await k.settle(() => k.shows(copy['error.offline']) || k.host.view === 'hidden');
+    await k.settle(
+      () => k.shows(copy['error.offline']) || k.host.view === 'hidden',
+    );
     expect(k.host.pictures()).toEqual([]);
   });
 
@@ -84,9 +97,13 @@ describe('journeys (#78)', () => {
     // Commons down also fails Wikidata, whose pictures come from the Commons API.
     j.host.failing.set('commons.wikimedia.org', 503);
     await j.press(LASSO_BUTTON_ID);
-    await j.settle(() => j.tiles().length > 0 && !j.shows(copy['search.running']));
+    await j.settle(
+      () => j.tiles().length > 0 && !j.shows(copy['search.running']),
+    );
     expect(j.tiles().length).toBeGreaterThan(0);
-    expect(j.tiles().filter(id => /^tile-(commons|wikidata)/.test(id))).toEqual([]);
+    expect(j.tiles().filter(id => /^tile-(commons|wikidata)/.test(id))).toEqual(
+      [],
+    );
     await j.pick(0);
     await j.settle(() => j.host.view === 'hidden');
     expect(j.host.pictures()).toHaveLength(1);
@@ -143,11 +160,9 @@ describe('journeys (#78)', () => {
     expect(j.shows(copy['error.permission.internet'])).toBe(true);
     await j.tap(copy['onboarding.start']);
     await j.settle(() => j.searching());
-    expect(j.host.called('requestPermission').map(call => call.args[0])).toEqual([
-      PERMISSION.internet,
-      PERMISSION.read,
-      PERMISSION.write,
-    ]);
+    expect(
+      j.host.called('requestPermission').map(call => call.args[0]),
+    ).toEqual([PERMISSION.internet, PERMISSION.read, PERMISSION.write]);
     expect(j.host.granted(PERMISSION.internet)).toBe(GRANT.always);
     expect(query(j)).toBe('');
   });

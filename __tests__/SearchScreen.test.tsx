@@ -5,7 +5,7 @@ import type {SourceAdapter} from '../src/search-core';
 import type {SearchResult} from '../src/search-core/types';
 import {copy} from '../src/ui/copy';
 import {metrics} from '../src/ui/metrics';
-import {SearchScreen} from '../src/ui/SearchScreen';
+import {SearchScreen, statusLine} from '../src/ui/SearchScreen';
 
 const result: SearchResult = {
   id: 'openclipart:1',
@@ -125,7 +125,8 @@ describe('SearchScreen (#13)', () => {
       return row.parent!.children.indexOf(row);
     };
     expect(place()).toBe(1);
-    expect(statusText(tree)).toBe('');
+    // Searching: the status line says it, the grid area says nothing (#98).
+    expect(statusText(tree)).toBe(copy['search.running']);
     await act(async () =>
       answer({ok: false, kind: 'http', message: 'HTTP 500'}),
     );
@@ -237,8 +238,66 @@ describe('the corrected search on the screen (#65)', () => {
       'Confucious Institute',
       expect.anything(),
     );
-    expect(statusText(tree)).toBe('');
-    expect(texts(tree)).toContain(copy['search.empty']);
+    // The empty page's sentence is the status line's, said once (#98).
+    expect(statusText(tree)).toBe(copy['search.empty']);
+    expect(texts(tree).filter(t => t === copy['search.empty'])).toHaveLength(1);
     act(() => tree.unmount());
+  });
+});
+
+describe('the one status line picks the state sentence (#98)', () => {
+  const base = {
+    status: null,
+    view: 'results' as const,
+    note: null,
+    noSearch: false,
+    state: null,
+  };
+
+  it('says how to get pictures offline with an empty library', () => {
+    expect(
+      statusLine({
+        ...base,
+        view: 'library',
+        note: 'empty',
+        status: copy['error.offline'],
+      }),
+    ).toBe(copy['library.emptyOffline']);
+    expect(statusLine({...base, view: 'library', note: 'empty'})).toBe(
+      copy['library.empty'],
+    );
+  });
+
+  it('keeps the offline sentence when the library has pictures', () => {
+    expect(
+      statusLine({...base, view: 'library', status: copy['error.offline']}),
+    ).toBe(copy['error.offline']);
+  });
+
+  it('says the sources did not answer on an empty page with a source down', () => {
+    expect(
+      statusLine({
+        ...base,
+        note: 'empty',
+        state: {kind: 'partial', results: []},
+      }),
+    ).toBe(copy['error.sourcesDown']);
+    // With pictures shown, fewer of them: the source-down note.
+    expect(statusLine({...base, state: {kind: 'partial', results: []}})).toBe(
+      copy['error.sourceDown'],
+    );
+  });
+
+  it('says the grid states the grid area used to say', () => {
+    expect(statusLine({...base, note: 'searching'})).toBe(
+      copy['search.running'],
+    );
+    expect(statusLine({...base, note: 'empty'})).toBe(copy['search.empty']);
+    expect(statusLine({...base, note: 'loading'})).toBe(copy['page.loading']);
+    expect(statusLine({...base, view: 'library', note: 'loading'})).toBe(
+      copy['page.loading'],
+    );
+    expect(statusLine({...base, noSearch: true})).toBe(copy['search.needWord']);
+    expect(statusLine({...base, view: 'log', note: null})).toBe('');
   });
 });

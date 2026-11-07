@@ -32,7 +32,6 @@ function render(props: Partial<React.ComponentProps<typeof ResultsGrid>> = {}) {
       <ResultsGrid
         results={many(8)}
         searching={false}
-        sourceDown={false}
         onPick={jest.fn()}
         {...props}
       />,
@@ -40,6 +39,13 @@ function render(props: Partial<React.ComponentProps<typeof ResultsGrid>> = {}) {
   });
   mounted.push(tree);
   return tree;
+}
+
+/** The last note the grid reported for the status line (#98). */
+function noteOf(props: Partial<React.ComponentProps<typeof ResultsGrid>> = {}) {
+  const onNote = jest.fn();
+  const tree = render({...props, onNote});
+  return {tree, note: () => onNote.mock.calls.at(-1)?.[0]};
 }
 
 const texts = (tree: ReactTestRenderer) =>
@@ -99,49 +105,41 @@ describe('ResultsGrid', () => {
   });
 
   it('hides the page until every thumbnail settled', () => {
-    const tree = render();
+    const {tree, note} = noteOf();
     const grid = () => tree.root.findByProps({testID: 'grid'});
     expect(grid().props.accessibilityElementsHidden).toBe(true);
-    // The search has ended: the page says it loads pictures, never «Searching…» (#35).
-    expect(texts(tree)).toContain(copy['page.loading']);
-    expect(texts(tree)).not.toContain(copy['search.running']);
+    // The search has ended: the page loads pictures, never «Searching…» (#35).
+    expect(note()).toBe('loading');
     act(() => tree.root.findAllByType(Image)[0].props.onError());
     expect(grid().props.accessibilityElementsHidden).toBe(true);
     loadAll(tree);
     expect(grid().props.accessibilityElementsHidden).toBe(false);
-    expect(texts(tree)).not.toContain(copy['page.loading']);
+    expect(note()).toBeNull();
   });
 
-  it('shows the running, empty and source-down states', () => {
-    expect(texts(render({searching: true}))).toEqual([copy['search.running']]);
-    expect(texts(render({results: []}))).toEqual([copy['search.empty']]);
-    // With results, the screen's status line carries the note: nothing above the tiles (#50).
-    expect(texts(render({sourceDown: true}))).not.toContain(
-      copy['error.sourceDown'],
-    );
-  });
-
-  it('lays the loading line over the hidden grid, so no tile shrinks (#50)', () => {
-    const tree = render();
-    const loading = tree.root
-      .findAllByType(Text)
-      .find(t => t.props.children === copy['page.loading'])!;
-    expect(StyleSheet.flatten(loading.props.style)).toMatchObject({
-      position: 'absolute',
-    });
-    // The grid is the first thing in its area, with or without the loading line.
-    const grid = tree.root.findByProps({testID: 'grid'});
-    expect(grid.parent!.children[0]).toBe(grid);
-  });
-
-  it('starts its messages on the screen edge, with no margin of their own (#50)', () => {
-    for (const props of [{searching: true}, {results: []}]) {
-      const style = StyleSheet.flatten(
-        render(props).root.findByType(Text).props.style,
-      );
-      expect(style.margin).toBeUndefined();
-      expect(style.marginLeft).toBeUndefined();
+  it('reports the running and empty states and says no sentence of its own (#98)', () => {
+    const cases: [Partial<React.ComponentProps<typeof ResultsGrid>>, string][] =
+      [
+        [{searching: true}, 'searching'],
+        [{results: []}, 'empty'],
+      ];
+    for (const [props, expected] of cases) {
+      const {tree, note} = noteOf(props);
+      expect(note()).toBe(expected);
+      // The area stays empty: the screen's status line says the sentence.
+      expect(texts(tree)).toEqual([]);
+      expect(
+        tree.root.findAllByProps({testID: 'grid-area'}).length,
+      ).toBeGreaterThan(0);
     }
+    // A loading page shows only its page count under the hidden grid: no line over the tiles.
+    expect(texts(render())).toEqual(['◀', '1 / 2', '▶']);
+  });
+
+  it('reports null when it goes, so no old note stays on the status line (#98)', () => {
+    const {tree, note} = noteOf({results: []});
+    act(() => tree.unmount());
+    expect(note()).toBeNull();
   });
 
   it('labels each tile with its title and picks it on press', () => {
@@ -169,12 +167,7 @@ describe('ResultsGrid', () => {
     loadAll(tree);
     act(() => {
       tree.update(
-        <ResultsGrid
-          results={many(8)}
-          searching={false}
-          sourceDown={false}
-          onPick={jest.fn()}
-        />,
+        <ResultsGrid results={many(8)} searching={false} onPick={jest.fn()} />,
       );
     });
     expect(
@@ -187,22 +180,11 @@ describe('ResultsGrid', () => {
     act(() => navButton(tree, copy['nav.nextLabel']).props.onPress());
     act(() => {
       tree.update(
-        <ResultsGrid
-          results={many(3)}
-          searching={false}
-          sourceDown={false}
-          onPick={jest.fn()}
-        />,
+        <ResultsGrid results={many(3)} searching={false} onPick={jest.fn()} />,
       );
     });
     expect(tree.root.findAllByType(Image)).toHaveLength(3);
     expect(texts(tree)).toContain('1 / 1');
-  });
-
-  it('shows the failure, not the empty text, when a source failed and none matched (#23)', () => {
-    expect(texts(render({results: [], sourceDown: true}))).toEqual([
-      copy['error.sourceDown'],
-    ]);
   });
 
   it('shows a page whose thumbnails never answer, without those tiles (#24, #64)', () => {
@@ -256,11 +238,11 @@ describe('ResultsGrid', () => {
   });
 
   it('reads as no result when every thumbnail failed (#64)', () => {
-    const tree = render({results: many(2)});
+    const {tree, note} = noteOf({results: many(2)});
     act(() =>
       tree.root.findAllByType(Image).forEach(img => img.props.onError()),
     );
-    expect(texts(tree)).toEqual([copy['search.empty']]);
+    expect(note()).toBe('empty');
   });
 
   it('lays every picture on paper white, so a transparent one never shows black (#64)', () => {
@@ -284,7 +266,8 @@ describe('ResultsGrid', () => {
 });
 
 describe('a later page measured as it loads (#72)', () => {
-  const contourOf = (n: number) => `file:///p/thumbs/openclipart-${n}.contour.png`;
+  const contourOf = (n: number) =>
+    `file:///p/thumbs/openclipart-${n}.contour.png`;
   const fileOf = (n: number) => `file:///p/thumbs/openclipart-${n}`;
   const uris = (tree: ReactTestRenderer) =>
     tree.root.findAllByType(Image).map(img => img.props.source.uri);
@@ -322,8 +305,12 @@ describe('a later page measured as it loads (#72)', () => {
     await act(async () => finish());
     expect(uris(tree)).toEqual([contourOf(13), fileOf(14)]);
     loadAll(tree);
-    act(() => tree.root.findByProps({testID: 'tile-openclipart:13'}).props.onPress());
-    act(() => tree.root.findByProps({testID: 'tile-openclipart:14'}).props.onPress());
+    act(() =>
+      tree.root.findByProps({testID: 'tile-openclipart:13'}).props.onPress(),
+    );
+    act(() =>
+      tree.root.findByProps({testID: 'tile-openclipart:14'}).props.onPress(),
+    );
     expect(onPick.mock.calls.map(call => call[1])).toEqual([true, false]);
   });
 
@@ -340,7 +327,9 @@ describe('a later page measured as it loads (#72)', () => {
     act(() => tree.root.findAllByType(Image)[0].props.onError());
     expect(uris(tree)).toEqual([result(13).thumbUrl]);
     loadAll(tree);
-    act(() => tree.root.findByProps({testID: 'tile-openclipart:13'}).props.onPress());
+    act(() =>
+      tree.root.findByProps({testID: 'tile-openclipart:13'}).props.onPress(),
+    );
     expect(onPick).toHaveBeenCalledWith(
       expect.objectContaining({id: 'openclipart:13'}),
       false,
@@ -358,7 +347,6 @@ describe('a later page measured as it loads (#72)', () => {
         <ResultsGrid
           results={again}
           searching={false}
-          sourceDown={false}
           onPick={onPick}
           contourThumbs={new Map([[again[0].id, contourOf(1)]])}
         />,
@@ -369,7 +357,9 @@ describe('a later page measured as it loads (#72)', () => {
     expect(gridOf(tree).props.style).not.toContainEqual(
       expect.objectContaining({opacity: 0}),
     );
-    act(() => tree.root.findByProps({testID: 'tile-openclipart:1'}).props.onPress());
+    act(() =>
+      tree.root.findByProps({testID: 'tile-openclipart:1'}).props.onPress(),
+    );
     expect(onPick).toHaveBeenCalledWith(
       expect.objectContaining({id: 'openclipart:1'}),
       true,
