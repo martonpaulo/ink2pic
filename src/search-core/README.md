@@ -2,7 +2,7 @@
 
 The picture search with no platform in it: no React Native, no `sn-plugin-lib`, no file or
 network API of its own. Everything it needs comes in through its options, so the same code runs on
-the Supernote, in Node (the search lab, #63) and in another project. A test in
+the Supernote, in Node (the search lab, [#63](https://github.com/martonpaulo/ink2pic/issues/63)) and in another project. A test in
 `__tests__/sdk-boundary.test.ts` fails when a file here imports anything outside this folder.
 
 ## Contents
