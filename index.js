@@ -9,6 +9,7 @@ import {
   BUTTON_TYPE_LASSO,
   BUTTON_TYPE_SIDEBAR,
   EDIT_DATA_STROKES,
+  INSERT_BUTTON_ID,
   LASSO_BUTTON_ID,
   SHOW_FULL_VIEW,
   SIDEBAR_BUTTON_ID,
@@ -52,6 +53,15 @@ registerButton(BUTTON_TYPE_SIDEBAR, ['NOTE'], {
   icon,
   showType: SHOW_FULL_VIEW,
 }).then(result => report('sidebar button', result));
+
+// Before Find picture: the host gives no position field, so the order may set the menu's (#74).
+registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
+  id: INSERT_BUTTON_ID,
+  name: copy['button.insert'],
+  icon: Image.resolveAssetSource(require('./assets/insert.png')).uri,
+  editDataTypes: [EDIT_DATA_STROKES],
+  showType: SHOW_FULL_VIEW,
+}).then(result => report('insert button', result));
 
 registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
   id: LASSO_BUTTON_ID,

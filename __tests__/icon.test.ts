@@ -14,6 +14,10 @@ describe('plugin icon', () => {
     expect(pngSize('icon.png')).toEqual({width: 96, height: 96});
   });
 
+  it('renders the Insert picture icon at the toolbar size (#74)', () => {
+    expect(pngSize('insert.png')).toEqual({width: 96, height: 96});
+  });
+
   it('renders the README icon at 512 x 512', () => {
     expect(pngSize('icon-512.png')).toEqual({width: 512, height: 512});
   });

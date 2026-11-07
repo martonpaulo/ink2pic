@@ -65,6 +65,9 @@ attached.
 3. In the lasso toolbar, tap **Find picture**. It can be in the **⋯** menu of that toolbar.
 4. Tap the picture you want. Ink2Pic puts it just below your word and closes.
 
+To skip the choice, tap **Insert picture** instead of **Find picture**: Ink2Pic puts the first
+picture just below your word and closes. If you want another one, tap **Find picture**.
+
 The results come six per page; tap ◀ and ▶ for more. If the device read the word wrong, fix it in
 the search field and tap **Search**. Your handwritten word stays in the note.
 

@@ -4,6 +4,7 @@
  */
 export const copy = {
   'button.lasso': 'Find picture',
+  'button.insert': 'Insert picture',
   'button.sidebar': 'Ink2Pic',
   'tab.search': 'Search',
   'tab.library': 'Library',

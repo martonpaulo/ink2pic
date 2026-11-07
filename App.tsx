@@ -1,13 +1,14 @@
 /**
  * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
  * search; the lasso button first turns the lassoed word into the query (#13). A tap on a result
- * inserts it (#12). Every step is logged; the log shows only behind the Log button (#36).
+ * inserts it (#12). «Insert picture» inserts the best result with no grid (#74). Every step is
+ * logged; the log shows only behind the Log button (#36).
  *
  * @format
  */
 
 import React, {useEffect, useRef, useState} from 'react';
-import {atStep, StepFailure} from './src/flow/failure';
+import {atStep, failureText, StepFailure} from './src/flow/failure';
 import {insertPicture} from './src/flow/insertPicture';
 import {readLassoQuery} from './src/flow/lassoQuery';
 import {
@@ -19,9 +20,14 @@ import {
   step,
 } from './src/flow/opening';
 import type {LassoPlace} from './src/flow/place';
+import {insertBest} from './src/flow/quickInsert';
 import {startSession} from './src/storage/logFile';
 import {pluginFolder} from './src/storage/session';
-import {LASSO_BUTTON_ID, SIDEBAR_BUTTON_ID} from './src/buttons';
+import {
+  INSERT_BUTTON_ID,
+  LASSO_BUTTON_ID,
+  SIDEBAR_BUTTON_ID,
+} from './src/buttons';
 import {log, logged} from './src/log/memory';
 import {missingPermissions, PermissionNeed} from './src/onboarding/permissions';
 import {getLassoElements} from './src/sdk/lasso';
@@ -36,6 +42,8 @@ import {copy} from './src/ui/copy';
 type Screen =
   | {name: 'starting'}
   | {name: 'failed'}
+  /** One line: «Adding…» while Insert picture runs, then its failure, if any (#74). */
+  | {name: 'note'; text: string}
   | {
       name: 'onboarding';
       buttonId: number;
@@ -67,12 +75,44 @@ function App(): React.JSX.Element {
     return true;
   };
 
+  /**
+   * Insert picture (#74): the lassoed word, then the best result inserted at once; the view
+   * closes after the insert, as after a pick, and shows the sentence when anything fails.
+   */
+  const insertNow = async (flow: number, lasso: OpenedLasso) => {
+    if (!show(flow, {name: 'note', text: copy['insert.running']})) {
+      return;
+    }
+    const query = await readLassoQuery(lasso);
+    if (!query.ok) {
+      log(`recognition failed: ${query.code} ${query.message}`);
+      show(flow, {name: 'note', text: failureText(atStep('lasso', query))});
+      return;
+    }
+    const inserted = await insertBest(query.value.query, query.value.place);
+    // A newer opening or a close made this flow stale: never close or change its view (#44).
+    if (!isCurrent(opening.current, flow)) {
+      log(`flow ${flow} is stale: its insert ends here`);
+      return;
+    }
+    if (inserted.ok) {
+      await logged('closePluginView', closePluginView);
+      return;
+    }
+    show(flow, {name: 'note', text: inserted.text});
+  };
+
   /** Reads the lasso when the lasso button opened the view; permissions are checked by now. */
   const openSearch = async (
     buttonId: number,
     flow: number,
     lasso: OpenedLasso,
   ) => {
+    if (buttonId === INSERT_BUTTON_ID) {
+      place.current = null;
+      await insertNow(flow, lasso);
+      return;
+    }
     if (buttonId !== LASSO_BUTTON_ID) {
       if (
         show(flow, {
@@ -142,7 +182,9 @@ function App(): React.JSX.Element {
   /**
    * Decides without the button event and without a timer: build 0.1.0 (8) stayed at lifecycle 1
    * with no press and no timer firing. A lasso selection means the lasso button (#13); its
-   * elements go on to the recognition, so the opening reads them once (#44).
+   * elements go on to the recognition, so the opening reads them once (#44). Without a press,
+   * Insert picture and Find picture look the same: the grid opens, where nothing is inserted
+   * unasked (#74).
    */
   const decide = async () => {
     const lasso = await logged('getLassoElements', getLassoElements);
@@ -241,6 +283,10 @@ function App(): React.JSX.Element {
           }
           onClose={() => closePluginView()}
         />
+      );
+    case 'note':
+      return (
+        <StatusScreen text={screen.text} onClose={() => closePluginView()} />
       );
     case 'failed':
       return (

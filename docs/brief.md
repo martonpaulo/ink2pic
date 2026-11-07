@@ -464,6 +464,7 @@ Search-side quality: prefer results that render well in gray (line art, engravin
 
 1. **Lasso toolbar button** (`registerButton(2, ['NOTE'], { editDataTypes: [0], showType: 1, ... })`): the main flow.
 2. **Sidebar button** (`registerButton(1, ['NOTE'], { showType: 1, ... })`): opens the plugin on the Library tab or an empty search.
+3. **«Insert picture» lasso button** ([#74](https://github.com/martonpaulo/ink2pic/issues/74)), registered before «Find picture», with the same `editDataTypes: [0]` and its own icon: the same search, then the first picture of page 1 in the grid's order is inserted at once at the lasso and left lassoed ([#73](https://github.com/martonpaulo/ink2pic/issues/73)), with no grid. The view shows only «Adding to your note…» and closes; a failure shows the sentence the grid would show, and «Find picture» still opens the grid to pick another. A view that opens with no button event cannot tell the two lasso buttons apart, so it opens the grid, which inserts nothing unasked.
 
 ### 8.2 Main flow: handwriting as the query
 
@@ -554,6 +555,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | Key | Text |
 | --- | --- |
 | `button.lasso` | Find picture |
+| `button.insert` | Insert picture |
 | `button.sidebar` | Ink2Pic |
 | `tab.search` | Search |
 | `tab.library` | Library |
@@ -797,6 +799,13 @@ Open on the device, each logged so the session log answers it:
   try the call after `closePluginView`. With `insertImage` there is no rect, so the call is
   skipped: the host already shows that picture as a floating selection. A failure is logged and
   never fails the insert.
+- The lasso toolbar's order ([#74](https://github.com/martonpaulo/ink2pic/issues/74)) [TO TEST]:
+  `PluginButton` has no position field (sn-plugin-lib 0.2.3 and the official docs), so «Insert
+  picture» is registered before «Find picture»; the device shows whether that order sets their
+  order in the «•••» menu, and whether a plugin button can sit on the toolbar itself.
+- A lasso button with `showType: 0` (no plugin view, official docs) [TO TEST]: whether the press
+  still reaches the plugin and the SDK calls work with no view. Until then «Insert picture» opens
+  the view with one line and closes it.
 
 ## 11. Risks
 
