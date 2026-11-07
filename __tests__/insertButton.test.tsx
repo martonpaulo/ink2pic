@@ -154,6 +154,9 @@ it('registers Insert best picture before Choose picture, both for handwriting on
   jest.isolateModules(() => {
     register = require('sn-plugin-lib').PluginManager.registerButton;
     register.mockResolvedValue(true);
+    require('sn-plugin-lib').PluginManager.registerConfigButton.mockResolvedValue(
+      true,
+    );
     require('../index');
   });
   const lassoButtons = register.mock.calls
@@ -204,6 +207,7 @@ describe('Insert best picture with no view (#74)', () => {
     jest.isolateModules(() => {
       const sdk = require('sn-plugin-lib');
       sdk.PluginManager.registerButton.mockResolvedValue(true);
+      sdk.PluginManager.registerConfigButton.mockResolvedValue(true);
       jest.doMock('../src/flow/headlessInsert', () => ({
         insertWithoutView: jest.fn().mockResolvedValue(undefined),
       }));

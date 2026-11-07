@@ -1,3 +1,4 @@
+import {NativeModules} from 'react-native';
 import {PluginCommAPI, PluginFileAPI, PluginManager} from 'sn-plugin-lib';
 import {
   lassoLastWord,
@@ -11,6 +12,10 @@ import {logLines, startLog} from '../src/log/memory';
 import {getPenInfo, strokePoints} from '../src/sdk/pen';
 
 const mocked = (fn: unknown) => fn as jest.Mock;
+
+// The probe reads the settings file: the plugin's file module finds none, so the defaults hold
+// (#112). Plain functions, so the resetAllMocks below keeps them.
+NativeModules.Ink2PicFiles = {readText: async () => null};
 const success = (result: unknown) => ({success: true, result});
 
 type Point = {x: number; y: number};

@@ -35,11 +35,19 @@ function buttons(tree: renderer.ReactTestRenderer): Shown[] {
 const texts = (tree: renderer.ReactTestRenderer) =>
   tree.root.findAllByType(Text).map(node => String(node.props.children));
 
-function screen(settings: Settings, cleared = true, symbols?: SymbolsControl) {
+/**
+ * Renders Settings and lets its first symbols status arrive inside act(). Without `symbols` the
+ * screen gets a fake one, never the device store, which needs the Ink2PicFiles module (#112).
+ */
+async function screen(
+  settings: Settings,
+  cleared = true,
+  symbols: SymbolsControl = fakeSymbols(0, 1447),
+) {
   const onChange = jest.fn();
   const onClear = jest.fn().mockResolvedValue(cleared);
   let tree!: renderer.ReactTestRenderer;
-  act(() => {
+  await act(async () => {
     tree = renderer.create(
       <SettingsScreen
         settings={settings}
@@ -47,7 +55,7 @@ function screen(settings: Settings, cleared = true, symbols?: SymbolsControl) {
         onLanguages={() => {}}
         onClear={onClear}
         onClose={() => {}}
-        {...(symbols && {symbols})}
+        symbols={symbols}
       />,
     );
   });
@@ -60,8 +68,8 @@ function screen(settings: Settings, cleared = true, symbols?: SymbolsControl) {
   return {tree, onChange, onClear, press};
 }
 
-it('shows each option with its current value selected', () => {
-  const {tree} = screen(defaultSettings(null));
+it('shows each option with its current value selected', async () => {
+  const {tree} = await screen(defaultSettings(null));
   const selected = buttons(tree)
     .filter(b => b.selected)
     .map(b => b.label);
@@ -83,7 +91,7 @@ it('has a copy text for every source the search has', () => {
 });
 
 it('sends a tap as one step', async () => {
-  const {onChange, press} = screen(defaultSettings(null));
+  const {onChange, press} = await screen(defaultSettings(null));
   await press(copy['settings.size.large']);
   await press(copy['settings.spacing.wide']);
   await press(copy['settings.dataSaver.on']);
@@ -96,12 +104,12 @@ it('sends a tap as one step', async () => {
   ]);
 });
 
-it('disables the last source that is on', () => {
+it('disables the last source that is on', async () => {
   const settings = {
     ...defaultSettings(null),
     sourcesOff: SOURCE_NAMES.slice(1),
   };
-  const {tree} = screen(settings);
+  const {tree} = await screen(settings);
   const last = buttons(tree).find(
     b => b.label === copy[`source.${SOURCE_NAMES[0]}` as CopyKey],
   );
@@ -109,7 +117,7 @@ it('disables the last source that is on', () => {
 });
 
 it('asks before clearing, and says the files stay', async () => {
-  const {tree, onClear, press} = screen(defaultSettings(null));
+  const {tree, onClear, press} = await screen(defaultSettings(null));
   await press(copy['settings.clear']);
   expect(texts(tree)).toContain(copy['settings.clearQuestion']);
   expect(copy['settings.clearQuestion']).toContain('MyStyle/Ink2Pic/library/');
@@ -122,14 +130,14 @@ it('asks before clearing, and says the files stay', async () => {
 });
 
 it('says when the list could not be cleared', async () => {
-  const {tree, press} = screen(defaultSettings(null), false);
+  const {tree, press} = await screen(defaultSettings(null), false);
   await press(copy['settings.clear']);
   await press(copy['settings.clearConfirm']);
   expect(texts(tree)).toContain(copy['settings.clearFailed']);
 });
 
 it('asks before Reset all', async () => {
-  const {tree, onChange, press} = screen(defaultSettings(null));
+  const {tree, onChange, press} = await screen(defaultSettings(null));
   await press(copy['settings.reset']);
   expect(texts(tree)).toContain(copy['settings.resetQuestion']);
   expect(onChange).not.toHaveBeenCalled();
@@ -165,7 +173,7 @@ it('names a symbols folder that cannot be read, and offers no download (#99)', a
     status: async () => ({total: 1447, saved: 0, unreadable: true}),
     download: jest.fn(),
   };
-  const {tree, press} = screen(defaultSettings(null), true, symbols);
+  const {tree, press} = await screen(defaultSettings(null), true, symbols);
   await settled();
   expect(texts(tree)).toContain(copy['settings.symbolsUnreadable']);
   expect(texts(tree)).not.toContain('Offline symbols: 0 of 1,447');
@@ -176,7 +184,7 @@ it('names a symbols folder that cannot be read, and offers no download (#99)', a
 it('states the size of the symbols before downloading them (#91)', async () => {
   const symbols = fakeSymbols(47, 1447);
   const download = jest.spyOn(symbols, 'download');
-  const {tree, press} = screen(defaultSettings(null), true, symbols);
+  const {tree, press} = await screen(defaultSettings(null), true, symbols);
   await settled();
   expect(texts(tree)).toContain('Offline symbols: 47 of 1,447');
   await press(copy['settings.symbolsDownload']);
@@ -193,7 +201,7 @@ it('states the size of the symbols before downloading them (#91)', async () => {
 });
 
 it('reports how many symbols failed when the rest finished (#104)', async () => {
-  const {tree, press} = screen(
+  const {tree, press} = await screen(
     defaultSettings(null),
     true,
     fakeSymbols(0, 1445, 2),
@@ -207,7 +215,7 @@ it('reports how many symbols failed when the rest finished (#104)', async () => 
 });
 
 it('says where a cut download stopped, so a new tap resumes it (#91)', async () => {
-  const {tree, press} = screen(
+  const {tree, press} = await screen(
     defaultSettings(null),
     true,
     fakeSymbols(0, 300),
