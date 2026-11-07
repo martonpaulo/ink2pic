@@ -22,12 +22,13 @@ background that cannot move ([brief section 13](brief.md#13-history-of-options-c
 
 - Turns a lassoed handwritten word into a search, with the text editable before searching.
 - Shows pictures from keyless public sources (Openclipart, Wikimedia Commons, with Wikidata naming
-  a word's typical pictures), the most typical picture of the word first, six per page.
+  a word's typical pictures, and OpenMoji symbols, which also work offline once saved), the most
+  typical picture of the word first, six per page.
 - Inserts the chosen picture with one tap, already sized and converted for the 16-gray screen.
 - Keeps every inserted picture, with its license and attribution, in a library that works offline.
 - Lets the person set, from the plugin's own Settings entry, the query languages and their order
   (default: the system language, then English; [#68](https://github.com/martonpaulo/ink2pic/issues/68)), the picture size, where it goes (below, beside, or in place
-  of the word, deleted only on their tap), style, sources, data saver, and clear the library list;
+  of the word, deleted only on their tap), style, sources, data saver, and empty the Library tab;
   every other default is today's behaviour ([#70](https://github.com/martonpaulo/ink2pic/issues/70)).
 
 ## What it will never do

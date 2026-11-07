@@ -5,7 +5,11 @@
 import React from 'react';
 import {Image, Pressable} from 'react-native';
 import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
+import * as asResults from '../../src/library/asResults';
+import * as libraryDevice from '../../src/library/device';
+import type {LibraryItem} from '../../src/library/types';
 import {log} from '../../src/log/memory';
+import * as deviceSearch from '../../src/search/device';
 import type {SourceAdapter} from '../../src/search-core';
 import type {SearchResult, SourceOutcome} from '../../src/search-core/types';
 import {copy} from '../../src/ui/copy';
@@ -57,9 +61,63 @@ const slow = source(
   'fixture-slow',
   () => new Promise(resolve => waiting.push(() => resolve({ok: true, results: []}))),
 );
-/** Ends the searches left waiting, so no timer outlives the renders. */
+/** Finds a few pictures for a misspelled word and suggests the spelling that finds more (#65). */
+const suggests = (typo: string, word: string): SourceAdapter => ({
+  name: 'fixture-suggests',
+  search: async (query: string): Promise<SourceOutcome> =>
+    query === typo
+      ? {ok: true, results: FIXTURE_RESULTS.slice(0, 2), suggestion: word}
+      : {ok: true, results: FIXTURE_RESULTS},
+});
+/** Stand-ins one screen sets on a module, undone after that screen. */
+const stubs: jest.SpyInstance[] = [];
+/** Ends the searches left waiting and undoes the screen's stand-ins, so nothing outlives it. */
 export function settle() {
   waiting.splice(0).forEach(answer => answer());
+  stubs.splice(0).forEach(stub => stub.mockRestore());
+}
+
+/** An expired cached answer, shown because no source answered (#65). */
+function staleSearch(word: string) {
+  stubs.push(
+    jest.spyOn(deviceSearch, 'searchCached').mockResolvedValue({
+      results: FIXTURE_RESULTS,
+      statuses: {fixture: {state: 'failed', kind: 'http', message: 'fixture'}},
+      sourceDown: false,
+      allFailed: true,
+      stale: true,
+    }),
+  );
+  return search(word, [answers([])]);
+}
+
+/** Saved pictures and recent searches; the file module is not on the render machine. */
+const SAVED: LibraryItem[] = FIXTURE_RESULTS.slice(0, 4).map((result, i) => ({
+  id: result.id,
+  source: 'openclipart',
+  sourceId: String(i + 1),
+  sourceUrl: `https://openclipart.org/detail/${i + 1}`,
+  query: result.title,
+  license: 'CC0 1.0',
+  attribution: 'Openclipart',
+  savedAt: '2026-11-06T12:00:00.000Z',
+  path: `/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-${i + 1}.png`,
+  width: 400,
+  height: 400,
+  contour: false,
+}));
+function libraryTab(items: LibraryItem[], recentSearches: string[]) {
+  stubs.push(
+    jest.spyOn(libraryDevice, 'getLibrary').mockResolvedValue({items, recentSearches}),
+    jest.spyOn(libraryDevice, 'libraryUnreadable').mockReturnValue(null),
+    // The saved files are not on the render machine: the same drawings, inline.
+    jest
+      .spyOn(asResults, 'libraryResults')
+      .mockImplementation(shown =>
+        shown.map((item, i) => ({...FIXTURE_RESULTS[i], id: `library:${item.id}`})),
+      ),
+  );
+  return mount(<SearchScreen initialQuery="" lassoFailure={null} onPick={async () => ({ok: true, value: null})} onClose={() => {}} />);
 }
 
 async function mount(element: React.ReactElement): Promise<ReactTestRenderer> {
@@ -115,6 +173,11 @@ const CHANGED: Settings = {languages: ['zh', 'es', 'en', 'pt'], size: 'large', p
 export const SCREENS: ScreenRender[] = [
   {name: 'results', render: async () => loadThumbs(await search('circle', [answers(FIXTURE_RESULTS)]))},
   {name: 'results-partial', render: async () => loadThumbs(await search('square', [answers(FIXTURE_RESULTS), fails('http')]))},
+  {name: 'results-source-down-thin', render: async () => loadThumbs(await search('ice', [answers(FIXTURE_RESULTS.slice(0, 3)), fails('http')]))},
+  {name: 'results-corrected', render: async () => loadThumbs(await search('circel', [suggests('circel', 'circle')]))},
+  {name: 'results-stale', render: async () => loadThumbs(await staleSearch('moon'))},
+  {name: 'library-items', render: async () => loadThumbs(await libraryTab(SAVED, ['sun', 'tree', 'house']))},
+  {name: 'library-empty', render: () => libraryTab([], [])},
   {name: 'page-loading', render: () => search('triangle', [answers(FIXTURE_RESULTS)])},
   {name: 'loading', render: () => search('cloud', [slow])},
   {name: 'empty', render: () => search('nothing', [answers([])])},

@@ -16,6 +16,13 @@ const result: SearchResult = {
   attribution: 'Openclipart',
 };
 
+// No native file module here, so every load would read as an unreadable library (#104); the
+// status line would then say that instead of the state under test (#106).
+jest.mock('../src/library/device', () => ({
+  ...jest.requireActual('../src/library/device'),
+  libraryUnreadable: () => null,
+}));
+
 let search: jest.Mock;
 const sources = (): SourceAdapter[] => [{name: 'fake', search}];
 
@@ -91,7 +98,7 @@ describe('SearchScreen (#13)', () => {
 
   it('never leaves an empty screen when the Library is closed before a search (#50)', async () => {
     const tree = await render({initialQuery: ''});
-    expect(texts(tree)).toContain(copy['library.empty']);
+    expect(statusText(tree)).toContain(copy['library.empty']);
     act(() => button(tree, copy['tab.library']).props.onPress());
     expect(statusText(tree)).toBe(copy['search.needWord']);
     act(() => tree.unmount());
@@ -263,8 +270,39 @@ describe('the one status line picks the state sentence (#98)', () => {
         status: copy['error.offline'],
       }),
     ).toBe(copy['library.emptyOffline']);
-    expect(statusLine({...base, view: 'library', note: 'empty'})).toBe(
-      copy['library.empty'],
+    const empty = statusLine({...base, view: 'library', note: 'empty'});
+    // Where Settings is, and what the two lasso buttons do (#106).
+    expect(empty).toContain(copy['library.empty']);
+    expect(empty).toContain('Settings > Apps > Plugins > Ink2Pic');
+    expect(empty).toContain(copy['onboarding.3']);
+  });
+
+  it('says one tap inserts once pictures show and nothing else is to say (#106)', () => {
+    const ready = {kind: 'ready' as const, results: []};
+    expect(statusLine({...base, state: ready})).toBe(copy['search.ready']);
+    expect(statusLine({...base, view: 'library'})).toBe(copy['search.ready']);
+    // A set status, a correction and a loading page each still win.
+    expect(
+      statusLine({...base, state: ready, status: copy['insert.running']}),
+    ).toBe(copy['insert.running']);
+    expect(
+      statusLine({...base, state: {kind: 'corrected', query: 'cat', results: []}}),
+    ).toBe('Showing results for cat.');
+    expect(statusLine({...base, state: ready, note: 'loading'})).toBe(
+      copy['page.loading'],
+    );
+  });
+
+  it('says an unreadable library in the status line, before the empty sentence (#104, #106)', () => {
+    expect(
+      statusLine({...base, view: 'library', note: 'empty', unreadable: 'kept'}),
+    ).toBe(copy['library.unreadableKept']);
+    expect(
+      statusLine({...base, view: 'library', unreadable: 'rebuilt'}),
+    ).toBe(copy['library.unreadableRebuilt']);
+    // Results view: the search's own sentence.
+    expect(statusLine({...base, note: 'empty', unreadable: 'kept'})).toBe(
+      copy['search.empty'],
     );
   });
 

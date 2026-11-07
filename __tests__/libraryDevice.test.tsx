@@ -112,7 +112,7 @@ it('keeps the Library page when the screen renders again', async () => {
   act(() => tree.unmount());
 });
 
-it('says on the Library page that library.json was unreadable (#104)', async () => {
+it('says in the status line that library.json was unreadable (#104, #106)', async () => {
   files[SHARED_LIBRARY] = 'not json';
   let tree!: ReactTestRenderer;
   await act(async () => {
@@ -126,10 +126,10 @@ it('says on the Library page that library.json was unreadable (#104)', async () 
       />,
     );
   });
-  const texts = tree.root
-    .findAllByType(Text)
-    .map(text => text.props.children);
-  expect(texts).toContain(copy['library.unreadableRebuilt']);
+  // In the one status line, not above the grid (#106).
+  expect(tree.root.findByProps({testID: 'status'}).props.children).toBe(
+    copy['library.unreadableRebuilt'],
+  );
   expect(native.deleteFile).not.toHaveBeenCalled();
   act(() => tree.unmount());
 });

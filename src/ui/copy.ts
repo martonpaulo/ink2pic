@@ -16,6 +16,7 @@ export const copy = {
   'search.corrected': 'Showing results for {query}.',
   'search.instead': 'Search for {query} instead',
   'search.stale': 'The sources did not answer. Showing an earlier search.',
+  'search.ready': 'Tap a picture to add it to your note.',
   // Outside the brief's table: a page waits for its thumbnails after the search ended (#35).
   'page.loading': 'Loading pictures…',
   'nav.previous': '◀',
@@ -37,12 +38,15 @@ export const copy = {
   'onboarding.2': 'Circle it with the lasso.',
   'onboarding.3':
     'Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one.',
+  'onboarding.undo': 'A wrong picture stays lassoed: tap Delete.',
   'onboarding.start': 'Start',
   // Outside the brief's table: the close button of the plugin view (#3).
   'action.close': 'Close',
   // Outside the brief's table: the search button and the call log (owner's logging rule, #13).
   'action.search': 'Search',
   'action.log': 'Log',
+  // The fixed line above the log (#106).
+  'log.about': 'Technical log for bug reports. Saved in MyStyle/Ink2Pic/logs/.',
   'error.emptyLasso':
     'There is no handwriting in the lasso. Type the word instead.',
   'error.sourcesDown':
@@ -69,17 +73,18 @@ export const copy = {
   'probe.lassoFailed':
     'The lasso did not take the word. Open the log for the details.',
   // Outside the brief's table: the empty Library tab (#15).
-  'library.empty': 'No saved pictures yet. Insert one from a search.',
+  'library.empty':
+    'No saved pictures yet. Insert one from a search. Change size and more in Settings > Apps > Plugins > Ink2Pic.',
   // Outside the brief's table: the empty Library tab with no network (#98).
   'library.emptyOffline':
     'No saved pictures yet. Connect to Wi-Fi, then search again.',
   // Outside the brief's table: the Library tab after an unreadable library.json (#104).
   'library.unreadableRebuilt':
-    'The library list was unreadable, so it is rebuilt from the saved pictures. The old file is kept in MyStyle/Ink2Pic/library/.',
+    'Your Library was damaged and is rebuilt from your saved pictures.',
   'library.unreadableKept':
-    'The library list is unreadable. It is kept as it is, and nothing is saved to it until Ink2Pic opens again.',
+    'Your Library cannot be read. New pictures are not added to it until you open Ink2Pic again.',
   // The Languages screen, from the plugin's Settings entry (#68).
-  'languages.title': 'Languages',
+  'languages.title': 'Search languages',
   'languages.hint': 'The first language is tried first.',
   'languages.inUse': 'In use',
   'languages.addSection': 'Add a language',
@@ -103,7 +108,7 @@ export const copy = {
   'settings.title': 'Settings',
   'settings.back': '‹ Settings',
   'settings.backLabel': 'Back to Settings',
-  'settings.languages': 'Languages',
+  'settings.languages': 'Search languages',
   'settings.languagesOpen': 'Change ›',
   'settings.languagesOpenLabel': 'Change the languages',
   'settings.size': 'Picture size',
@@ -118,17 +123,19 @@ export const copy = {
     'In place of word deletes the lassoed handwriting when you tap a picture.',
   'settings.style': 'Picture style',
   'settings.style.drawings': 'Drawings first',
-  'settings.style.photos': 'Photos too',
-  'settings.style.contour': 'All as contour',
-  'settings.spacing': 'Word spacing in your handwriting',
+  'settings.style.photos': 'Drawings and photos',
+  'settings.style.contour': 'Outlines only',
+  'settings.spacing':
+    'When you lasso a whole line: space between your words',
   'settings.spacing.tight': 'Tight',
   'settings.spacing.normal': 'Normal',
   'settings.spacing.wide': 'Wide',
-  'settings.sources': 'Picture sources (one stays on)',
-  'source.openclipart': 'Openclipart',
-  'source.commons': 'Commons',
+  'settings.sources':
+    'Picture sources: tap to turn each on or off (one stays on)',
+  'source.openclipart': 'Clip art',
+  'source.commons': 'Wikimedia',
   'source.wikidata': 'Wikipedia',
-  'source.openmoji': 'OpenMoji',
+  'source.openmoji': 'Symbols',
   'settings.dataSaver': 'Data saver: fewer and smaller pictures',
   'settings.dataSaver.off': 'Off',
   'settings.dataSaver.on': 'On',
@@ -137,7 +144,7 @@ export const copy = {
     'Saved symbols cannot be read now. Open Settings again to retry.',
   'settings.symbolsDownload': 'Download symbols for offline use',
   'settings.symbolsQuestion':
-    'Download {count} OpenMoji symbols, about {size} MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0.',
+    'Download the other {count} symbols, about {size} MB, so they work without Wi-Fi? They go to MyStyle/Ink2Pic/symbols/.',
   'settings.symbolsConfirm': 'Download',
   'settings.symbolsProgress': 'Downloading symbols: {saved} of {total}…',
   'settings.symbolsDone': 'Every symbol is saved for offline use.',
@@ -145,13 +152,13 @@ export const copy = {
     'The download stopped at {saved} of {total}. Check the Wi-Fi, then download again to go on.',
   'settings.symbolsFailed':
     '{saved} of {total} symbols are saved. {failed} could not be downloaded; download again to try them once more.',
-  'settings.clear': 'Clear library list',
+  'settings.clear': 'Empty Library tab',
   'settings.clearQuestion':
-    'Clear the library list and recent searches? The picture files stay in MyStyle/Ink2Pic/library/.',
-  'settings.clearConfirm': 'Clear list',
+    'Remove every picture from the Library tab and clear recent searches? The picture files stay in MyStyle/Ink2Pic/library/.',
+  'settings.clearConfirm': 'Empty',
   'settings.cleared':
-    'The library list is cleared. The picture files stay in MyStyle/Ink2Pic/library/.',
-  'settings.clearFailed': 'Could not clear the library list. Try again.',
+    'The Library tab is empty. The picture files stay in MyStyle/Ink2Pic/library/.',
+  'settings.clearFailed': 'Could not empty the Library tab. Try again.',
   'settings.reset': 'Reset all',
   'settings.resetQuestion': 'Reset every setting to the default?',
 } as const;

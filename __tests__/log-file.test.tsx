@@ -1,6 +1,6 @@
 /** A fresh, bounded log at each opening, written once per call (#45), appending (#102). */
 import React from 'react';
-import {NativeModules} from 'react-native';
+import {NativeModules, Text} from 'react-native';
 import renderer, {act} from 'react-test-renderer';
 import {
   closeLogFileForTests,
@@ -19,6 +19,7 @@ import {
   setAfterCall,
   startLog,
 } from '../src/log/memory';
+import {copy} from '../src/ui/copy';
 import {LOG_VIEW_LINES, LogView} from '../src/ui/LogView';
 
 const LOG = '/s/MyStyle/Ink2Pic/logs/session.log';
@@ -227,5 +228,9 @@ it('shows the newest lines, newest at the bottom', () => {
   expect(shown[shown.length - 1]).toMatch(
     new RegExp(`line ${LOG_VIEW_LINES + 9}$`),
   );
+  // One fixed line above the log says what it is for and where it is saved (#106).
+  expect(
+    tree.root.findAllByType(Text).map(line => line.props.children),
+  ).toContain(copy['log.about']);
   act(() => tree.unmount());
 });

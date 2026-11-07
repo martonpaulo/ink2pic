@@ -66,6 +66,8 @@ export function Onboarding({
           <Text style={shared.text}>{text}</Text>
         </View>
       ))}
+      {/* How to undo a wrong insert: the picture stays lassoed after it (#106). */}
+      <Text style={shared.text}>{copy['onboarding.undo']}</Text>
       {/* Before Start, what is missing (build 0.1.0 (11): a permission turned off later showed
           only the steps); after a denial, what stayed denied. */}
       {reasonsFor(denied.length > 0 ? denied : missing).map(reason => (

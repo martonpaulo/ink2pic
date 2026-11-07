@@ -51,7 +51,15 @@ export type StatusLineInput = {
   noSearch: boolean;
   /** The shown search's state; null before any. */
   state: SearchState | null;
+  /** Why library.json could not be read on this open (#104); null when it was read. */
+  unreadable?: keyof typeof UNREADABLE_COPY | null;
 };
+
+/**
+ * The empty Library says where Settings is and what the two lasso buttons do, since onboarding
+ * does not return once the permissions are granted (#106).
+ */
+const EMPTY_LIBRARY = `${copy['library.empty']}\n${copy['onboarding.3']}`;
 
 /** The one status line's sentence for each state (#50, #98); empty when nothing is to say. */
 export function statusLine({
@@ -60,20 +68,31 @@ export function statusLine({
   note,
   noSearch,
   state,
+  unreadable = null,
 }: StatusLineInput): string {
-  if (view === 'library' && note === 'empty') {
+  if (view === 'library' && note === 'empty' && status === copy['error.offline']) {
     // Offline, an empty library has nothing to insert: say how to get pictures (#98).
-    return status === copy['error.offline']
-      ? copy['library.emptyOffline']
-      : status ?? copy['library.empty'];
+    return copy['library.emptyOffline'];
   }
   if (status !== null) {
     return status;
+  }
+  if (view === 'library' && unreadable) {
+    // In the status line, not above the grid: the grid area says no sentence (#106).
+    return copy[UNREADABLE_COPY[unreadable]];
+  }
+  if (view === 'library' && note === 'empty') {
+    return EMPTY_LIBRARY;
   }
   if (note === 'searching') {
     return copy['search.running'];
   }
   const loading = note === 'loading' ? copy['page.loading'] : '';
+  // Pictures shown and nothing else to say: one tap inserts and closes (#106).
+  const ready = note === null && !noSearch ? copy['search.ready'] : '';
+  if (view === 'library') {
+    return loading || ready;
+  }
   if (view !== 'results') {
     return loading;
   }
@@ -87,7 +106,7 @@ export function statusLine({
       : (state && stateText(state)) ?? copy['search.empty'];
   }
   // The search's note first; «Loading pictures…» only when the search has none.
-  return (state && stateText(state)) ?? loading;
+  return (state && stateText(state)) ?? (loading || ready);
 }
 
 export type SearchScreenProps = {
@@ -258,6 +277,7 @@ export function SearchScreen({
     note,
     noSearch: view === 'results' && !searching && !outcome,
     state,
+    unreadable,
   });
   // After a corrected search, the word as typed is one tap away; the field still holds it.
   const corrected =
@@ -314,9 +334,6 @@ export function SearchScreen({
       {view === 'log' && <LogView />}
       {view === 'library' && (
         <View style={styles.fill}>
-          {unreadable && (
-            <Text style={shared.text}>{copy[UNREADABLE_COPY[unreadable]]}</Text>
-          )}
           {library && library.recentSearches.length > 0 && (
             <View style={[shared.row, styles.recent]}>
               <Text style={shared.text}>{copy['search.recent']}</Text>

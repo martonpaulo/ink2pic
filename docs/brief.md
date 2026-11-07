@@ -601,6 +601,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `search.corrected` | Showing results for {query}. |
 | `search.instead` | Search for {query} instead |
 | `search.stale` | The sources did not answer. Showing an earlier search. |
+| `search.ready` | Tap a picture to add it to your note. |
 | `nav.previous` / `nav.next` | ◀ / ▶ |
 | `nav.previousLabel` / `nav.nextLabel` | Previous page / Next page |
 | `insert.running` | Adding to your note… |
@@ -620,8 +621,9 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `onboarding.1` | Write a word in your note. |
 | `onboarding.2` | Circle it with the lasso. |
 | `onboarding.3` | Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one. |
+| `onboarding.undo` | A wrong picture stays lassoed: tap Delete. |
 | `onboarding.start` | Start |
-| `languages.title` | Languages |
+| `languages.title` | Search languages |
 | `languages.hint` | The first language is tried first. |
 | `languages.inUse` | In use |
 | `languages.addSection` | Add a language |
@@ -644,7 +646,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `settings.title` | Settings |
 | `settings.back` | ‹ Settings |
 | `settings.backLabel` | Back to Settings |
-| `settings.languages` | Languages |
+| `settings.languages` | Search languages |
 | `settings.languagesOpen` | Change › |
 | `settings.languagesOpenLabel` | Change the languages |
 | `settings.size` | Picture size |
@@ -658,33 +660,33 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `settings.placementNote` | In place of word deletes the lassoed handwriting when you tap a picture. |
 | `settings.style` | Picture style |
 | `settings.style.drawings` | Drawings first |
-| `settings.style.photos` | Photos too |
-| `settings.style.contour` | All as contour |
-| `settings.spacing` | Word spacing in your handwriting |
+| `settings.style.photos` | Drawings and photos |
+| `settings.style.contour` | Outlines only |
+| `settings.spacing` | When you lasso a whole line: space between your words |
 | `settings.spacing.tight` | Tight |
 | `settings.spacing.normal` | Normal |
 | `settings.spacing.wide` | Wide |
-| `settings.sources` | Picture sources (one stays on) |
-| `source.openclipart` | Openclipart |
-| `source.commons` | Commons |
+| `settings.sources` | Picture sources: tap to turn each on or off (one stays on) |
+| `source.openclipart` | Clip art |
+| `source.commons` | Wikimedia |
 | `source.wikidata` | Wikipedia |
-| `source.openmoji` | OpenMoji |
+| `source.openmoji` | Symbols |
 | `settings.dataSaver` | Data saver: fewer and smaller pictures |
 | `settings.dataSaver.off` | Off |
 | `settings.dataSaver.on` | On |
 | `settings.symbols` | Offline symbols: {saved} of {total} |
 | `settings.symbolsDownload` | Download symbols for offline use |
-| `settings.symbolsQuestion` | Download {count} OpenMoji symbols, about {size} MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0. |
+| `settings.symbolsQuestion` | Download the other {count} symbols, about {size} MB, so they work without Wi-Fi? They go to MyStyle/Ink2Pic/symbols/. |
 | `settings.symbolsConfirm` | Download |
 | `settings.symbolsProgress` | Downloading symbols: {saved} of {total}… |
 | `settings.symbolsDone` | Every symbol is saved for offline use. |
 | `settings.symbolsStopped` | The download stopped at {saved} of {total}. Check the Wi-Fi, then download again to go on. |
 | `settings.symbolsFailed` | {saved} of {total} symbols are saved. {failed} could not be downloaded; download again to try them once more. |
-| `settings.clear` | Clear library list |
-| `settings.clearQuestion` | Clear the library list and recent searches? The picture files stay in MyStyle/Ink2Pic/library/. |
-| `settings.clearConfirm` | Clear list |
-| `settings.cleared` | The library list is cleared. The picture files stay in MyStyle/Ink2Pic/library/. |
-| `settings.clearFailed` | Could not clear the library list. Try again. |
+| `settings.clear` | Empty Library tab |
+| `settings.clearQuestion` | Remove every picture from the Library tab and clear recent searches? The picture files stay in MyStyle/Ink2Pic/library/. |
+| `settings.clearConfirm` | Empty |
+| `settings.cleared` | The Library tab is empty. The picture files stay in MyStyle/Ink2Pic/library/. |
+| `settings.clearFailed` | Could not empty the Library tab. Try again. |
 | `settings.reset` | Reset all |
 | `settings.resetQuestion` | Reset every setting to the default? |
 

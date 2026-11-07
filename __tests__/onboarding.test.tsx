@@ -121,6 +121,10 @@ describe('Onboarding', () => {
     );
   });
 
+  it('says how to undo a wrong picture: it stays lassoed, so Delete removes it (#106)', () => {
+    expect(texts(render())).toContain(copy['onboarding.undo']);
+  });
+
   it('says where Insert picture and Find picture are: in the ••• menu of the lasso toolbar (#50, #98)', () => {
     expect(copy['onboarding.3']).toBe(
       'Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one.',

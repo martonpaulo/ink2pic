@@ -181,7 +181,7 @@ it('states the size of the symbols before downloading them (#91)', async () => {
   expect(texts(tree)).toContain('Offline symbols: 47 of 1,447');
   await press(copy['settings.symbolsDownload']);
   expect(texts(tree)).toContain(
-    'Download 1,400 OpenMoji symbols, about 15 MB? They stay in MyStyle/Ink2Pic/symbols/, under CC BY-SA 4.0.',
+    'Download the other 1,400 symbols, about 15 MB, so they work without Wi-Fi? They go to MyStyle/Ink2Pic/symbols/.',
   );
   await press(copy['action.cancel']);
   expect(download).not.toHaveBeenCalled();
