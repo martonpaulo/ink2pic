@@ -17,6 +17,7 @@ import {
   downloadThumbToFile,
   isCompletePng,
   listCompletePngs,
+  listSizes,
 } from '../storage/files';
 import {symbolsDir} from '../storage/paths';
 
@@ -31,6 +32,10 @@ const BYTES_PER_MB = 1000 * 1000;
 /** The saved symbols' codes; null until the folder is listed. */
 let saved: Set<string> | null = null;
 let listing: Promise<Set<string>> | null = null;
+/** Saved symbols whose file was checked whole this session, or downloaded whole (#102). */
+const whole = new Set<string>();
+/** Settings' whole-folder check, once per session (#102). */
+let checkedAll: Promise<Set<string>> | null = null;
 /** One download per symbol: a second request for the same one joins the first. */
 const pending = new Map<string, Promise<boolean>>();
 
@@ -43,29 +48,82 @@ function isSymbol(result: SearchResult): boolean {
 }
 
 /**
- * The saved symbols, listed once per session: whole PNGs only, never one a cut-off download
- * left (#91). A folder that cannot be listed counts as empty:
- * pictures then come from the network, as before.
+ * The saved symbols, listed once per session by name and size, with no file opened (#102): every
+ * non-empty PNG. A file a cut-off download left is listed too; `isWhole` checks the one about to
+ * be used (#91), and Settings checks the whole folder with `completeSymbols`.
+ * A folder that cannot be listed counts as empty: pictures then come from the network, as before.
  */
 export function savedSymbols(): Promise<Set<string>> {
   if (saved) {
     return Promise.resolve(saved);
   }
-  listing ??= logged('listCompletePngs symbols', () =>
-    listCompletePngs(symbolsDir()),
-  ).then(listed => {
-    if (!listed.ok) {
-      log(`symbols: cannot list ${symbolsDir()}: ${listed.message}`);
+  listing ??= logged('listSizes symbols', () => listSizes(symbolsDir())).then(
+    listed => {
+      if (!listed.ok) {
+        log(`symbols: cannot list ${symbolsDir()}: ${listed.message}`);
+      }
+      const files = listed.ok ? listed.value ?? [] : [];
+      const hexes = files
+        .filter(file => file.name.endsWith(EXTENSION) && file.bytes > 0)
+        .map(file => file.name.slice(0, -EXTENSION.length));
+      saved = new Set(hexes);
+      return saved;
+    },
+  );
+  return listing;
+}
+
+/**
+ * Whether a listed symbol's file is a whole PNG, checked once per session, just before it is
+ * shown or inserted (#102); a file that is not leaves the saved set, so it is downloaded again.
+ */
+async function isWhole(hex: string): Promise<boolean> {
+  if (whole.has(hex)) {
+    return true;
+  }
+  const checked = await logged(`isCompletePng ${hex}`, () =>
+    isCompletePng(symbolPath(hex)),
+  );
+  if (checked.ok && checked.value) {
+    whole.add(hex);
+    return true;
+  }
+  saved?.delete(hex);
+  log(`symbols: ${hex} is not a whole PNG; not used`);
+  return false;
+}
+
+/**
+ * The saved symbols whose file is a whole PNG, the folder checked in one call, once per session:
+ * for Settings, whose count and «Download symbols» must never count a cut-off file (#91). The
+ * search lists with `savedSymbols` and opens no file (#102). A folder that cannot be checked
+ * keeps the listing.
+ */
+function completeSymbols(): Promise<Set<string>> {
+  checkedAll ??= (async () => {
+    const known = await savedSymbols();
+    const checked = await logged('listCompletePngs symbols', () =>
+      listCompletePngs(symbolsDir()),
+    );
+    if (!checked.ok) {
+      log(`symbols: cannot check ${symbolsDir()}: ${checked.message}`);
+      return known;
     }
-    const names = listed.ok ? listed.value ?? [] : [];
-    saved = new Set(
-      names
+    const complete = new Set(
+      (checked.value ?? [])
         .filter(name => name.endsWith(EXTENSION))
         .map(name => name.slice(0, -EXTENSION.length)),
     );
-    return saved;
-  });
-  return listing;
+    for (const hex of [...known]) {
+      if (complete.has(hex)) {
+        whole.add(hex);
+      } else if (!whole.has(hex)) {
+        known.delete(hex);
+      }
+    }
+    return known;
+  })();
+  return checkedAll;
 }
 
 /** The saved picture of an OpenMoji result, known from this session's listing; else null. */
@@ -74,13 +132,17 @@ export function savedSymbolPath(result: SearchResult): string | null {
   return isSymbol(result) && saved?.has(hex) ? symbolPath(hex) : null;
 }
 
-/** As `savedSymbolPath`, listing the folder first when this session has not. */
+/**
+ * As `savedSymbolPath`, listing the folder first when this session has not, and only when the
+ * file is a whole PNG: the insert's saved picture (#91, #102).
+ */
 export async function symbolFile(result: SearchResult): Promise<string | null> {
   if (!isSymbol(result)) {
     return null;
   }
   await savedSymbols();
-  return savedSymbolPath(result);
+  const path = savedSymbolPath(result);
+  return path && (await isWhole(sourceId(result.id))) ? path : null;
 }
 
 /**
@@ -96,7 +158,7 @@ function save(hex: string): Promise<boolean> {
   }
   const started = (async () => {
     const known = await savedSymbols();
-    if (known.has(hex)) {
+    if (known.has(hex) && (await isWhole(hex))) {
       return true;
     }
     const path = symbolPath(hex);
@@ -106,14 +168,15 @@ function save(hex: string): Promise<boolean> {
     if (!bytes.ok) {
       return false;
     }
-    const whole = await logged(`isCompletePng ${hex}`, () =>
+    const complete = await logged(`isCompletePng ${hex}`, () =>
       isCompletePng(path),
     );
-    if (!whole.ok || !whole.value) {
+    if (!complete.ok || !complete.value) {
       log(`symbols: ${hex} is not a whole PNG; not saved`);
       return false;
     }
     known.add(hex);
+    whole.add(hex);
     return true;
   })().finally(() => pending.delete(hex));
   pending.set(hex, started);
@@ -151,12 +214,20 @@ export async function markSavedSymbols(
     return outcome;
   }
   await savedSymbols();
+  const offline = networkDown(outcome);
+  if (offline) {
+    // Without the network a cut-off file could not be replaced: check each one shown (#102).
+    for (const result of outcome.results) {
+      if (savedSymbolPath(result)) {
+        await isWhole(sourceId(result.id));
+      }
+    }
+  }
   const marked = outcome.results.map(result =>
     savedSymbolPath(result)
       ? {...result, offlinePicture: true as const}
       : result,
   );
-  const offline = networkDown(outcome);
   return {
     ...outcome,
     results: offline
@@ -169,7 +240,7 @@ export async function markSavedSymbols(
 export type SymbolsStatus = {total: number; saved: number};
 
 export async function symbolsStatus(): Promise<SymbolsStatus> {
-  const known = await savedSymbols();
+  const known = await completeSymbols();
   const all = symbolHexes();
   return {total: all.length, saved: all.filter(hex => known.has(hex)).length};
 }
@@ -208,7 +279,7 @@ export type SymbolsDownload = SymbolsStatus & {
 export async function downloadAllSymbols(
   onProgress: (status: SymbolsStatus) => void,
 ): Promise<SymbolsDownload> {
-  const known = await savedSymbols();
+  const known = await completeSymbols();
   const all = symbolHexes();
   const missing = all.filter(hex => !known.has(hex));
   let done = all.length - missing.length;
@@ -248,5 +319,7 @@ export async function downloadAllSymbols(
 export function resetSymbolsForTests(): void {
   saved = null;
   listing = null;
+  whole.clear();
+  checkedAll = null;
   pending.clear();
 }

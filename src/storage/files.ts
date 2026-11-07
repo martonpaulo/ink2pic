@@ -31,8 +31,10 @@ type NativeFiles = {
   ) => Promise<number>;
   deleteFile: (path: string) => Promise<boolean>;
   writeText: (path: string, text: string) => Promise<null>;
+  appendText: (path: string, text: string) => Promise<null>;
   readText: (path: string) => Promise<string | null>;
   listDir: (path: string) => Promise<string[] | null>;
+  listSizes: (path: string) => Promise<FileSize[] | null>;
   listCompletePngs: (path: string) => Promise<string[] | null>;
   isCompletePng: (path: string) => Promise<boolean>;
 };
@@ -99,6 +101,14 @@ export function writeText(path: string, text: string): Promise<Result<null>> {
   return call(files => files.writeText(path, text));
 }
 
+/**
+ * Adds `text` at the end of the file, creating it when missing; in place, so shared storage needs
+ * FILE:WRITE only (#62, #102).
+ */
+export function appendText(path: string, text: string): Promise<Result<null>> {
+  return call(files => files.appendText(path, text));
+}
+
 /** `null` when the file does not exist. */
 export function readText(path: string): Promise<Result<string | null>> {
   return call(files => files.readText(path));
@@ -112,9 +122,20 @@ export function listDir(path: string): Promise<Result<string[] | null>> {
   return call(files => files.listDir(path));
 }
 
+/** A file's name in its folder and its size in bytes. */
+export type FileSize = {name: string; bytes: number};
+
+/**
+ * The files of a folder with their sizes, or null when it does not exist; no file is opened, so
+ * a large folder lists fast (#102).
+ */
+export function listSizes(path: string): Promise<Result<FileSize[] | null>> {
+  return call(files => files.listSizes(path));
+}
+
 /**
  * The whole `.png` files of a folder (they end with the IEND chunk), or null when it does not
- * exist: a download cut off midway is left out (#91).
+ * exist: a download cut off midway is left out (#91). It opens every file: Settings only (#102).
  */
 export function listCompletePngs(
   path: string,

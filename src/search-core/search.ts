@@ -92,6 +92,16 @@ function status(outcome: SourceOutcome): SourceStatus {
     : {state: 'empty'};
 }
 
+/** `3 result(s)`, `no results` or `failed <kind>`, for the per-source time line. */
+function answerText(outcome: SourceOutcome): string {
+  if (!outcome.ok) {
+    return `failed ${outcome.kind}`;
+  }
+  return outcome.results.length
+    ? `${outcome.results.length} result(s)`
+    : 'no results';
+}
+
 function requestCount(source: SourceAdapter, ctx: SourceContext): number {
   const {requests = 1} = source;
   return typeof requests === 'function' ? requests(ctx) : requests;
@@ -159,13 +169,23 @@ async function searchOnce(
         ctx.log(`breaker: ${source.name} skipped: ${open.failure.message}`);
         return Promise.resolve(open.failure);
       }
+      const at = clock.now();
       return withTimeout(
         source,
         query,
         ctx,
         clock,
         timeoutMs * requestCount(source, ctx),
-      );
+      ).then(outcome => {
+        // One time line per source, as `time <step>` lines read (#88), to tell which one sets
+        // the page's wait (#102); the flow logs each source's status after the search.
+        ctx.log(
+          `time source ${source.name}: ${clock.now() - at} ms, ${answerText(
+            outcome,
+          )}`,
+        );
+        return outcome;
+      });
     }),
   );
   recordAnswers(sources, outcomes, skipped, run);

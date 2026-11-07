@@ -109,6 +109,36 @@ const withFetch = (fetch: FetchLike) => ({
   ctx: createContext({fetch, userAgent: 'Ink2Pic/test', languages: ['en']}),
 });
 
+describe('the per-source time (#102)', () => {
+  it('logs one line per source with its answer and time', async () => {
+    let now = 0;
+    const clock = {...systemClock, now: () => now};
+    const slow = {
+      name: 'slow',
+      search: async (): Promise<SourceOutcome> => {
+        now += 1200;
+        return {ok: true, results: [result('s1'), result('s2')]};
+      },
+    };
+    const down = answering('down', {
+      ok: false,
+      kind: 'throttled',
+      message: 'HTTP 429',
+    });
+    const lines: string[] = [];
+    const ctx = {
+      ...withFetch(jest.fn()).ctx,
+      log: (line: string) => lines.push(line),
+    };
+    await searchAll('soup', [slow, down], {ctx, clock});
+    const times = lines.filter(line => line.startsWith('time source '));
+    expect(times).toEqual([
+      'time source slow: 1200 ms, 2 result(s)',
+      expect.stringMatching(/^time source down: \d+ ms, failed throttled$/),
+    ]);
+  });
+});
+
 describe('the default adapters', () => {
   it('queries Openclipart, Commons and Wikidata with the given fetch, OpenMoji with none (#67)', async () => {
     jest.useFakeTimers();

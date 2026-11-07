@@ -119,7 +119,20 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     });
   }
 
-  /** Resolves null when the file does not exist. */
+  /**
+   * Adds the text at the end of the file, creating it when missing: the session log appends its
+   * new lines instead of rewriting the whole file after every call (#102). In place, like every
+   * shared write, so PluginHost needs FILE:WRITE only (#62).
+   */
+  @ReactMethod
+  public void appendText(String path, String text, Promise promise) {
+    submit(promise, () -> {
+      File target = SafePaths.checkPath(path);
+      ModuleWork.append(target, text.getBytes(StandardCharsets.UTF_8));
+      return null;
+    });
+  }
+
   /**
    * The names in a folder, oldest modified first, or null when it does not exist. Replaces FileUtils.listFiles and exists:
    * a SecurityException there escapes the TurboModule and the host closes the plugin
@@ -145,7 +158,8 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
 
   /**
    * The `.png` files of a folder that are whole (they end with the IEND chunk), or null when the
-   * folder does not exist: a download cut off midway is never counted as saved (#91).
+   * folder does not exist: a download cut off midway is never counted as saved (#91). It opens
+   * every file, so only Settings calls it; the search lists with listSizes (#102).
    */
   @ReactMethod
   public void listCompletePngs(String path, Promise promise) {
@@ -165,12 +179,37 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     });
   }
 
+  /**
+   * The files of a folder with their sizes, or null when the folder does not exist. No file is
+   * opened: the symbols folder holds 1,447 files, and each one's PNG end is checked only when it
+   * is about to be used (#91, #102).
+   */
+  @ReactMethod
+  public void listSizes(String path, Promise promise) {
+    submit(promise, () -> {
+      File folder = new File(SafePaths.checkPath(path).getPath());
+      File[] entries = folder.isDirectory() ? folder.listFiles() : null;
+      if (entries == null) {
+        return null;
+      }
+      com.facebook.react.bridge.WritableArray array = com.facebook.react.bridge.Arguments.createArray();
+      for (File entry : entries) {
+        com.facebook.react.bridge.WritableMap item = com.facebook.react.bridge.Arguments.createMap();
+        item.putString("name", entry.getName());
+        item.putDouble("bytes", (double) entry.length());
+        array.pushMap(item);
+      }
+      return array;
+    });
+  }
+
   /** True when the file is a whole PNG (#91). */
   @ReactMethod
   public void isCompletePng(String path, Promise promise) {
     submit(promise, () -> PngTail.isComplete(SafePaths.checkPath(path)));
   }
 
+  /** Resolves null when the file does not exist. */
   @ReactMethod
   public void readText(String path, Promise promise) {
     submit(promise, () -> {

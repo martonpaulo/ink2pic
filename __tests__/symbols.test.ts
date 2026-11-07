@@ -25,6 +25,13 @@ import {
   symbolsStatus,
 } from '../src/symbols/store';
 import {USER_AGENT} from '../src/config';
+import {setAfterCall} from '../src/log/memory';
+import {
+  closeLogFileForTests,
+  flushLogFile,
+  openLogFile,
+} from '../src/storage/logFile';
+import {logsDir} from '../src/storage/paths';
 import {createHost, PluginHost} from './host/pluginHost';
 
 const {PluginManager} = sdk as unknown as Record<
@@ -32,6 +39,8 @@ const {PluginManager} = sdk as unknown as Record<
   Record<string, (...args: any[]) => any>
 >;
 const PICTURES = 'raw.githubusercontent.com';
+/** The session log bytes a whole «Download symbols» may write (#102). */
+const LOG_BYTES_LIMIT = 1000 * 1000;
 const WORD = 'happy';
 const OPTIONS = {
   width: 640,
@@ -196,6 +205,62 @@ describe('offline symbols (#91)', () => {
       stopped: false,
     });
     expect(await symbolsStatus()).toEqual({total, saved: total - 1});
+  });
+
+  it('lists by name and size, and checks the PNG end only of the symbol inserted (#102)', async () => {
+    const host = started();
+    const [symbol] = await symbolResults();
+    const hex = symbol.id.slice('openmoji:'.length);
+    await downloadAllSymbols(() => {});
+    // A file cut off midway, the way a grid download can leave one.
+    host.files.set(symbolPath(hex), {bytes: 100, order: 0, truncated: true});
+    resetSymbolsForTests();
+    const checks = () =>
+      host.calls.filter(c => c.name === 'isCompletePng').length;
+    const before = checks();
+    await symbolResults();
+    expect(host.calls.some(c => c.name === 'listSizes')).toBe(true);
+    // The listing opened no file: a search checks none while the network is up.
+    expect(checks()).toBe(before);
+    expect(savedSymbolPath(symbol)).not.toBeNull();
+    // The insert checks it, finds it cut off, and downloads the picture instead.
+    expect(await symbolFile(symbol)).toBeNull();
+    expect(checks()).toBe(before + 1);
+    expect(savedSymbolPath(symbol)).toBeNull();
+    // The grid saves it again, whole.
+    expect(await thumbUri(symbol, '/unused')).toBe(`file://${symbolPath(hex)}`);
+    expect(host.files.get(symbolPath(hex))?.truncated).toBeUndefined();
+  });
+
+  it('appends the session log during «Download symbols» (#102)', async () => {
+    const host = started();
+    const log = `${logsDir()}/session.log`;
+    openLogFile(logsDir());
+    setAfterCall(flushLogFile);
+    try {
+      await downloadAllSymbols(() => {});
+      await flushLogFile();
+    } finally {
+      setAfterCall(() => {});
+      closeLogFileForTests();
+    }
+    const writes = host.calls.filter(
+      c =>
+        (c.name === 'writeText' || c.name === 'appendText') &&
+        c.args[0] === log,
+    );
+    const rewrites = writes.filter(c => c.name === 'writeText');
+    const bytes = writes.reduce((sum, c) => sum + String(c.args[1]).length, 0);
+    const file = host.files.get(log)?.text ?? '';
+    // Two logged calls per symbol (its download and its PNG check), each flushed once.
+    const total = symbolHexes().length;
+    expect(writes.length).toBeLessThanOrEqual(2 * total + 3);
+    // The first write, then one each time the file reaches LOG_FILE_REWRITE_LINES.
+    expect(rewrites.length).toBeLessThanOrEqual(3);
+    // Each line is written about once, plus the rewrites: under 0.5 MB measured, where every flush
+    // rewrote up to 2,000 lines before #102, 56 MB for the same run.
+    expect(bytes).toBeLessThan(LOG_BYTES_LIMIT);
+    expect(file).toMatch(/symbols: 1447 of 1447 saved, 0 failed\n$/);
   });
 
   // Last: its failed searches open the sources' breaker for the rest of the file.

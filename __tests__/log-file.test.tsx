@@ -1,10 +1,12 @@
-/** A fresh, bounded log at each opening, written once per call (#45). */
+/** A fresh, bounded log at each opening, written once per call (#45), appending (#102). */
 import React from 'react';
 import {NativeModules} from 'react-native';
 import renderer, {act} from 'react-test-renderer';
 import {
   closeLogFileForTests,
   flushLogFile,
+  LOG_FILE_MAX_LINES,
+  LOG_FILE_REWRITE_LINES,
   openLogFile,
   startSession,
 } from '../src/storage/logFile';
@@ -23,10 +25,16 @@ const LOG = '/s/MyStyle/Ink2Pic/logs/session.log';
 const PREV = '/s/MyStyle/Ink2Pic/logs/session.prev.log';
 const files: Record<string, string> = {};
 const writes: {path: string; text: string}[] = [];
+const appends: {path: string; text: string}[] = [];
 const native = {
   writeText: jest.fn(async (path: string, text: string) => {
     writes.push({path, text});
     files[path] = text;
+    return null;
+  }),
+  appendText: jest.fn(async (path: string, text: string) => {
+    appends.push({path, text});
+    files[path] = (files[path] ?? '') + text;
     return null;
   }),
   readText: jest.fn(async (path: string) => files[path] ?? null),
@@ -39,6 +47,7 @@ beforeEach(() => {
     delete files[key];
   }
   writes.length = 0;
+  appends.length = 0;
   NativeModules.Ink2PicFiles = native;
   closeLogFileForTests();
   startLog();
@@ -77,6 +86,7 @@ describe('flushes', () => {
     let release: (value: null) => void = () => {};
     native.writeText.mockImplementationOnce(async (path, text) => {
       writes.push({path, text});
+      files[path] = text;
       return new Promise<null>(resolve => (release = resolve));
     });
     log('a');
@@ -88,8 +98,59 @@ describe('flushes', () => {
     flushLogFile();
     release(null);
     await settle();
+    // One rewrite, then one append of the lines logged while it ran.
+    expect(writes).toHaveLength(1);
+    expect(appends).toHaveLength(1);
+    expect(appends[0].text).toMatch(/ b\n.* c\n$/);
+    expect(files[LOG]).toBe(logLines().join('\n') + '\n');
+  });
+
+  it('appends only the new lines after the first write (#102)', async () => {
+    await logged('getPageSize', answer);
+    await settle();
+    await logged('getLassoRect', answer);
+    await settle();
+    expect(writes.filter(w => w.path === LOG)).toHaveLength(1);
+    expect(appends).toHaveLength(1);
+    expect(appends[0].text).not.toMatch(/getPageSize/);
+    expect(appends[0].text.split('\n')).toHaveLength(3);
+    expect(files[LOG]).toBe(logLines().join('\n') + '\n');
+  });
+
+  it('rewrites the file after a failed append, losing no line (#102)', async () => {
+    log('a');
+    await flushLogFile();
+    native.appendText.mockImplementationOnce(async () => {
+      throw Object.assign(new Error('disk full'), {code: 'IO'});
+    });
+    log('b');
+    await flushLogFile();
+    log('c');
+    await flushLogFile();
     expect(writes).toHaveLength(2);
-    expect(writes[1].text).toBe(logLines().join('\n') + '\n');
+    expect(files[LOG]).toBe(logLines().join('\n') + '\n');
+  });
+
+  it('rewrites the file when more lines came than memory keeps, or it grew too long', async () => {
+    log('first');
+    await flushLogFile();
+    for (let i = 0; i < LOG_FILE_MAX_LINES + 1; i++) {
+      log(`line ${i}`);
+    }
+    await flushLogFile();
+    expect(writes).toHaveLength(2);
+    expect(files[LOG].split('\n')).toHaveLength(LOG_FILE_MAX_LINES + 1);
+    for (let i = 0; i < LOG_FILE_REWRITE_LINES; i++) {
+      log(`more ${i}`);
+      if (i % 100 === 0) {
+        await flushLogFile();
+      }
+    }
+    await flushLogFile();
+    expect(files[LOG].split('\n').length).toBeLessThanOrEqual(
+      LOG_FILE_REWRITE_LINES + 1,
+    );
+    expect(files[LOG].endsWith(logLines().slice(-1)[0] + '\n')).toBe(true);
   });
 
   it('keeps at most LOG_MAX_LINES lines in memory', () => {
@@ -142,8 +203,7 @@ describe('openings', () => {
       }
       await settle();
       perOpening.push(
-        writes
-          .slice(before)
+        [...writes.slice(before), ...appends.splice(0)]
           .filter(w => w.path === LOG)
           .reduce((sum, w) => sum + w.text.length, 0),
       );

@@ -8,6 +8,7 @@ import {
   cachedThumbUri,
   prepareThumbs,
   resetThumbsForTests,
+  storeDerived,
   THUMB_LIMIT,
   thumbPath,
   thumbUri,
@@ -57,6 +58,13 @@ beforeEach(() => {
 const fileUri = (n: number) => `file://${THUMBS}/openclipart-${n}`;
 const downloaded = () =>
   native.downloadThumbToFile.mock.calls.map(call => call[1]);
+const deleted = () => native.deleteFile.mock.calls.map(call => call[0]);
+/** A thumbnail's file and its converted files, as makeRoom removes them (#102). */
+const withSiblings = (path: string) => [
+  path,
+  `${path}.contour.png`,
+  `${path}.dark.png`,
+];
 
 describe('thumbnail files (#16, #46)', () => {
   it('names a safe file under the thumbs folder', () => {
@@ -123,9 +131,45 @@ describe('thumbnail files (#16, #46)', () => {
     );
     await prepareThumbs();
     expect(await thumbUri(result(1), DIR)).toBe(fileUri(1));
-    expect(native.deleteFile.mock.calls.map(call => call[0])).toEqual([
-      `${THUMBS}/old-0`,
+    expect(deleted()).toEqual(withSiblings(`${THUMBS}/old-0`));
+  });
+
+  it('counts a converted file only without its thumbnail, and removes it with it (#102)', async () => {
+    const names = Array.from({length: THUMB_LIMIT}, (_, n) => `old-${n}`);
+    // old-0 has both conversions; old-1 is gone but left its contour drawing.
+    native.listDir.mockResolvedValue([
+      'old-1.contour.png',
+      ...names.slice(0, 1),
+      'old-0.contour.png',
+      'old-0.dark.png',
+      ...names.slice(2),
     ]);
+    await prepareThumbs();
+    // THUMB_LIMIT - 1 thumbnails and one lone contour file: the store is full.
+    expect(await thumbUri(result(1), DIR)).toBe(fileUri(1));
+    expect(deleted()).toEqual([`${THUMBS}/old-1.contour.png`]);
+    expect(await thumbUri(result(2), DIR)).toBe(fileUri(2));
+    expect(deleted().slice(1)).toEqual(withSiblings(`${THUMBS}/old-0`));
+  });
+
+  it('counts a saved symbol’s converted file, written with no thumbnail beside it (#102, #103)', async () => {
+    native.listDir.mockResolvedValue(
+      Array.from({length: THUMB_LIMIT - 1}, (_, n) => `old-${n}`),
+    );
+    await prepareThumbs();
+    storeDerived(`${THUMBS}/openclipart-1.contour.png`); // its thumbnail is not stored: counted
+    storeDerived(`${THUMBS}/openmoji-1F600.contour.png`);
+    expect(await thumbUri(result(1), DIR)).toBe(fileUri(1));
+    // THUMB_LIMIT - 1 thumbnails and two converted files: two oldest leave for the new one.
+    expect(deleted()).toEqual([
+      ...withSiblings(`${THUMBS}/old-0`),
+      ...withSiblings(`${THUMBS}/old-1`),
+    ]);
+    native.deleteFile.mockClear();
+    // A converted file of a stored thumbnail leaves with it and is not counted twice.
+    storeDerived(`${THUMBS}/openclipart-1.dark.png`);
+    expect(await thumbUri(result(2), DIR)).toBe(fileUri(2));
+    expect(deleted()).toEqual(withSiblings(`${THUMBS}/old-2`));
   });
 
   it('removes a different old file for each download running at the limit', async () => {
@@ -134,7 +178,7 @@ describe('thumbnail files (#16, #46)', () => {
     );
     await prepareThumbs();
     await Promise.all([1, 2, 3].map(n => thumbUri(result(n), DIR)));
-    expect(native.deleteFile.mock.calls.map(call => call[0])).toEqual([
+    expect(deleted().filter(path => !path.endsWith('.png'))).toEqual([
       `${THUMBS}/old-0`,
       `${THUMBS}/old-1`,
       `${THUMBS}/old-2`,

@@ -5,6 +5,7 @@ import {
   probeIdle,
   runProbe,
   stopPenProbe,
+  STROKE_READS_PARALLEL,
 } from '../src/flow/penProbe';
 import {logLines, startLog} from '../src/log/memory';
 import {getPenInfo, strokePoints} from '../src/sdk/pen';
@@ -159,6 +160,33 @@ it('lassoes the last word from the page’s strokes with no Probe armed, and rec
   expect(text).toMatch(/probe line stroke #40 rect .* letter, left out/);
   expect(text).toMatch(/probe line stroke #49 rect .* letter, kept/);
   expect(PluginManager.closePluginView).toHaveBeenCalled();
+});
+
+it('reads strokes 4 at a time, keeps the others when one fails, and never waits for the recycle (#102)', async () => {
+  const elements = cervantes();
+  let running = 0;
+  let most = 0;
+  for (const element of elements) {
+    const {size} = element.stroke.points;
+    element.stroke.points.size = async () => {
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise(resolve => setTimeout(resolve, 1));
+      running -= 1;
+      return size();
+    };
+    // A recycle that never answers holds nothing up.
+    element.recycle.mockImplementation(() => new Promise(() => {}));
+  }
+  elements[0].stroke.points.size = async () => {
+    throw new Error('element gone');
+  };
+  mocked(PluginFileAPI.getElements).mockResolvedValue(success(elements));
+  expect(await lassoLastWord()).toBeNull();
+  expect(most).toBe(STROKE_READS_PARALLEL);
+  expect(logLines().join('\n')).toMatch(/12 element\(s\), 11 stroke\(s\) read/);
+  expect(PluginCommAPI.lassoElements).toHaveBeenCalled();
+  expect(elements[0].recycle).toHaveBeenCalled();
 });
 
 it('says so and keeps the view when lassoElements does not take the rect', async () => {

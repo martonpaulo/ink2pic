@@ -10,6 +10,8 @@ import {withinLimit} from '../search-core';
 export const LOG_MAX_LINES = 2000;
 
 const lines: string[] = [];
+/** Lines logged since the log started, the dropped ones too: the file appends by it (#102). */
+let count = 0;
 let started = Date.now();
 const listeners = new Set<(lines: string[]) => void>();
 let afterCall: () => unknown = () => {};
@@ -56,6 +58,7 @@ export function onLog(listener: (lines: string[]) => void): () => void {
 /** Empties the log; `keep` are lines that already belong to the new log, kept with their times. */
 export function startLog(keep: string[] = []): void {
   lines.splice(0, lines.length, ...keep);
+  count = keep.length;
   if (keep.length === 0) {
     started = Date.now();
   }
@@ -65,6 +68,7 @@ export function startLog(keep: string[] = []): void {
 export function log(line: string): void {
   const entry = `+${Date.now() - started}ms ${line}`;
   lines.push(entry);
+  count += 1;
   if (lines.length > LOG_MAX_LINES) {
     lines.splice(0, lines.length - LOG_MAX_LINES);
   }
@@ -74,6 +78,11 @@ export function log(line: string): void {
 
 export function logLines(): string[] {
   return [...lines];
+}
+
+/** How many lines were logged since the log started, including those no longer kept. */
+export function logCount(): number {
+  return count;
 }
 
 /**

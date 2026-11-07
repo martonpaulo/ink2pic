@@ -854,6 +854,27 @@ export class PluginHost {
           this.store(path, {text, bytes: text.length});
           return null;
         },
+        // In place, as ModuleWork.append does: no temporary file, so no delete (#102).
+        appendText: async (path: string, text: string) => {
+          this.checkPath(path);
+          this.needs(PERMISSION.write, path, 'WRITE');
+          const all = (this.files.get(path)?.text ?? '') + text;
+          this.files.set(path, {text: all, bytes: all.length, order: ++this.writes});
+          for (let dir = parentOf(path); dir; dir = parentOf(dir)) {
+            this.folders.add(dir);
+          }
+          return null;
+        },
+        // Names and sizes only: no file is opened, so a cut-off PNG is listed too (#102).
+        listSizes: async (path: string) => {
+          this.checkPath(path);
+          if (!this.folders.has(path)) {
+            return null;
+          }
+          return [...this.files.entries()]
+            .filter(([file]) => parentOf(file) === path)
+            .map(([file, entry]) => ({name: file.slice(path.length + 1), bytes: entry.bytes}));
+        },
         listCompletePngs: async (path: string) => {
           this.checkPath(path);
           if (!this.folders.has(path)) {

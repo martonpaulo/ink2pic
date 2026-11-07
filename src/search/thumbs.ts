@@ -25,6 +25,25 @@ const WEB_PREFIX = 'https://';
 const FILE_PREFIX = 'file://';
 /** The Java module writes `<name>.part` and renames it into place when complete. */
 const PART_SUFFIX = '.part';
+/**
+ * A thumbnail shown as its contour drawing: `thumbs/<id>.contour.png`, from thumbPath, in the
+ * private folder for every result, a saved symbol's too, never beside a shared file, which
+ * cannot be deleted (#72, #103).
+ */
+export const CONTOUR_SUFFIX = '.contour.png';
+/**
+ * A faint thumbnail shown darkened: `thumbs/<id>.dark.png` (#81, #103); not a contour drawing, so
+ * it inserts darkened too.
+ */
+export const DARKENED_SUFFIX = '.dark.png';
+/** The converted files a thumbnail can have, removed with it (#102). */
+const SIBLING_SUFFIXES = [CONTOUR_SUFFIX, DARKENED_SUFFIX];
+
+/** The thumbnail a converted file belongs to, or null for a thumbnail itself. */
+function ownerOf(path: string): string | null {
+  const suffix = SIBLING_SUFFIXES.find(end => path.endsWith(end));
+  return suffix ? path.slice(0, -suffix.length) : null;
+}
 
 /**
  * Full paths of the thumbnail files on the device, oldest first (the module lists them by age,
@@ -86,15 +105,26 @@ export function needsDownload(
   );
 }
 
-/** Lists the stored thumbnails once per session; an unreadable folder turns the cache off. */
+/**
+ * Lists the stored thumbnails once per session; an unreadable folder turns the cache off. A
+ * converted file counts on its own when its thumbnail is not stored (a saved symbol's, or one
+ * whose thumbnail was removed), so the oldest go first; the others leave with their thumbnail
+ * (#102).
+ */
 async function listThumbs(pluginDir: string): Promise<Set<string> | null> {
   const dir = thumbDir(pluginDir);
   const listed = await logged('listDir thumbs', () => listDir(dir));
   if (listed.ok) {
-    const names = (listed.value ?? []).filter(
-      name => name && !name.endsWith(PART_SUFFIX),
+    const paths = (listed.value ?? [])
+      .filter(name => name && !name.endsWith(PART_SUFFIX))
+      .map(name => `${dir}/${name}`);
+    const all = new Set(paths);
+    return new Set(
+      paths.filter(path => {
+        const owner = ownerOf(path);
+        return owner === null || !all.has(owner);
+      }),
     );
-    return new Set(names.map(name => `${dir}/${name}`));
   }
   log(`thumbs: cannot list ${dir}: ${listed.message}`);
   return null;
@@ -116,13 +146,40 @@ export async function prepareThumbs(): Promise<string | null> {
   return known ? dir.value : null;
 }
 
+/**
+ * Counts a converted file just written (#102): on its own when its thumbnail is not stored, as
+ * for a saved symbol, whose picture lives in the symbols folder; else it leaves with its thumbnail.
+ */
+export function storeDerived(path: string): void {
+  const owner = ownerOf(path);
+  if (known && owner !== null && !known.has(owner)) {
+    known.delete(path);
+    known.add(path);
+  }
+}
+
 /** Downloads started and not ended: each holds a place in the store while it runs. */
 let reserved = 0;
 
+/** Removes one stored file and its converted files; false when one is still on the device. */
+async function remove(path: string): Promise<boolean> {
+  const siblings =
+    ownerOf(path) === null ? SIBLING_SUFFIXES.map(end => `${path}${end}`) : [];
+  for (const file of [path, ...siblings]) {
+    const removed = await logged(`delete thumb ${file}`, () =>
+      deleteFile(file),
+    );
+    if (!removed.ok || !removed.value) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
- * Removes the oldest files until the running downloads fit; false when a file cannot be removed.
- * Each file leaves the list before its delete is awaited, so parallel downloads remove
- * different files.
+ * Removes the oldest files, each with its converted files, until the running downloads fit;
+ * false when a file cannot be removed. Each file leaves the list before its delete is awaited,
+ * so parallel downloads remove different files.
  */
 async function makeRoom(stored: Set<string>): Promise<boolean> {
   while (stored.size + reserved > THUMB_LIMIT) {
@@ -131,10 +188,7 @@ async function makeRoom(stored: Set<string>): Promise<boolean> {
       return false;
     }
     stored.delete(oldest);
-    const removed = await logged(`delete thumb ${oldest}`, () =>
-      deleteFile(oldest),
-    );
-    if (!removed.ok || !removed.value) {
+    if (!(await remove(oldest))) {
       // Still on the device, so it is counted again, now as the newest.
       stored.add(oldest);
       return false;

@@ -246,9 +246,33 @@ async function handlePenUp(elements: object[], at: number): Promise<void> {
   }
 }
 
+/** Bridge calls at a time while reading or releasing a page's strokes (#102). */
+export const STROKE_READS_PARALLEL = 4;
+
+/** `run` over every item, at most `limit` at a time; the answers keep the items' order. */
+async function mapLimited<T, R>(
+  items: readonly T[],
+  limit: number,
+  run: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const answers: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      answers[i] = await run(items[i]);
+    }
+  };
+  await Promise.all(
+    Array.from({length: Math.min(limit, items.length)}, worker),
+  );
+  return answers;
+}
+
 /**
- * The page's newest PROBE_STROKES strokes with their points, oldest first. Every element read is
- * recycled, as the SDK requires (docs, Element Caching and Release).
+ * The page's newest PROBE_STROKES strokes with their points, oldest first, read
+ * STROKE_READS_PARALLEL at a time (#102). Every element read is then recycled, as the SDK asks
+ * (docs, Element Caching and Release): in the background, since nothing waits for it.
  */
 async function readPageStrokes(page: PageContext): Promise<PageStroke[]> {
   const started = Date.now();
@@ -265,16 +289,16 @@ async function readPageStrokes(page: PageContext): Promise<PageStroke[]> {
       .filter(element => element.type === STROKE_TYPE)
       .sort((a, b) => (a.numInPage ?? 0) - (b.numInPage ?? 0))
       .slice(-PROBE_STROKES);
-    for (const element of strokes) {
-      const points = await strokePoints(element);
+    const read = await mapLimited(strokes, STROKE_READS_PARALLEL, strokePoints);
+    read.forEach((points, i) => {
       if (points.ok) {
-        kept.push({num: element.numInPage ?? 0, points: points.value});
+        kept.push({num: strokes[i].numInPage ?? 0, points: points.value});
       }
-    }
+    });
   } finally {
-    for (const element of all.value) {
-      await recycleElement(element);
-    }
+    mapLimited(all.value, STROKE_READS_PARALLEL, recycleElement).catch(
+      () => {},
+    );
   }
   log(
     `probe page strokes: ${all.value.length} element(s), ${

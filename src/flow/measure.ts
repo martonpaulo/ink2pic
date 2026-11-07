@@ -21,7 +21,14 @@ import {
   Prepared,
   withinLimit,
 } from '../search-core';
-import {THUMB_TIMEOUT_MS, thumbPath, thumbUri} from '../search/thumbs';
+import {
+  CONTOUR_SUFFIX,
+  DARKENED_SUFFIX,
+  storeDerived,
+  THUMB_TIMEOUT_MS,
+  thumbPath,
+  thumbUri,
+} from '../search/thumbs';
 import {getSettings} from '../storage/settings';
 import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';
@@ -37,13 +44,6 @@ export const MEASURE_LIMIT_MS = THUMB_TIMEOUT_MS;
  */
 export const LATER_MEASURE_LIMIT_MS = 2000;
 const FILE_PREFIX = 'file://';
-/**
- * The converted thumbnail, in the private thumbs/ folder under the result's own name, counted by
- * its store; never beside a shared file such as a saved symbol, which cannot be deleted (#103).
- */
-const CONTOUR_SUFFIX = '.contour.png';
-/** A faint picture's darkened thumbnail (#81): not a contour drawing, so it inserts darkened too. */
-const DARKENED_SUFFIX = '.dark.png';
 /**
  * Thumbnails come at 330 and 400 px; never scaled up. `EinkPixels.MEASURE_WIDTH` holds it too;
  * dry-check.json's twins name this one the owner, native/tests/twins.json the value.
@@ -151,6 +151,7 @@ async function measureFile(
     log(`contour ${result.id}: ${converted.message}`);
     return asFound(m);
   }
+  storeDerived(dest);
   const again = await deps.analyzer.measure(dest);
   log(
     `contour ${result.id}: ${Math.round(converted.value.ms)} ms, now ${
@@ -190,6 +191,7 @@ async function darkenFile(
     log(`darken ${result.id}: ${darkened.message}`);
     return asFound(m);
   }
+  storeDerived(dest);
   const again = await deps.analyzer.measure(dest);
   log(
     `darken ${result.id}: ${Math.round(darkened.value.ms)} ms, now ${

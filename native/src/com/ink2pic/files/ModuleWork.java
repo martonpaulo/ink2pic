@@ -78,6 +78,17 @@ final class ModuleWork {
     return total;
   }
 
+  /** Adds `bytes` at the end of `target`, creating it and its folder when missing (#102). */
+  static void append(File target, byte[] bytes) throws IOException {
+    File parent = target.getParentFile();
+    if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+      throw new IOException("cannot create folder " + parent);
+    }
+    try (OutputStream output = new FileOutputStream(target, true)) {
+      output.write(bytes);
+    }
+  }
+
   /**
    * Writes straight into a file in shared storage: no temporary file, no rename, no delete, which
    * PluginHost refuses without FILE:DELETE (#62). shortcut: a write cut off midway leaves a partial
