@@ -6,6 +6,7 @@ import type {SourceAdapter, SourceContext} from './adapter';
 import type {Breaker} from './breaker';
 import {Clock, noLog, systemClock} from './clock';
 import {SOURCE_TIMEOUT_MS} from './fetcher';
+import {fallbackQueries, normalise} from './query';
 import {rankForEink} from './rank';
 import type {FailureKind, SearchResult, SourceOutcome} from './types';
 
@@ -196,9 +197,10 @@ async function searchOnce(
 }
 
 /**
- * Searches every source in parallel and ranks what they found. When nothing was found and a
- * source suggested another spelling, the main sources search that spelling once (no supplement,
- * so at most their own requests more); its results show when it found any.
+ * Searches every source in parallel and ranks what they found. When nothing was found, the main
+ * sources search once more (no supplement, so at most their own requests more) with the first
+ * of: the spelling a source suggested (Commons, then Wikipedia), the word as a prefix, the
+ * phrase's longest word (#65, #71); those results show when they found any.
  */
 export async function searchAll(
   query: string,
@@ -213,13 +215,16 @@ export async function searchAll(
 ): Promise<SearchOutcome> {
   const run: Run = {ctx, clock, timeoutMs, breaker};
   const first = await searchOnce(query, sources, run);
-  const {outcome, suggestion} = first;
-  if (
-    !correct ||
-    !suggestion ||
-    outcome.results.length > 0 ||
-    outcome.allFailed
-  ) {
+  const {outcome} = first;
+  if (!correct || outcome.results.length > 0 || outcome.allFailed) {
+    return outcome;
+  }
+  // One re-run at most, of the main sources: the first candidate that differs from the query.
+  const typed = normalise(query).toLocaleLowerCase();
+  const suggestion = [first.suggestion, ...fallbackQueries(query)].find(
+    candidate => candidate && candidate.toLocaleLowerCase() !== typed,
+  );
+  if (!suggestion) {
     return outcome;
   }
   ctx.log(`search "${query}": nothing found, trying "${suggestion}"`);

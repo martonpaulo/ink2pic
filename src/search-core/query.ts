@@ -106,3 +106,25 @@ export function readIntent(query: string): QueryIntent {
 export function hasStyle(title: string, group: StyleGroup): boolean {
   return STYLE_GROUPS[group].test(title);
 }
+
+/** A single word this long or longer may be cut short («elephan»): its prefix is searched. */
+const PREFIX_MINIMUM = 4;
+
+/**
+ * What an empty search tries after the sources' own suggestions, cheapest first (#71): a single
+ * word as a prefix (`elephan*`, which Commons reads as a wildcard), a phrase by its longest word.
+ */
+export function fallbackQueries(query: string): string[] {
+  const all = normalise(query).split(' ').filter(Boolean);
+  if (all.length === 1) {
+    const [word] = all;
+    return [...word].length >= PREFIX_MINIMUM && !word.endsWith('*')
+      ? [`${word}*`]
+      : [];
+  }
+  const longest = all.reduce(
+    (best, word) => ([...word].length > [...best].length ? word : best),
+    '',
+  );
+  return longest ? [longest] : [];
+}

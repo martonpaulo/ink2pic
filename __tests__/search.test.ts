@@ -387,9 +387,62 @@ describe('the circuit breaker (#65)', () => {
     const a = down();
     const only = answering('w', {ok: true, results: []});
     const wikidata = {...only, supplement: true as const};
-    await searchAll('soup', [a, wikidata], {breaker});
-    await searchAll('soup', [a, wikidata], {breaker});
-    await searchAll('soup', [a, wikidata], {breaker});
+    await searchAll('cat', [a, wikidata], {breaker});
+    await searchAll('cat', [a, wikidata], {breaker});
+    await searchAll('cat', [a, wikidata], {breaker});
     expect(a.search).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('the fallback ladder (#71)', () => {
+  const finding = (found: Record<string, SearchResult[]>) => ({
+    name: 'commons',
+    search: jest.fn(
+      async (query: string): Promise<SourceOutcome> => ({
+        ok: true,
+        results: found[query] ?? [],
+      }),
+    ),
+  });
+
+  it('searches a cut word as a prefix', async () => {
+    const commons = finding({'elephan*': [result('e1')]});
+    const outcome = await searchAll('elephan', [commons]);
+    expect(outcome.correctedQuery).toBe('elephan*');
+    expect(outcome.results.map(x => x.id)).toEqual(['e1']);
+  });
+
+  it('searches a phrase by its longest word', async () => {
+    const commons = finding({relógio: [result('r1')]});
+    const outcome = await searchAll('velho relógio de parede', [commons]);
+    expect(outcome.correctedQuery).toBe('relógio');
+  });
+
+  it("prefers the sources' suggestion: Commons first, then Wikipedia", async () => {
+    const commons = {
+      name: 'commons',
+      search: jest.fn(
+        async (q: string): Promise<SourceOutcome> =>
+          q === 'elefant'
+            ? {ok: true, results: []}
+            : {ok: true, results: q === 'elephant' ? [result('e1')] : []},
+      ),
+    };
+    const wikipedia = {
+      ...answering('wikidata', {ok: true, results: [], suggestion: 'elephant'}),
+      supplement: true as const,
+    };
+    const outcome = await searchAll('elefant', [commons, wikipedia]);
+    expect(outcome.correctedQuery).toBe('elephant');
+    expect(commons.search).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs one re-search at most, and none for a short word', async () => {
+    const commons = finding({});
+    await searchAll('elephan', [commons]);
+    expect(commons.search).toHaveBeenCalledTimes(2);
+    const short = finding({});
+    await searchAll('cat', [short]);
+    expect(short.search).toHaveBeenCalledTimes(1);
   });
 });
