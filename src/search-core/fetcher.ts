@@ -64,17 +64,17 @@ async function attempt(
   const cancel = clock.after(budgetMs, () => controller.abort());
   try {
     const response = await fetch(url, {headers, signal: controller.signal});
-    if (response.status === HTTP_TOO_MANY) {
-      return {...failure('throttled', `HTTP ${response.status}`), retry: true};
+    const {status} = response;
+    const code = `HTTP ${status}`;
+    if (status === HTTP_TOO_MANY) {
+      return {...failure('throttled', code), retry: true};
     }
-    if (response.status === HTTP_FORBIDDEN) {
-      return failure('throttled', `HTTP ${response.status}`);
+    if (status === HTTP_FORBIDDEN) {
+      return failure('throttled', code);
     }
     if (!response.ok) {
-      const http = failure('http', `HTTP ${response.status}`);
-      return response.status >= HTTP_SERVER_ERROR
-        ? {...http, retry: true}
-        : http;
+      const http = failure('http', code);
+      return status >= HTTP_SERVER_ERROR ? {...http, retry: true} : http;
     }
     return {ok: true, text: await response.text()};
   } catch (error) {
