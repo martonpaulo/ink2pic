@@ -52,6 +52,7 @@ const NO_NETWORK: SourceContext = {
   }),
   userAgent: '',
   log: noLog,
+  languages: [],
 };
 
 function withTimeout(
@@ -88,6 +89,11 @@ function status(outcome: SourceOutcome): SourceStatus {
   return outcome.results.length
     ? {state: 'ok', count: outcome.results.length}
     : {state: 'empty'};
+}
+
+function requestCount(source: SourceAdapter, ctx: SourceContext): number {
+  const {requests = 1} = source;
+  return typeof requests === 'function' ? requests(ctx) : requests;
 }
 
 type Pass = {outcome: SearchOutcome; suggestion?: string};
@@ -157,7 +163,7 @@ async function searchOnce(
         query,
         ctx,
         clock,
-        timeoutMs * (source.requests ?? 1),
+        timeoutMs * requestCount(source, ctx),
       );
     }),
   );

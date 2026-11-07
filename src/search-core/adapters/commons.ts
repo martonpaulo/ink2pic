@@ -276,6 +276,14 @@ export async function searchCommons(
   };
 }
 
+/** One Commons search for `search` as written, keywords included, with no plain fallback. */
+export function commonsSearch(
+  search: string,
+  ctx: SourceContext,
+): Promise<SourceOutcome> {
+  return ask(searchUrl(search), ctx, text => parseSearchResponse(text, search));
+}
+
 /** The named Commons files as results, in the order given; no request for an empty list. */
 export async function commonsFiles(
   names: readonly string[],

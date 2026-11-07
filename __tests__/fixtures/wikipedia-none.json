@@ -1,0 +1,8 @@
+{
+  "_fixture": "documented, not captured: the combined Wikipedia request with no article, carrying Wikipedia's suggestion (#71)",
+  "batchcomplete": true,
+  "query": {
+    "searchinfo": {"totalhits": 0, "suggestion": "elephant"},
+    "search": []
+  }
+}

@@ -85,7 +85,7 @@ describe('searchAll', () => {
 });
 
 const withFetch = (fetch: FetchLike) => ({
-  ctx: createContext({fetch, userAgent: 'Ink2Pic/test'}),
+  ctx: createContext({fetch, userAgent: 'Ink2Pic/test', languages: ['en']}),
 });
 
 describe('the default adapters', () => {
@@ -219,12 +219,14 @@ describe('sources of two requests and the supplement (#43)', () => {
     expect(await cached.saved).toBeNull();
   });
 
-  it('Commons and Wikidata make two requests; Wikidata only adds pictures', () => {
+  it('Commons makes two requests, Wikidata one per language and two more; Wikidata only adds pictures', () => {
     const byName = Object.fromEntries(
       DEFAULT_ADAPTERS.map(source => [source.name, source]),
     );
     expect(byName.commons.requests).toBe(2);
-    expect(byName.wikidata.requests).toBe(2);
+    const {ctx} = withFetch(jest.fn());
+    const wikidata = byName.wikidata.requests as (c: typeof ctx) => number;
+    expect(wikidata(ctx)).toBe(3);
     expect(byName.wikidata.supplement).toBe(true);
     expect(byName.openclipart.supplement).toBeUndefined();
   });

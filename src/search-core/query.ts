@@ -3,6 +3,35 @@
  * read. Each stage is a pure function.
  */
 
+/**
+ * The query as a lookup sends it: NFC, one space between words, no punctuation at its ends. The
+ * case is kept: search APIs ignore it, and a title lookup would break on a lowered one (#71).
+ */
+export function normalise(query: string): string {
+  return query
+    .normalize('NFC')
+    .replace(/\s+/gu, ' ')
+    .replace(/^[\s\p{P}]+|[\s\p{P}]+$/gu, '');
+}
+
+const HAN = /\p{Script=Han}/u;
+
+/**
+ * The languages a lookup tries, in order: a query in Han script goes to Chinese first when the
+ * list holds it; a query with no Han character skips Chinese (#71).
+ */
+export function lookupLanguages(
+  query: string,
+  languages: readonly string[],
+): string[] {
+  if (HAN.test(query)) {
+    return languages.includes('zh')
+      ? ['zh', ...languages.filter(lang => lang !== 'zh')]
+      : [...languages];
+  }
+  return languages.filter(lang => lang !== 'zh');
+}
+
 /** The query's words, lowercased, without numbers or punctuation. */
 export function words(text: string): string[] {
   return text

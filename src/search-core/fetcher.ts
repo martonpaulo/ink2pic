@@ -137,11 +137,14 @@ export function apiFailure(error: {code?: string; info?: string}): Failure {
   return failure(kind, `${error.code}: ${error.info}`);
 }
 
-/** The context adapters search with: one fetcher and the log. */
-export function createContext(options: FetcherOptions): SourceContext {
+/** The context adapters search with: one fetcher, the log and the query languages. */
+export function createContext(
+  options: FetcherOptions & {languages: readonly string[]},
+): SourceContext {
   return {
     fetch: createFetcher(options),
     userAgent: options.userAgent,
     log: options.log ?? noLog,
+    languages: options.languages,
   };
 }

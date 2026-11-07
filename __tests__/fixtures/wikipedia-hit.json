@@ -1,0 +1,18 @@
+{
+  "_fixture": "shape of the combined enwiki request (list=search + generator=search + pageprops|pageimages) from the research probes of 2026-11-06, with the values they printed for «frederico garcía lorca» (#71)",
+  "batchcomplete": true,
+  "query": {
+    "searchinfo": {"suggestion": "frederico garcia llorca"},
+    "search": [{"ns": 0, "title": "Federico García Lorca", "pageid": 11376}],
+    "pages": [
+      {
+        "pageid": 11376,
+        "ns": 0,
+        "title": "Federico García Lorca",
+        "index": 1,
+        "pageprops": {"wikibase_item": "Q100"},
+        "pageimage": "Example_portrait.jpg"
+      }
+    ]
+  }
+}

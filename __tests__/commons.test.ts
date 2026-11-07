@@ -17,7 +17,8 @@ import {fullUrl} from '../src/search-core/registry';
 import {USER_AGENT} from '../src/config';
 import {createContext, FetchLike} from '../src/search-core/fetcher';
 
-const ctx = (fetch: FetchLike) => createContext({fetch, userAgent: USER_AGENT});
+const ctx = (fetch: FetchLike) =>
+  createContext({fetch, userAgent: USER_AGENT, languages: ['en']});
 
 const fixture = (name: string) =>
   readFileSync(join(__dirname, 'fixtures', name), 'utf8');

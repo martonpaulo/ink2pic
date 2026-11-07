@@ -23,10 +23,21 @@ import {deviceStorage} from '../storage/text';
 /** In memory for the plugin's run: a source that keeps failing is skipped for a while (#65). */
 const breaker = createBreaker();
 
+/**
+ * shortcut: the product default with no system language read yet, English alone; #68 reads the
+ * person's setting and the system language.
+ */
+const LANGUAGES: readonly string[] = ['en'];
+
 export function deviceContext(
   fetch: FetchLike = globalThis.fetch,
 ): SourceContext {
-  return createContext({fetch, userAgent: USER_AGENT, log});
+  return createContext({
+    fetch,
+    userAgent: USER_AGENT,
+    log,
+    languages: LANGUAGES,
+  });
 }
 
 export async function searchCached(
