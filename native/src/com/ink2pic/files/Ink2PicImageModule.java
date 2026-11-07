@@ -16,8 +16,8 @@ import java.util.concurrent.Executors;
 
 /**
  * Prepares a saved picture for the 16-gray e-ink screen (brief sections 7 and 9.4, issue #17):
- * bounds-first decode, scale down to the target width, flatten on white, gray with the e-ink
- * contrast curve, encode.
+ * bounds-first decode, scale down to the target width, flatten on white, gray that keeps the
+ * contrast between colours (#89), the e-ink contrast curve, encode.
  */
 public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   private static final String PNG = "png";
@@ -116,6 +116,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
       result.putDouble("edgeBox", m.edgeBox);
       result.putInt("colours", m.colours);
       result.putDouble("objectShare", m.objectShare);
+      result.putString("hash", PerceptualHash.of(decoded.argb, decoded.width, decoded.height));
       result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);
       return result;
     });
@@ -176,6 +177,8 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   private static Bitmap prepare(File source, int targetWidth, boolean quantize, boolean contour)
       throws Exception {
     Pixels pixels = decode(source, targetWidth);
+    // Gray that keeps the contrast between colours, before the contour and the e-ink curve (#89).
+    Decolor.apply(pixels.argb, pixels.width, pixels.height);
     if (contour) {
       Contour.apply(pixels.argb, pixels.width, pixels.height);
     }

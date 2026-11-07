@@ -103,6 +103,24 @@ describe('rankForEink', () => {
     ]);
   });
 
+  it("leads with the query's own flag, before regional flags (#89)", () => {
+    const commons = [
+      r('commons', 'Flag of the Canary Islands', 'image/svg+xml'),
+      r('commons', 'Flag of Galicia', 'image/svg+xml'),
+    ];
+    const wikidata = [
+      {...r('commons', 'Flag of Spain', 'image/svg+xml', true), leads: true as const},
+      r('commons', 'Spain map', 'image/png', true),
+    ];
+    const titles = rankForEink([commons, wikidata], 'Spain').map(x => x.title);
+    expect(titles).toEqual([
+      'Flag of Spain',
+      'Flag of the Canary Islands',
+      'Spain map',
+      'Flag of Galicia',
+    ]);
+  });
+
   it('shows the canonical pictures alone when nothing else was found', () => {
     const wikidata = [r('commons', 'Example flag', 'image/svg+xml', true)];
     expect(rankForEink([[], wikidata], 'x').map(x => x.title)).toEqual([

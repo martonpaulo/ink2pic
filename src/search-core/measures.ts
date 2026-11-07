@@ -46,6 +46,8 @@ export type Measures = {
   colours: number;
   /** Share of pixels that differ from the background. */
   objectShare: number;
+  /** Perceptual hash, 48 hex digits (`PerceptualHash.java`, #89); absent from an older module. */
+  hash?: string;
   ms: number;
 };
 

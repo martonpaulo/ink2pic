@@ -11,6 +11,7 @@
  */
 import {log} from '../log/memory';
 import {
+  dropNearDuplicates,
   ImageAnalyzer,
   lineArt,
   MEASURED_RESULTS,
@@ -238,8 +239,13 @@ export async function measureFirstPages(
       MEASURED_RESULTS,
     )} measured in ${Date.now() - started} ms${late ? ', limit reached' : ''}`,
   );
+  const ordered = reorderByMeasures(results, used, query);
+  const distinct = dropNearDuplicates(ordered, used);
+  if (distinct.length < ordered.length) {
+    log(`pixels: ${ordered.length - distinct.length} near-duplicates left out`);
+  }
   return {
-    results: reorderByMeasures(results, used, query),
+    results: distinct,
     measures: used,
     contourThumbs,
   };

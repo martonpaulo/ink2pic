@@ -219,7 +219,8 @@ function wanted(result: SearchResult, {styles}: QueryIntent): boolean {
  * Sorts by score; ties keep each source's own order and alternate the sources, so the first
  * page mixes both. `lists` holds each source's results in its own rank order. Canonical
  * results keep their own order and follow the best-ranked other result, so page 1 holds both
- * the simple drawing and, for a person, the real portrait (#43). A picture two sources return
+ * the simple drawing and, for a person, the real portrait (#43); the query's own flag, a canonical
+ * result that leads, comes before that result (#89). A picture two sources return
  * is shown once.
  */
 export function rankForEink(
@@ -248,7 +249,15 @@ export function rankForEink(
     }))
     .sort((a, b) => b.score - a.score || a.order - b.order)
     .map(entry => entry.result);
-  const ordered = best ? [best, ...canonical, ...rest] : canonical;
+  // The query's own flag (#89) leads, before the best other result.
+  const leading = canonical.filter(result => result.leads);
+  const following = canonical.filter(result => !result.leads);
+  const ordered = [
+    ...leading,
+    ...(best ? [best] : []),
+    ...following,
+    ...rest,
+  ];
   const seen = new Set<string>();
   return ordered.filter(result => !seen.has(result.id) && seen.add(result.id));
 }

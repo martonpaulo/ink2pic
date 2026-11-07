@@ -470,7 +470,7 @@ Pipeline, per selected image, performed in native code while saving:
 2. Decode with bounds first (`inJustDecodeBounds`), then power-of-two `inSampleSize`, with a memory cap. Pic2Note does this with caps of 4 MP for previews, 16 MP for exports, 8192 px per edge [REPORTED, `docs/image-loading.md`].
 3. Flatten transparency onto **white** (avoid dark or jagged edges from alpha) [TO TEST visually].
 4. A picture whose thumbnail measures dark or photo-like, or any picture not already line work when the query asks for an outline, becomes a contour drawing at the output size: 1 %/99 % contrast stretch, XDoG, ink specks under 8 px removed (`Contour.java`); its grid thumbnail shows the same conversion, so what the person sees is what goes in (owner decision D5 A, [#66](https://github.com/martonpaulo/ink2pic/issues/66)). Pages 1 and 2 are measured before page 1 shows; page 3 and later as each page loads, before it shows, at most 2 s after the download, then shown as found, and the pick inserts the contour drawing only when its tile shows one ([#72](https://github.com/martonpaulo/ink2pic/issues/72)) [DEFAULT 2 s; TO TEST on the Manta]. A photo or painting query converts nothing. Desktop JVM: 67 ms for 640 x 954 px, about 17 bytes per pixel of buffers [CONFIRMED desktop; TO TEST on the Manta, whose log shows each time].
-5. Convert to grayscale with a contrast curve suited to e-ink.
+5. Convert to grayscale with a contrast curve suited to e-ink. The gray keeps the contrast between colours: before the contour and the curve, `Decolor.java` picks per picture the channel weights in tenths that best keep the CIELAB differences of pixel pairs (Lu, Xu and Jia 2012), starting from Rec. 601 luma, so a gray picture stays as it was; red and yellow of a flag become dark and light ([#89](https://github.com/martonpaulo/ink2pic/issues/89)) [CONFIRMED on synthetic pictures and lab thumbnails; TO TEST on the Manta].
 6. Optionally quantize to 16 gray levels [TO TEST whether it improves rendering or file size].
 7. Encode PNG for line art. JPG may be smaller for engravings and photos [TO TEST].
 
@@ -479,7 +479,7 @@ Targets [INFERENCE, to calibrate on device]:
 - Default inserted width about one third of the page width, about 600 to 700 px on a 1920 px wide Manta page, assuming the host maps image pixels to page pixels 1:1 [TO TEST].
 - Roughly 50 to 150 KB per saved image.
 
-Search-side quality: prefer results that render well in gray (line art, engravings, outlined clipart), ranked as [section 5.5](#55-ranking-and-its-measurement) defines. Show thumbnails converted to gray in the grid so the user sees the e-ink result before inserting [TO TEST cost].
+Search-side quality: prefer results that render well in gray (line art, engravings, outlined clipart), ranked as [section 5.5](#55-ranking-and-its-measurement) defines. Show thumbnails converted to gray in the grid so the user sees the e-ink result before inserting [TO TEST cost]. Near-duplicates on pages 1 and 2 show once: a 192-bit perceptual hash of the measured thumbnail (horizontal and vertical dHash, then aHash, `PerceptualHash.java`) within 12 bits, with the same shape and tone, keeps the copy the measured order puts first, or a clearly cleaner later one; a country's own flag (Wikidata P41 of the query's item) leads page 1 ([#89](https://github.com/martonpaulo/ink2pic/issues/89)) [DEFAULT 12 bits; TO TEST on the Manta].
 
 ---
 

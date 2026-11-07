@@ -115,6 +115,7 @@ describe('parseEntityResponse', () => {
       files: ['Example flag.svg', 'Example portrait.jpg'],
       human: true,
       signature: 'Example signature.svg',
+      flag: 'Example flag.svg',
     });
   });
 
@@ -171,6 +172,8 @@ describe('searchWikidata', () => {
       'Example flag',
       'Example portrait',
     ]);
+    // The item's own flag (P41) leads the page (#89); its other pictures do not.
+    expect(canonical.map(r => r.leads === true)).toEqual([true, false]);
     expect(outcome.results.length).toBeGreaterThan(canonical.length);
   });
 

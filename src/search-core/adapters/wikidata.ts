@@ -20,6 +20,7 @@ const WIKIPEDIA_API = 'https://{language}.wikipedia.org/w/api.php';
 /** Flag first, then logo or symbol, then image: the order they are shown in. */
 export const PICTURE_PROPERTIES = ['P41', 'P154', 'P18'] as const;
 const INSTANCE_OF = 'P31';
+const FLAG = PICTURE_PROPERTIES[0];
 const HUMAN = 'Q5';
 /** The signature file: never a picture of the person (research C). */
 const SIGNATURE = 'P109';
@@ -161,10 +162,20 @@ function isHuman(statements: Statement[] = []): boolean {
 }
 
 export type EntityOutcome =
-  | {ok: true; files: string[]; human: boolean; signature?: string}
+  | {
+      ok: true;
+      files: string[];
+      human: boolean;
+      signature?: string;
+      /** The item's own flag (P41): it leads the page (#89). */
+      flag?: string;
+    }
   | Failure;
 
-/** The Commons file names of the item's pictures, whether it is a person, and its signature. */
+/**
+ * The Commons file names of the item's pictures, whether it is a person, its signature and its
+ * own flag.
+ */
 export function parseEntityResponse(text: string): EntityOutcome {
   const data = parseJson<EntityResponse>(text);
   if (isFailure(data)) {
@@ -179,10 +190,12 @@ export function parseEntityResponse(text: string): EntityOutcome {
   const files: string[] = [];
   let human = false;
   let signature: string | undefined;
+  let flag: string | undefined;
   for (const entity of Object.values(data.entities)) {
     if (entity.missing !== undefined) {
       continue;
     }
+    flag ??= fileOf(entity.claims?.[FLAG]);
     for (const property of PICTURE_PROPERTIES) {
       const file = fileOf(entity.claims?.[property]);
       if (file && !files.includes(file)) {
@@ -197,6 +210,7 @@ export function parseEntityResponse(text: string): EntityOutcome {
     files: files.filter(file => file !== signature),
     human,
     ...(signature && {signature}),
+    ...(flag && flag !== signature && {flag}),
   };
 }
 
@@ -247,6 +261,7 @@ export async function searchWikidata(
   let files: string[] = [];
   let human = false;
   let signature: string | undefined;
+  let flag: string | undefined;
   if (hit.item) {
     const response = await ctx.fetch(entityUrl(hit.item), {
       'Api-User-Agent': ctx.userAgent,
@@ -258,7 +273,7 @@ export async function searchWikidata(
     if (!entity.ok) {
       return entity;
     }
-    ({files, human, signature} = entity);
+    ({files, human, signature, flag} = entity);
   }
   if (hit.leadImage) {
     // The lead image uses underscores; Commons file names use spaces.
@@ -280,15 +295,27 @@ export async function searchWikidata(
     ctx.log(`wikidata: depicts gallery of ${hit.item}: ${gallery.message}`);
   }
   const signed = (title: string) =>
-    signature !== undefined && title === signature.replace(/\.[^.]+$/, '');
+    signature !== undefined && title === withoutExtension(signature);
+  // A country's own flag leads, before regional and other flags (#89).
+  const leads = (title: string) =>
+    flag !== undefined && title === withoutExtension(flag);
   return {
     ok: true,
     results: [
-      ...pictures.results.map(result => ({...result, canonical: true})),
+      ...pictures.results.map(result => ({
+        ...result,
+        canonical: true,
+        ...(leads(result.title) && {leads: true as const}),
+      })),
       ...(gallery.ok ? gallery.results : []).filter(r => !signed(r.title)),
     ],
     ...suggestion,
   };
+}
+
+/** A Commons file name without its extension: the result's title. */
+function withoutExtension(file: string): string {
+  return file.replace(/\.[^.]+$/, '');
 }
 
 /**

@@ -10,6 +10,7 @@ export {cachedSearch} from './cache';
 export type {CachedSearch, CacheOptions, TextStore} from './cache';
 export {noLog, systemClock} from './clock';
 export type {Clock, Log} from './clock';
+export {dropNearDuplicates} from './duplicates';
 export {createContext, createFetcher} from './fetcher';
 export type {Fetcher, FetchLike} from './fetcher';
 export {
