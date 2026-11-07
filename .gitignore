@@ -89,3 +89,9 @@ __pycache__/
 
 # Lane worktrees of backlog runs
 .claude/worktrees/
+
+# Search lab: raw source responses, thumbnails and sheets, rebuilt by its scripts
+lab/out/.cache/
+lab/out/*/sheets/
+# A run's raw titles and URLs: the commit scanner may read a picture title as private data.
+lab/out/*/results.json

@@ -1,0 +1,518 @@
+{
+ "chair": {
+  "ok": true,
+  "reason": "a plain chair icon first, then chair drawings and silhouettes"
+ },
+ "house": {
+  "ok": true,
+  "reason": "a simple house icon first; two US election maps titled House at 4 and 5"
+ },
+ "bicycle": {
+  "ok": true,
+  "reason": "a bicycle drawing first, though with a rider and a counter; clean silhouettes at 2 and 3"
+ },
+ "umbrella": {
+  "ok": true,
+  "reason": "an open umbrella icon first"
+ },
+ "key": {
+  "ok": false,
+  "reason": "door keys on the page, but a keyboard Enter key at 1 and a Ctrl key at 5, which the expectation excludes"
+ },
+ "clock": {
+  "ok": true,
+  "reason": "clock faces first and at 3 to 5"
+ },
+ "bread": {
+  "ok": true,
+  "reason": "a loaf of bread line drawing first"
+ },
+ "soup": {
+  "ok": false,
+  "reason": "a soup ladle first; bowls of soup only at 3 and 4; a noisy alphabet soup at 5"
+ },
+ "banana": {
+  "ok": true,
+  "reason": "a single banana first"
+ },
+ "pizza": {
+  "ok": false,
+  "reason": "a pizza cutter first and three Pizza Hut logos; one pizza drawing at 3",
+  "flags": {
+   "logo": [
+    2,
+    4,
+    5
+   ]
+  }
+ },
+ "cat": {
+  "ok": true,
+  "reason": "a cat drawing first; the white silhouette at 5 is invisible on white"
+ },
+ "dog": {
+  "ok": true,
+  "reason": "a dog icon first; a curb-your-dog sign at 5"
+ },
+ "elephant": {
+  "ok": true,
+  "reason": "an elephant drawing first"
+ },
+ "owl": {
+  "ok": true,
+  "reason": "an owl outline first, owls throughout"
+ },
+ "butterfly": {
+  "ok": true,
+  "reason": "butterfly clipart first"
+ },
+ "tree": {
+  "ok": false,
+  "reason": "a text-only «Tree» button first and a search-tree diagram at 4",
+  "flags": {
+   "text": [
+    0
+   ]
+  }
+ },
+ "rose": {
+  "ok": false,
+  "reason": "a rose first, but two compass roses at 4 and 5, which the expectation excludes"
+ },
+ "sunflower": {
+  "ok": true,
+  "reason": "a sunflower drawing first"
+ },
+ "eiffel-tower": {
+  "ok": true,
+  "reason": "Eiffel Tower drawings throughout"
+ },
+ "paris": {
+  "ok": false,
+  "reason": "The Judgment of Paris first, then a coat of arms, a Paris logo, a shape and an election map; the Eiffel Tower photo only at 3",
+  "flags": {
+   "logo": [
+    2
+   ]
+  }
+ },
+ "mount-everest": {
+  "ok": true,
+  "reason": "Everest mountain pictures at 0 to 2; two death-rate charts and a route map after them"
+ },
+ "rio-de-janeiro": {
+  "ok": true,
+  "reason": "a photo with Christ the Redeemer at 2; the rest are a shape, flags, a map and a chart"
+ },
+ "napoleon": {
+  "ok": true,
+  "reason": "the David portrait at 1 and an engraved portrait at 5; a geometry diagram at 4"
+ },
+ "miguel-de-cervantes": {
+  "ok": true,
+  "reason": "the portrait at 1; a library logo first and three quote images with text",
+  "flags": {
+   "logo": [
+    0
+   ],
+   "text": [
+    3,
+    4,
+    5
+   ]
+  }
+ },
+ "federico-garcia-lorca": {
+  "ok": false,
+  "reason": "no portrait: four copies of a quote poster, his signature and an airport logo; Wikidata found no item",
+  "flags": {
+   "text": [
+    0,
+    1,
+    2,
+    3
+   ]
+  }
+ },
+ "frida-kahlo": {
+  "ok": true,
+  "reason": "the Guillermo Kahlo photo at 1 and cartoon portraits"
+ },
+ "leonardo-da-vinci": {
+  "ok": true,
+  "reason": "the Melzi portrait at 1 and an engraved portrait at 2; a knot pattern first"
+ },
+ "cleopatra": {
+  "ok": true,
+  "reason": "a bust at 1 and drawings of Cleopatra"
+ },
+ "machado-de-assis": {
+  "ok": true,
+  "reason": "portraits at 1 to 3 and 5, but his signature first"
+ },
+ "santos-dumont": {
+  "ok": true,
+  "reason": "his aircraft at 0 and 3; no portrait; a town, two maps and a flag"
+ },
+ "clarice-lispector": {
+  "ok": true,
+  "reason": "portraits at 1 to 5, but her signature first"
+ },
+ "maca": {
+  "ok": true,
+  "reason": "apples at 1 to 4, but the Apple Inc. logo first and a national-park map at 5",
+  "flags": {
+   "logo": [
+    0
+   ]
+  }
+ },
+ "cadeira": {
+  "ok": false,
+  "reason": "no chair: a parliament-seat chart and five wheelchair icons"
+ },
+ "cachorro": {
+  "ok": false,
+  "reason": "no dog picture: a portrait, a wolf, a colour swatch, a farm scene and a map"
+ },
+ "sopa": {
+  "ok": false,
+  "reason": "six «Stop SOPA» protest signs, no soup",
+  "flags": {
+   "text": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  }
+ },
+ "manzana": {
+  "ok": true,
+  "reason": "apples throughout; several nearly black, one very small"
+ },
+ "perro": {
+  "ok": true,
+  "reason": "dog drawings throughout"
+ },
+ "silla": {
+  "ok": true,
+  "reason": "chairs at 0 and 2; a funerary figure, a seal, a map and a coat of arms"
+ },
+ "mariposa": {
+  "ok": true,
+  "reason": "butterflies at 2 to 5; mariposa lilies first"
+ },
+ "zh-apple": {
+  "ok": true,
+  "reason": "one apple at 2; three Apple Music icons and two «Music follow» badges",
+  "flags": {
+   "logo": [
+    0,
+    1,
+    3,
+    4,
+    5
+   ],
+   "text": [
+    4,
+    5
+   ]
+  }
+ },
+ "zh-dog": {
+  "ok": true,
+  "reason": "a dog icon at 5; five tiles of the Chinese character itself",
+  "flags": {
+   "text": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ]
+  }
+ },
+ "soup-caps": {
+  "ok": false,
+  "reason": "the same page as soup: a ladle first, bowls only at 3 and 4"
+ },
+ "napoleon-caps": {
+  "ok": true,
+  "reason": "the David portrait at 1; three geometry diagrams"
+ },
+ "frederico-garcia-lorca": {
+  "ok": false,
+  "reason": "the same page as the correct name: quote posters, a signature and a logo",
+  "flags": {
+   "text": [
+    0,
+    1,
+    2,
+    3
+   ]
+  }
+ },
+ "garcia-lorca": {
+  "ok": false,
+  "reason": "the same page: quote posters, a signature and a logo; no portrait",
+  "flags": {
+   "text": [
+    0,
+    1,
+    2,
+    3
+   ]
+  }
+ },
+ "elephent": {
+  "ok": true,
+  "reason": "an elephant photo at 5; two signboards at 3 and 4, a board game first",
+  "flags": {
+   "text": [
+    3,
+    4
+   ]
+  }
+ },
+ "apple-logo": {
+  "ok": false,
+  "reason": "no Apple logo first: a device icon, an egg computer, a parody, an Apple Vision Pro wordmark at 3",
+  "flags": {
+   "text": [
+    3
+   ]
+  }
+ },
+ "flag-of-brazil": {
+  "ok": true,
+  "reason": "the flag of Brazil first"
+ },
+ "map-of-spain": {
+  "ok": true,
+  "reason": "a crude Spain outline first, then maps"
+ },
+ "photo-of-a-cat": {
+  "ok": false,
+  "reason": "drawings, a district emblem and a portrait; no clear cat photo first",
+  "flags": {
+   "logo": [
+    1
+   ]
+  }
+ },
+ "cat-drawing": {
+  "ok": true,
+  "reason": "cat drawings first; a mosque floor plan at 3"
+ },
+ "tree-silhouette": {
+  "ok": true,
+  "reason": "black tree silhouettes throughout"
+ },
+ "love": {
+  "ok": true,
+  "reason": "hearts at 4 and 5; a text-only «Love & Let Love» first",
+  "flags": {
+   "text": [
+    0
+   ]
+  }
+ },
+ "freedom": {
+  "ok": false,
+  "reason": "no bird, chains or statue: a software logo, two world maps, an emblem; a man with open arms at 5",
+  "flags": {
+   "logo": [
+    0
+   ]
+  }
+ },
+ "time": {
+  "ok": true,
+  "reason": "an hourglass first and a pocket watch at 1; a «TIME» wordmark at 2",
+  "flags": {
+   "text": [
+    2
+   ]
+  }
+ },
+ "happiness": {
+  "ok": true,
+  "reason": "a smiling girl at 1; two double-happiness characters",
+  "flags": {
+   "text": [
+    0,
+    3
+   ]
+  }
+ },
+ "cold": {
+  "ok": true,
+  "reason": "thermometers first; a «cold» wordmark at 5",
+  "flags": {
+   "text": [
+    5
+   ]
+  }
+ },
+ "hot": {
+  "ok": false,
+  "reason": "no sun, thermometer or flame: hot springs, a pepper, hot wine, a hot water sign and sauce bottles"
+ },
+ "happy": {
+  "ok": true,
+  "reason": "a smiling girl at 1 and a grinning face at 4; a beverage logo at 3",
+  "flags": {
+   "logo": [
+    3
+   ]
+  }
+ },
+ "sad": {
+  "ok": true,
+  "reason": "a crying cat first and a sad face at 5; an Arabic letter at 2",
+  "flags": {
+   "text": [
+    2
+   ]
+  }
+ },
+ "angry": {
+  "ok": true,
+  "reason": "an angry man first and angry faces throughout"
+ },
+ "fear": {
+  "ok": true,
+  "reason": "a fearful silhouette first and a scared child at 1"
+ },
+ "idea": {
+  "ok": true,
+  "reason": "light bulbs at 1 to 4, but the IntelliJ IDEA logo first; «AMAZING» text at 5",
+  "flags": {
+   "logo": [
+    0
+   ],
+   "text": [
+    5
+   ]
+  }
+ },
+ "music": {
+  "ok": true,
+  "reason": "a music note first; the tile at 5 does not render"
+ },
+ "sleep": {
+  "ok": true,
+  "reason": "a «zzz» bed icon first, though crossed out as «no sleep»; sleeping lions at 1; a diary, a hypnogram and a flow chart"
+ },
+ "mouse": {
+  "ok": true,
+  "reason": "a computer mouse first and animal mice"
+ },
+ "bat": {
+  "ok": true,
+  "reason": "bats at 1 to 4; the first tile is nearly blank on white"
+ },
+ "apple": {
+  "ok": true,
+  "reason": "an apple first; the Apple Inc. logo at 3",
+  "flags": {
+   "logo": [
+    3
+   ]
+  }
+ },
+ "crane": {
+  "ok": true,
+  "reason": "construction cranes first and a crane bird at 2"
+ },
+ "red-apple": {
+  "ok": true,
+  "reason": "red apples throughout (Wikidata stayed throttled for this query)"
+ },
+ "birthday-cake": {
+  "ok": true,
+  "reason": "a birthday cake with candles first"
+ },
+ "cup-of-coffee": {
+  "ok": true,
+  "reason": "cups of coffee throughout"
+ },
+ "a-dog-playing-with-a-ball": {
+  "ok": true,
+  "reason": "a dog playing at 0 and a dog with a ball at 5; four otter photos between them"
+ },
+ "a": {
+  "ok": false,
+  "reason": "a letter A at 2, but noise around it: a cloud, a signal flag, cartoons, a barrel"
+ },
+ "ox": {
+  "ok": true,
+  "reason": "ox silhouettes and an ox line drawing"
+ },
+ "x": {
+  "ok": false,
+  "reason": "letters X at 2, 3 and 5, but noise: a coaster, a signal flag, Malcolm X"
+ },
+ "dot": {
+  "ok": false,
+  "reason": "random pictures for «.»: an ant, a fox, a handbag, a shoe, a diagram"
+ },
+ "xyzzy": {
+  "ok": false,
+  "reason": "looks like an answer: a text screen, two diagrams and three hospital logos",
+  "flags": {
+   "text": [
+    0
+   ],
+   "logo": [
+    3
+   ]
+  }
+ },
+ "qwrtpl": {
+  "ok": true,
+  "reason": "an honest empty page with the «No pictures found» line"
+ },
+ "however": {
+  "ok": false,
+  "reason": "six unrelated pictures (plans, a wrench, a sun, a blank broken SVG) for a word with no picture"
+ },
+ "coca-cola": {
+  "ok": true,
+  "reason": "Coca-Cola logos and a bottle: a logo is what a brand name asks for"
+ },
+ "nike": {
+  "ok": false,
+  "reason": "a world map and a shoe infographic first; the swoosh only at 5; two protest parodies",
+  "flags": {
+   "text": [
+    1,
+    3,
+    4
+   ]
+  }
+ },
+ "google": {
+  "ok": false,
+  "reason": "the Gemini icon first; the Google logo only at 1"
+ },
+ "apples": {
+  "ok": true,
+  "reason": "apple drawings throughout"
+ },
+ "dogs": {
+  "ok": true,
+  "reason": "dog drawings first; a «no dogs» sign at 3"
+ },
+ "mice": {
+  "ok": true,
+  "reason": "mouse drawings first"
+ },
+ "leaves": {
+  "ok": true,
+  "reason": "a leaf silhouette first; the tile at 4 is a dark square"
+ }
+}

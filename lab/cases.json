@@ -1,0 +1,526 @@
+{
+ "cases": [
+  {
+   "id": "chair",
+   "category": "object",
+   "query": "chair",
+   "expect": "a plain drawing of a chair first; no furniture catalogue photo or diagram"
+  },
+  {
+   "id": "house",
+   "category": "object",
+   "query": "house",
+   "expect": "a simple house drawing first; no floor plan or map"
+  },
+  {
+   "id": "bicycle",
+   "category": "object",
+   "query": "bicycle",
+   "expect": "a side-view bicycle drawing first; no technical diagram"
+  },
+  {
+   "id": "umbrella",
+   "category": "object",
+   "query": "umbrella",
+   "expect": "an open umbrella drawing first"
+  },
+  {
+   "id": "key",
+   "category": "object",
+   "query": "key",
+   "expect": "a door key drawing first; no keyboard key or map key"
+  },
+  {
+   "id": "clock",
+   "category": "object",
+   "query": "clock",
+   "expect": "a clock face drawing first; no clock tower photo"
+  },
+  {
+   "id": "bread",
+   "category": "food",
+   "query": "bread",
+   "expect": "a loaf of bread drawing first"
+  },
+  {
+   "id": "soup",
+   "category": "food",
+   "query": "soup",
+   "expect": "a bowl of soup drawing first; no text label"
+  },
+  {
+   "id": "banana",
+   "category": "food",
+   "query": "banana",
+   "expect": "a single banana drawing first"
+  },
+  {
+   "id": "pizza",
+   "category": "food",
+   "query": "pizza",
+   "expect": "a pizza or pizza slice drawing first"
+  },
+  {
+   "id": "cat",
+   "category": "animal",
+   "query": "cat",
+   "expect": "a cat drawing first; no logo, no text"
+  },
+  {
+   "id": "dog",
+   "category": "animal",
+   "query": "dog",
+   "expect": "a dog drawing first; no logo"
+  },
+  {
+   "id": "elephant",
+   "category": "animal",
+   "query": "elephant",
+   "expect": "an elephant drawing first; no political logo"
+  },
+  {
+   "id": "owl",
+   "category": "animal",
+   "query": "owl",
+   "expect": "an owl drawing first"
+  },
+  {
+   "id": "butterfly",
+   "category": "animal",
+   "query": "butterfly",
+   "expect": "a butterfly drawing first"
+  },
+  {
+   "id": "tree",
+   "category": "plant",
+   "query": "tree",
+   "expect": "a whole tree drawing first; no family tree or diagram"
+  },
+  {
+   "id": "rose",
+   "category": "plant",
+   "query": "rose",
+   "expect": "a rose flower drawing first; no compass rose"
+  },
+  {
+   "id": "sunflower",
+   "category": "plant",
+   "query": "sunflower",
+   "expect": "a sunflower drawing first"
+  },
+  {
+   "id": "eiffel-tower",
+   "category": "place",
+   "query": "Eiffel Tower",
+   "expect": "a drawing or clear picture of the Eiffel Tower first; no map"
+  },
+  {
+   "id": "paris",
+   "category": "place",
+   "query": "Paris",
+   "expect": "a recognisable Paris landmark (Eiffel Tower) on page 1; maps and flags only after a picture"
+  },
+  {
+   "id": "mount-everest",
+   "category": "place",
+   "query": "Mount Everest",
+   "expect": "a mountain picture of Everest on page 1; no route map only"
+  },
+  {
+   "id": "rio-de-janeiro",
+   "category": "place",
+   "query": "Rio de Janeiro",
+   "expect": "Christ the Redeemer or Sugarloaf on page 1; not only flags, coats of arms and maps"
+  },
+  {
+   "id": "napoleon",
+   "category": "person",
+   "query": "Napoleon",
+   "expect": "a portrait of Napoleon Bonaparte on page 1; no signature, no map"
+  },
+  {
+   "id": "miguel-de-cervantes",
+   "category": "person",
+   "query": "Miguel de Cervantes",
+   "expect": "a portrait of Cervantes on page 1; no signature, no book page scan only"
+  },
+  {
+   "id": "federico-garcia-lorca",
+   "category": "person",
+   "query": "Federico García Lorca",
+   "expect": "a portrait of Lorca on page 1; no signature"
+  },
+  {
+   "id": "frida-kahlo",
+   "category": "person",
+   "query": "Frida Kahlo",
+   "expect": "a portrait of Frida Kahlo on page 1; no signature"
+  },
+  {
+   "id": "leonardo-da-vinci",
+   "category": "person",
+   "query": "Leonardo da Vinci",
+   "expect": "a portrait of Leonardo on page 1; his paintings are acceptable, signatures are not"
+  },
+  {
+   "id": "cleopatra",
+   "category": "person",
+   "query": "Cleopatra",
+   "expect": "a picture of Cleopatra (bust, coin, painting or drawing) on page 1"
+  },
+  {
+   "id": "machado-de-assis",
+   "category": "brazilian",
+   "query": "Machado de Assis",
+   "expect": "a portrait of Machado de Assis on page 1; no signature"
+  },
+  {
+   "id": "santos-dumont",
+   "category": "brazilian",
+   "query": "Santos Dumont",
+   "expect": "a portrait of Santos Dumont or his aircraft on page 1; no signature"
+  },
+  {
+   "id": "clarice-lispector",
+   "category": "brazilian",
+   "query": "Clarice Lispector",
+   "expect": "a portrait of Clarice Lispector on page 1; no signature"
+  },
+  {
+   "id": "maca",
+   "category": "portuguese",
+   "query": "maçã",
+   "expect": "an apple drawing on page 1 (the Portuguese word for apple)"
+  },
+  {
+   "id": "cadeira",
+   "category": "portuguese",
+   "query": "cadeira",
+   "expect": "a chair picture on page 1 (the Portuguese word for chair)"
+  },
+  {
+   "id": "cachorro",
+   "category": "portuguese",
+   "query": "cachorro",
+   "expect": "a dog picture on page 1 (the Portuguese word for dog)"
+  },
+  {
+   "id": "sopa",
+   "category": "portuguese",
+   "query": "sopa",
+   "expect": "a bowl of soup on page 1 (the Portuguese and Spanish word for soup)"
+  },
+  {
+   "id": "manzana",
+   "category": "spanish",
+   "query": "manzana",
+   "expect": "an apple picture on page 1 (the Spanish word for apple)"
+  },
+  {
+   "id": "perro",
+   "category": "spanish",
+   "query": "perro",
+   "expect": "a dog picture on page 1 (the Spanish word for dog)"
+  },
+  {
+   "id": "silla",
+   "category": "spanish",
+   "query": "silla",
+   "expect": "a chair picture on page 1 (the Spanish word for chair)"
+  },
+  {
+   "id": "mariposa",
+   "category": "spanish",
+   "query": "mariposa",
+   "expect": "a butterfly picture on page 1 (the Spanish word for butterfly)"
+  },
+  {
+   "id": "zh-apple",
+   "category": "chinese",
+   "query": "苹果",
+   "expect": "an apple picture on page 1 (the Chinese word for apple)"
+  },
+  {
+   "id": "zh-dog",
+   "category": "chinese",
+   "query": "狗",
+   "expect": "a dog picture on page 1 (the Chinese word for dog)"
+  },
+  {
+   "id": "soup-caps",
+   "category": "recognition",
+   "query": "SOUP",
+   "expect": "the same as soup: a bowl of soup drawing first; capitals must not matter"
+  },
+  {
+   "id": "napoleon-caps",
+   "category": "recognition",
+   "query": "NAPOLEON",
+   "expect": "the same as Napoleon: a portrait on page 1"
+  },
+  {
+   "id": "frederico-garcia-lorca",
+   "category": "recognition",
+   "query": "Frederico García Lorca",
+   "expect": "a misspelled first name: a portrait of Lorca on page 1 is the hope; no signature"
+  },
+  {
+   "id": "garcia-lorca",
+   "category": "recognition",
+   "query": "Garcia Lorca",
+   "expect": "no accent: a portrait of Lorca on page 1; no signature"
+  },
+  {
+   "id": "elephent",
+   "category": "recognition",
+   "query": "elephent",
+   "expect": "a one-letter typo of elephant: an elephant on page 1 is the hope; no unrelated text"
+  },
+  {
+   "id": "apple-logo",
+   "category": "style",
+   "query": "apple logo",
+   "expect": "the Apple Inc. logo first: here a logo is what was asked"
+  },
+  {
+   "id": "flag-of-brazil",
+   "category": "style",
+   "query": "flag of Brazil",
+   "expect": "the flag of Brazil first"
+  },
+  {
+   "id": "map-of-spain",
+   "category": "style",
+   "query": "map of Spain",
+   "expect": "a map of Spain first"
+  },
+  {
+   "id": "photo-of-a-cat",
+   "category": "style",
+   "query": "photo of a cat",
+   "expect": "a photo of a cat first, not a drawing"
+  },
+  {
+   "id": "cat-drawing",
+   "category": "style",
+   "query": "cat drawing",
+   "expect": "a cat drawing first"
+  },
+  {
+   "id": "tree-silhouette",
+   "category": "style",
+   "query": "tree silhouette",
+   "expect": "a black tree silhouette first"
+  },
+  {
+   "id": "love",
+   "category": "abstract",
+   "query": "love",
+   "expect": "a heart on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "freedom",
+   "category": "abstract",
+   "query": "freedom",
+   "expect": "a clear symbol (a bird, broken chains, a statue) on page 1; no text-only image"
+  },
+  {
+   "id": "time",
+   "category": "abstract",
+   "query": "time",
+   "expect": "a clock or an hourglass on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "happiness",
+   "category": "abstract",
+   "query": "happiness",
+   "expect": "a smiling face or a similar clear symbol on page 1; no text-only image"
+  },
+  {
+   "id": "cold",
+   "category": "abstract",
+   "query": "cold",
+   "expect": "a snowflake, a thermometer or a shivering face on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "hot",
+   "category": "abstract",
+   "query": "hot",
+   "expect": "a sun, a thermometer or a flame on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "happy",
+   "category": "abstract",
+   "query": "happy",
+   "expect": "a face showing happiness on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "sad",
+   "category": "abstract",
+   "query": "sad",
+   "expect": "a face showing sadness on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "angry",
+   "category": "abstract",
+   "query": "angry",
+   "expect": "a face showing anger on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "fear",
+   "category": "abstract",
+   "query": "fear",
+   "expect": "a face showing fear on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "idea",
+   "category": "abstract",
+   "query": "idea",
+   "expect": "a light bulb on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "music",
+   "category": "abstract",
+   "query": "music",
+   "expect": "a musical note on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "sleep",
+   "category": "abstract",
+   "query": "sleep",
+   "expect": "a «zzz» or a bed on page 1; a page with no recognisable symbol fails"
+  },
+  {
+   "id": "mouse",
+   "category": "ambiguous",
+   "query": "mouse",
+   "expect": "an animal mouse or a computer mouse first, both acceptable; no logo"
+  },
+  {
+   "id": "bat",
+   "category": "ambiguous",
+   "query": "bat",
+   "expect": "a bat animal or a baseball bat first, both acceptable"
+  },
+  {
+   "id": "apple",
+   "category": "ambiguous",
+   "query": "apple",
+   "expect": "a plain apple (fruit) drawing first; no logo"
+  },
+  {
+   "id": "crane",
+   "category": "ambiguous",
+   "query": "crane",
+   "expect": "a crane bird or a construction crane first, both acceptable"
+  },
+  {
+   "id": "red-apple",
+   "category": "phrase",
+   "query": "red apple",
+   "expect": "a red apple picture first"
+  },
+  {
+   "id": "birthday-cake",
+   "category": "phrase",
+   "query": "birthday cake",
+   "expect": "a birthday cake with candles first"
+  },
+  {
+   "id": "cup-of-coffee",
+   "category": "phrase",
+   "query": "cup of coffee",
+   "expect": "a cup of coffee first"
+  },
+  {
+   "id": "a-dog-playing-with-a-ball",
+   "category": "phrase",
+   "query": "a dog playing with a ball",
+   "expect": "a dog, ideally with a ball, on page 1; not an empty page"
+  },
+  {
+   "id": "a",
+   "category": "short",
+   "query": "a",
+   "expect": "anything sensible (a letter A drawing) or nothing; no noise"
+  },
+  {
+   "id": "ox",
+   "category": "short",
+   "query": "ox",
+   "expect": "an ox drawing first"
+  },
+  {
+   "id": "x",
+   "category": "short",
+   "query": "x",
+   "expect": "a letter X or nothing; no noise"
+  },
+  {
+   "id": "dot",
+   "category": "short",
+   "query": ".",
+   "expect": "nothing or an honest empty page; no random pictures"
+  },
+  {
+   "id": "xyzzy",
+   "category": "nothing",
+   "query": "xyzzy",
+   "expect": "an empty page or few results; nothing that looks like a real answer"
+  },
+  {
+   "id": "qwrtpl",
+   "category": "nothing",
+   "query": "qwrtpl",
+   "expect": "an empty page; nothing that looks like a real answer"
+  },
+  {
+   "id": "however",
+   "category": "nothing",
+   "query": "however",
+   "expect": "an empty page or few results; no text-only image"
+  },
+  {
+   "id": "coca-cola",
+   "category": "brand",
+   "query": "Coca-Cola",
+   "expect": "the Coca-Cola logo or a Coca-Cola bottle first: a brand name asks for its logo"
+  },
+  {
+   "id": "nike",
+   "category": "brand",
+   "query": "Nike",
+   "expect": "the Nike swoosh, or the goddess Nike, first"
+  },
+  {
+   "id": "google",
+   "category": "brand",
+   "query": "Google",
+   "expect": "the Google logo first"
+  },
+  {
+   "id": "apples",
+   "category": "plural",
+   "query": "apples",
+   "expect": "apple drawings first, the same as apple"
+  },
+  {
+   "id": "dogs",
+   "category": "plural",
+   "query": "dogs",
+   "expect": "dog drawings first"
+  },
+  {
+   "id": "mice",
+   "category": "plural",
+   "query": "mice",
+   "expect": "a mouse (the animal) on page 1"
+  },
+  {
+   "id": "leaves",
+   "category": "plural",
+   "query": "leaves",
+   "expect": "leaf drawings first"
+  }
+ ]
+}

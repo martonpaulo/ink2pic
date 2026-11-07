@@ -1,0 +1,158 @@
+{
+ "run": "baseline",
+ "commit": "2cbfd67b15f1b53c5ff3f2e4c47a92b74f97ce3d",
+ "queries": 87,
+ "pageSize": 6,
+ "faults": [
+  {
+   "fault": "none",
+   "fullPageOne": 86,
+   "partialPageOne": 0,
+   "emptyPageOne": 1,
+   "notices": {
+    "(none)": 86,
+    "No pictures found. Try a simpler English word.": 1
+   }
+  },
+  {
+   "fault": "openclipart=down",
+   "fullPageOne": 85,
+   "partialPageOne": 0,
+   "emptyPageOne": 2,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "openclipart=slow",
+   "fullPageOne": 85,
+   "partialPageOne": 0,
+   "emptyPageOne": 2,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "openclipart=throttled",
+   "fullPageOne": 85,
+   "partialPageOne": 0,
+   "emptyPageOne": 2,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "openclipart=broken",
+   "fullPageOne": 85,
+   "partialPageOne": 0,
+   "emptyPageOne": 2,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "openclipart=malformed",
+   "fullPageOne": 85,
+   "partialPageOne": 0,
+   "emptyPageOne": 2,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "commons=down",
+   "fullPageOne": 70,
+   "partialPageOne": 7,
+   "emptyPageOne": 10,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "commons=slow",
+   "fullPageOne": 70,
+   "partialPageOne": 7,
+   "emptyPageOne": 10,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "commons=throttled",
+   "fullPageOne": 70,
+   "partialPageOne": 7,
+   "emptyPageOne": 10,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "commons=broken",
+   "fullPageOne": 70,
+   "partialPageOne": 7,
+   "emptyPageOne": 10,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "commons=malformed",
+   "fullPageOne": 70,
+   "partialPageOne": 7,
+   "emptyPageOne": 10,
+   "notices": {
+    "One source did not answer. Showing the other one.": 87
+   }
+  },
+  {
+   "fault": "wikidata=down",
+   "fullPageOne": 86,
+   "partialPageOne": 0,
+   "emptyPageOne": 1,
+   "notices": {
+    "(none)": 86,
+    "No pictures found. Try a simpler English word.": 1
+   }
+  },
+  {
+   "fault": "wikidata=slow",
+   "fullPageOne": 86,
+   "partialPageOne": 0,
+   "emptyPageOne": 1,
+   "notices": {
+    "(none)": 86,
+    "No pictures found. Try a simpler English word.": 1
+   }
+  },
+  {
+   "fault": "wikidata=throttled",
+   "fullPageOne": 86,
+   "partialPageOne": 0,
+   "emptyPageOne": 1,
+   "notices": {
+    "(none)": 86,
+    "No pictures found. Try a simpler English word.": 1
+   }
+  },
+  {
+   "fault": "wikidata=broken",
+   "fullPageOne": 86,
+   "partialPageOne": 0,
+   "emptyPageOne": 1,
+   "notices": {
+    "(none)": 86,
+    "No pictures found. Try a simpler English word.": 1
+   }
+  },
+  {
+   "fault": "wikidata=malformed",
+   "fullPageOne": 86,
+   "partialPageOne": 0,
+   "emptyPageOne": 1,
+   "notices": {
+    "(none)": 86,
+    "No pictures found. Try a simpler English word.": 1
+   }
+  }
+ ]
+}
