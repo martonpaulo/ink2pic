@@ -2,7 +2,7 @@ import {NativeModules} from 'react-native';
 import {FileUtils, PluginManager} from 'sn-plugin-lib';
 import {resetSessionForTests} from '../src/storage/session';
 import {closeLogFileForTests} from '../src/storage/logFile';
-import {searchCached} from '../src/search/device';
+import {deviceContext, searchCached, searchVariant} from '../src/search/device';
 import type {SourceAdapter} from '../src/search-core';
 import {fullUrl} from '../src/search-core/registry';
 import {settingsPath} from '../src/storage/paths';
@@ -127,5 +127,28 @@ describe('the search settings (#70)', () => {
     await saveSettings(defaultSettings(null));
     await searchCached('lamp', sources);
     expect(openclipart).toHaveBeenCalledTimes(1);
+  });
+
+  it('keys the cache by the context and the sources the search runs with (#99)', () => {
+    const sources: SourceAdapter[] = [
+      {name: 'openclipart', search: answer('openclipart')},
+      {name: 'commons', search: answer('commons')},
+    ];
+    const settings = {
+      ...defaultSettings(null),
+      languages: ['pt', 'en'] as const,
+      style: 'photos' as const,
+      dataSaver: true,
+    };
+    expect(searchVariant(deviceContext(settings), sources)).toBe(
+      'pt,en|sources:openclipart,commons|photos|saver',
+    );
+    // «All as contour» changes the insert, not what the search finds: the same entry.
+    expect(
+      searchVariant(
+        deviceContext({...settings, style: 'contour', dataSaver: false}),
+        sources.slice(1),
+      ),
+    ).toBe('pt,en|sources:commons');
   });
 });

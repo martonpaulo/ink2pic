@@ -29,6 +29,7 @@ import {
   thumbPath,
   thumbUri,
 } from '../search/thumbs';
+import {styleFlags} from '../settings/settings';
 import {getSettings} from '../storage/settings';
 import type {SearchResult} from '../search-core';
 import {deviceAnalyzer} from '../storage/measures';
@@ -93,8 +94,8 @@ const DEVICE: MeasureDeps = {
   analyzer: deviceAnalyzer,
   thumb: thumbUri,
   limitMs: MEASURE_LIMIT_MS,
-  allContour: async () => (await getSettings()).style === 'contour',
-  photos: async () => (await getSettings()).style === 'photos',
+  allContour: async () => styleFlags(await getSettings()).contour,
+  photos: async () => styleFlags(await getSettings()).photos,
 };
 
 const LATER: MeasureDeps = {...DEVICE, limitMs: LATER_MEASURE_LIMIT_MS};

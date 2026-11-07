@@ -30,7 +30,7 @@ import {
 import {pluginFolder} from '../storage/session';
 import {atStep, Done} from './failure';
 import {saveSymbol, symbolFile} from '../symbols/store';
-import {SIZE_WIDTHS} from '../settings/settings';
+import {SIZE_WIDTHS, styleFlags} from '../settings/settings';
 import {getSettings} from '../storage/settings';
 import {LassoPlace, placeAtLasso, Placement} from './place';
 
@@ -54,7 +54,7 @@ async function savedOptions(): Promise<InsertOptions> {
   return {
     width: SIZE_WIDTHS[settings.size],
     placement: settings.placement,
-    contour: settings.style === 'contour',
+    contour: styleFlags(settings).contour,
   };
 }
 

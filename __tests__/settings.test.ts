@@ -4,6 +4,7 @@ import {
   defaultSettings,
   parseSettings,
   serializeSettings,
+  styleFlags,
 } from '../src/settings/settings';
 import {settingsPath} from '../src/storage/paths';
 import {
@@ -144,6 +145,16 @@ describe('the settings file (#68)', () => {
     resetSettingsForTests();
     expect((await getSettings()).languages).toEqual(['pt', 'en']);
     delete NativeModules.Ink2PicFiles;
+  });
+});
+
+describe('styleFlags (#99)', () => {
+  it('reads each style once, for the search, the measures and the insert', () => {
+    const flags = (style: 'drawings' | 'photos' | 'contour') =>
+      styleFlags({...defaultSettings(null), style});
+    expect(flags('drawings')).toEqual({photos: false, contour: false});
+    expect(flags('photos')).toEqual({photos: true, contour: false});
+    expect(flags('contour')).toEqual({photos: false, contour: true});
   });
 });
 

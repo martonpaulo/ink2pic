@@ -309,17 +309,17 @@ export function parseSettings(
   };
 }
 
-/**
- * What changes a search's results, for the search cache: an answer found with other languages,
- * sources or style is another entry (#68, #70).
- */
-export function searchVariant(settings: Settings): string {
-  return [
-    settings.languages.join(','),
-    settings.sourcesOff.length ? `off:${settings.sourcesOff.join(',')}` : '',
-    settings.style === 'photos' ? 'photos' : '',
-    settings.dataSaver ? 'saver' : '',
-  ]
-    .filter(Boolean)
-    .join('|');
+/** The picture style read once, so no caller compares `style` by hand (#70, #99). */
+export type StyleFlags = {
+  /** «Photos too»: photos rank as drawings, in the search and the measured order. */
+  photos: boolean;
+  /** «All as contour»: every picture is measured and inserted as a contour drawing. */
+  contour: boolean;
+};
+
+export function styleFlags(settings: Settings): StyleFlags {
+  return {
+    photos: settings.style === 'photos',
+    contour: settings.style === 'contour',
+  };
 }

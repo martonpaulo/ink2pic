@@ -19,7 +19,7 @@ import {
 } from '../search-core';
 import {pluginFolder} from '../storage/session';
 import {getSettings} from '../storage/settings';
-import {searchVariant, Settings, sourceOn} from '../settings/settings';
+import {Settings, sourceOn, styleFlags} from '../settings/settings';
 import {deviceStorage} from '../storage/text';
 
 /** In memory for the plugin's run: a source that keeps failing is skipped for a while (#65). */
@@ -42,9 +42,28 @@ export function deviceContext(
       languages: settings.languages,
       ...(noTimerWait ? {retryDelayMs: 0} : {}),
     }),
-    photos: settings.style === 'photos',
+    photos: styleFlags(settings).photos,
     dataSaver: settings.dataSaver,
   };
+}
+
+/**
+ * What changes a search's results, for the search cache, read from what the search runs with: an
+ * answer found with other languages, sources, style or data saver is another entry (#68, #70). It
+ * is derived from the context and the sources asked, never restated from the settings (#99).
+ */
+export function searchVariant(
+  ctx: SourceContext,
+  sources: readonly SourceAdapter[],
+): string {
+  return [
+    ctx.languages.join(','),
+    `sources:${sources.map(source => source.name).join(',')}`,
+    ctx.photos ? 'photos' : '',
+    ctx.dataSaver ? 'saver' : '',
+  ]
+    .filter(Boolean)
+    .join('|');
 }
 
 export async function searchCached(
@@ -72,7 +91,7 @@ export async function searchCached(
     storage: deviceStorage,
     path: `${dir.value}/search-cache.json`,
     // Other languages, sources or style find other pictures: a new search, not the cached one.
-    variant: searchVariant(settings),
+    variant: searchVariant(ctx, active),
   });
   if (cached.problem) {
     log(`search cache: ${cached.problem}`);
