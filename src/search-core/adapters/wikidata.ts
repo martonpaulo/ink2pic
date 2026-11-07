@@ -94,52 +94,73 @@ export function wikipediaUrl(query: string, language: string): string {
   return `${WIKIPEDIA_API.replace('{language}', language)}?${params.join('&')}`;
 }
 
+/** How many of Wikidata's label matches are checked for a logo. */
+const LOGO_CANDIDATES = 5;
+
 /**
- * The item with a logo (P154) that best matches the subject: Wikidata's own search, one request,
- * only for a logo query whose Wikipedia article does not name its subject («apple logo» found the
- * Logo language, #81). The most linked match wins: «apple» is Apple Inc., not Apple Corps, the
- * first by relevance. shortcut: links measure fame, not the subject's sense; upgrade when the
- * lab finds a logo query it resolves to the wrong brand.
+ * The items whose label or alias matches the subject, in the order Wikidata's own search box
+ * ranks them (#81): «apple» gives the fruit, then Apple Inc. Only for a logo query whose Wikipedia
+ * article does not name its subject («apple logo» found the Logo language).
  */
-export function logoItemUrl(subject: string): string {
-  const q = encodeURIComponent(`${subject} haswbstatement:${LOGO}`);
+export function logoCandidatesUrl(subject: string, language: string): string {
   const params = [
-    'action=query',
+    'action=wbsearchentities',
     'format=json',
-    'formatversion=2',
-    'list=search',
-    `srsearch=${q}`,
-    'srlimit=1',
-    'srsort=incoming_links_desc',
-    'srprop=',
+    `search=${encodeURIComponent(subject)}`,
+    `language=${encodeURIComponent(language)}`,
+    'type=item',
+    `limit=${LOGO_CANDIDATES}`,
   ];
   return `${WIKIDATA_API}?${params.join('&')}`;
 }
 
-type ItemSearchResponse = {
+/** The candidates' claims, in one request. */
+export function claimsUrl(items: readonly string[]): string {
+  return entityUrl(items.join('|'));
+}
+
+type CandidatesResponse = {
   error?: {code?: string; info?: string};
-  query?: {search?: {title?: string}[]};
+  search?: {id?: string}[];
 };
 
-/** The first item of a Wikidata search, as a hit named by the subject. */
-export function parseLogoItemResponse(
-  text: string,
-  subject: string,
-): WikiOutcome {
-  const data = parseJson<ItemSearchResponse>(text);
+/** The candidate item ids, in Wikidata's order. */
+export function parseLogoCandidates(text: string): string[] | Failure {
+  const data = parseJson<CandidatesResponse>(text);
   if (isFailure(data)) {
     return data;
   }
   if (data.error) {
     return apiFailure(data.error);
   }
-  const item = data.query?.search?.[0]?.title;
+  return (data.search ?? [])
+    .map(entry => entry.id)
+    .filter((id): id is string => typeof id === 'string' && /^Q\d+$/.test(id));
+}
+
+/**
+ * The first candidate, in Wikidata's order, that is an organisation or a brand with a logo, as a
+ * hit named by the subject: «apple» is Apple Inc., never the fruit, which has no logo.
+ */
+export function parseLogoItem(
+  text: string,
+  order: readonly string[],
+  subject: string,
+): WikiOutcome {
+  const data = parseJson<EntityResponse>(text);
+  if (isFailure(data)) {
+    return data;
+  }
+  if (data.error) {
+    return apiFailure(data.error);
+  }
+  const item = order.find(id => {
+    const claims = data.entities?.[id]?.claims;
+    return isOrganisation(claims) && fileOf(claims?.[LOGO]) !== undefined;
+  });
   return {
     ok: true,
-    hit:
-      item && /^Q\d+$/.test(item)
-        ? {title: subject, item, disambiguation: false}
-        : null,
+    hit: item ? {title: subject, item, disambiguation: false} : null,
   };
 }
 
@@ -323,9 +344,13 @@ export function isQueryArticle(query: string, title: string): boolean {
   return subject.some(word => have.includes(word));
 }
 
-/** For a logo query, the item with a logo its subject names; for any other, none (#81). */
+/**
+ * For a logo query, the organisation or brand its subject names, with its logo; for any other,
+ * none (#81). Two requests, only when the Wikipedia article did not name the subject.
+ */
 async function logoItem(
   query: string,
+  language: string,
   ctx: SourceContext,
 ): Promise<WikiOutcome> {
   const {subject, styles} = readIntent(query);
@@ -333,10 +358,17 @@ async function logoItem(
     return {ok: true, hit: null};
   }
   const named = subject.join(' ');
-  const response = await ctx.fetch(logoItemUrl(named), {
-    'Api-User-Agent': ctx.userAgent,
-  });
-  return response.ok ? parseLogoItemResponse(response.text, named) : response;
+  const headers = {'Api-User-Agent': ctx.userAgent};
+  const found = await ctx.fetch(logoCandidatesUrl(named, language), headers);
+  if (!found.ok) {
+    return found;
+  }
+  const order = parseLogoCandidates(found.text);
+  if (isFailure(order) || order.length === 0) {
+    return isFailure(order) ? order : {ok: true, hit: null};
+  }
+  const claims = await ctx.fetch(claimsUrl(order), headers);
+  return claims.ok ? parseLogoItem(claims.text, order, named) : claims;
 }
 
 /** The first language whose Wikipedia has an article for the query; a failure stops the walk. */
@@ -351,7 +383,7 @@ async function lookup(query: string, ctx: SourceContext): Promise<WikiOutcome> {
     }
     const found = parseWikipediaResponse(response.text);
     if (found.ok && found.hit && !isQueryArticle(query, found.hit.title)) {
-      return logoItem(query, ctx);
+      return logoItem(query, language, ctx);
     }
     if (!found.ok || found.hit) {
       return found;

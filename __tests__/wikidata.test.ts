@@ -4,9 +4,10 @@ import {USER_AGENT} from '../src/config';
 import {
   entityUrl,
   isQueryArticle,
-  logoItemUrl,
+  claimsUrl,
+  logoCandidatesUrl,
   parseEntityResponse,
-  parseLogoItemResponse,
+  parseLogoItem,
   parseWikipediaResponse,
   searchWikidata,
   wikidataAdapter,
@@ -327,7 +328,7 @@ describe('logos of organisations and brands (#81)', () => {
         ],
       },
     });
-    const noItem = JSON.stringify({batchcomplete: true, query: {search: []}});
+    const noItem = JSON.stringify({search: []});
     const fetch = jest
       .fn()
       .mockResolvedValueOnce(ok(page))
@@ -339,27 +340,49 @@ describe('logos of organisations and brands (#81)', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('finds the brand a logo query names through Wikidata: «apple logo» is Apple Inc.', async () => {
+  it('finds the brand a logo query names through Wikidata: «apple logo» is Apple Inc., not the fruit', async () => {
     const page = JSON.stringify({
       batchcomplete: true,
       query: {pages: [{title: 'Logo (programming language)', index: 1}]},
     });
-    const item = JSON.stringify({
-      batchcomplete: true,
-      query: {search: [{title: 'Q312'}]},
+    const candidates = JSON.stringify({
+      search: [{id: 'Q89'}, {id: 'Q312'}, {id: 'Q213710'}],
+    });
+    const statement = (value: string) => [
+      {rank: 'normal', mainsnak: {snaktype: 'value', datavalue: {value}}},
+    ];
+    const instance = (id: string) => [
+      {rank: 'normal', mainsnak: {snaktype: 'value', datavalue: {value: {id}}}},
+    ];
+    const claims = JSON.stringify({
+      entities: {
+        // The fruit has no logo; Apple Corps is later in Wikidata's order.
+        Q89: {claims: {P18: statement('Red Apple.jpg')}},
+        Q312: {
+          claims: {
+            P31: instance('Q891723'),
+            P154: statement('Apple logo black.svg'),
+          },
+        },
+        Q213710: {
+          claims: {
+            P31: instance('Q783794'),
+            P154: statement('Apple Corps.svg'),
+          },
+        },
+      },
     });
     const fetch = jest
       .fn()
       .mockResolvedValueOnce(ok(page))
-      .mockResolvedValueOnce(ok(item))
+      .mockResolvedValueOnce(ok(candidates))
+      .mockResolvedValueOnce(ok(claims))
       .mockResolvedValue(ok(JSON.stringify({entities: {}})));
     await searchWikidata('apple logo', ctx(fetch));
-    expect(fetch.mock.calls[1][0]).toBe(logoItemUrl('apple'));
-    expect(decodeURIComponent(fetch.mock.calls[1][0])).toContain(
-      'srsearch=apple haswbstatement:P154',
-    );
-    expect(fetch.mock.calls[2][0]).toBe(entityUrl('Q312'));
-    expect(parseLogoItemResponse(item, 'apple')).toEqual({
+    expect(fetch.mock.calls[1][0]).toBe(logoCandidatesUrl('apple', 'en'));
+    expect(fetch.mock.calls[2][0]).toBe(claimsUrl(['Q89', 'Q312', 'Q213710']));
+    expect(fetch.mock.calls[3][0]).toBe(entityUrl('Q312'));
+    expect(parseLogoItem(claims, ['Q89', 'Q312', 'Q213710'], 'apple')).toEqual({
       ok: true,
       hit: {title: 'apple', item: 'Q312', disambiguation: false},
     });
