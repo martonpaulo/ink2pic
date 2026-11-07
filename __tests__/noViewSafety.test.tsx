@@ -8,7 +8,7 @@ import {copy} from '../src/ui/copy';
 import {NO_VIEW_LIMIT_MS} from '../src/flow/headlessInsert';
 import {defaultSettings, serializeSettings} from '../src/settings/settings';
 import {safeFileName, settingsPath} from '../src/storage/paths';
-import {Journey, startJourney} from './host/journey';
+import {compilePlugin, Journey, startJourney} from './host/journey';
 import {
   PICTURE_TYPE,
   PLUGIN_DIR,
@@ -18,8 +18,8 @@ import {
 
 const word = {left: 100, top: 200, right: 300, bottom: 260};
 const other = {left: 100, top: 1200, right: 300, bottom: 1260};
-// A journey on a machine shared with other gates, as in journeys.test.tsx (#87).
-jest.setTimeout(20000);
+// The first load of the plugin compiles it; here, outside every test's time limit (#107).
+compilePlugin();
 
 /** Enough event-loop turns for a whole insert; a run that needs a timer never gets one. */
 const MAX_TURNS = 5000;

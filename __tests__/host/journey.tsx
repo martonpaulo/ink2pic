@@ -134,6 +134,28 @@ export class Journey {
 const realNow: () => number = Date.now.bind(Date);
 
 /**
+ * Compiles the whole plugin (index.js, App, React Native, the renderer) in a throwaway registry,
+ * for a test file to call while it loads (#107). The first load of that graph in a Jest worker
+ * transforms and compiles every module: 4.4 to 5.3 s idle with a cold transform cache, 0.5 s warm,
+ * against 0.1 s for each later load. Paid inside the first test, that cost broke Jest's 5 s limit
+ * under parallel gates; paid here, at file load, no test limit counts it. The registry is
+ * isolated, so the file's own imports and React Native's lazy requires stay in theirs.
+ */
+export function compilePlugin(): void {
+  const quiet = jest.spyOn(console, 'log').mockImplementation(() => {});
+  jest.isolateModules(() => {
+    const host = createHost();
+    host.grantDeclared();
+    host.install(require('sn-plugin-lib'), require('react-native').NativeModules);
+    require('../../index');
+    require('../../App');
+    require('react-test-renderer');
+  });
+  // The load's promises log as they settle; they settle before the first test starts.
+  beforeAll(() => quiet.mockRestore());
+}
+
+/**
  * The plugin as PluginHost loads it: index.js runs (init, the buttons, the press queue), with
  * the declared permissions granted unless `granted` says otherwise.
  */

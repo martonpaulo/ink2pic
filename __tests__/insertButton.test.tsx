@@ -26,6 +26,10 @@ import {insertBest} from '../src/flow/quickInsert';
 import {startButtonQueue} from '../src/sdk/buttons';
 import {copy} from '../src/ui/copy';
 import {SearchScreen} from '../src/ui/SearchScreen';
+import {compilePlugin} from './host/journey';
+
+// The startup test loads index.js afresh; its first compile happens here, outside the test (#107).
+compilePlugin();
 
 jest.mock('../src/flow/quickInsert', () => ({insertBest: jest.fn()}));
 // The grid's own search is not these tests': it never answers, so nothing logs after a test.

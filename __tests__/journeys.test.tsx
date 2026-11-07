@@ -9,7 +9,7 @@ import {
   SIDEBAR_BUTTON_ID,
 } from '../src/buttons';
 import {copy} from '../src/ui/copy';
-import {Journey, startJourney} from './host/journey';
+import {compilePlugin, Journey, startJourney} from './host/journey';
 import {
   GRANT,
   LIFE,
@@ -18,12 +18,8 @@ import {
   REPLAY_MS,
 } from './host/pluginHost';
 
-/**
- * Each journey loads the whole plugin in a fresh registry; the first one also compiles it. On a
- * machine shared with other gates (load average 20 on 4 cores) the first journey took past Jest's
- * 5 s default, so a journey gets 20 s; each step keeps its own 4 s limit (host/journey.tsx).
- */
-jest.setTimeout(20000);
+// The first load of the plugin compiles it; here, outside every test's time limit (#107).
+compilePlugin();
 
 const word = {left: 100, top: 200, right: 300, bottom: 260};
 

@@ -13,6 +13,10 @@ import {resetSessionForTests} from '../src/storage/session';
 import {resetSettingsForTests} from '../src/storage/settings';
 import {copy} from '../src/ui/copy';
 import {LanguagesScreen} from '../src/ui/LanguagesScreen';
+import {compilePlugin} from './host/journey';
+
+// The startup test loads index.js afresh; its first compile happens here, outside the test (#107).
+compilePlugin();
 
 const ok = (result: unknown) => Promise.resolve({success: true, result});
 
