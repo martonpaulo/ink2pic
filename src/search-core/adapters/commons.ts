@@ -4,6 +4,7 @@
  */
 import type {PictureHost, SourceAdapter, SourceContext} from '../adapter';
 import {apiFailure} from '../fetcher';
+import {isPlainPicture} from '../rank';
 import {PAGE_SIZE, SearchResult, SourceOutcome, sourceFailure} from '../types';
 
 const API = 'https://commons.wikimedia.org/w/api.php';
@@ -257,7 +258,13 @@ export async function searchCommons(
 ): Promise<SourceOutcome> {
   const parse = (text: string) => parseSearchResponse(text, query);
   const drawings = await ask(searchUrl(query, {drawings: true}), ctx, parse);
-  if (!drawings.ok || drawings.results.length >= PAGE_SIZE) {
+  // Only plain pictures of the subject fill the page: a signature, quote posters and logos
+  // must not keep the real photos out (#71).
+  if (
+    !drawings.ok ||
+    drawings.results.filter(result => isPlainPicture(result, query)).length >=
+      PAGE_SIZE
+  ) {
     return drawings;
   }
   const plain = await ask(searchUrl(query), ctx, parse);

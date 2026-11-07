@@ -157,6 +157,20 @@ export function einkScore(
   return total(result, readIntent(query), scorers);
 }
 
+/**
+ * A picture of the subject alone: its title names the subject plainly and says no stylised,
+ * text or signature word. Only these fill a page before Commons' plain search is skipped (#71).
+ */
+export function isPlainPicture(result: SearchResult, query: string): boolean {
+  const intent = readIntent(query);
+  return (
+    subjectScorer(result, intent) === PLAIN_SUBJECT_SCORE &&
+    stylisedScorer(result, intent) === 0 &&
+    textScorer(result, intent) === 0 &&
+    wanted(result, intent)
+  );
+}
+
 /** The file name the result's picture comes from, which may say more than its title. */
 function fileName(result: SearchResult): string {
   const path = (result.original?.url ?? result.thumbUrl).split('?')[0];

@@ -205,13 +205,13 @@ describe('drawings and canonical files (#43)', () => {
     status: 200,
     text: () => Promise.resolve(text),
   });
-  const pages = (count: number) =>
+  const pages = (count: number, title = (i: number) => `Apple ${i}`) =>
     JSON.stringify({
       batchcomplete: true,
       query: {
         pages: Array.from({length: count}, (_, i) => ({
           pageid: 100 + i,
-          title: `File:Example ${i}.svg`,
+          title: `File:${title(i)}.svg`,
           index: i + 1,
           imageinfo: [
             {
@@ -259,6 +259,25 @@ describe('drawings and canonical files (#43)', () => {
       'commons:101',
       'commons:102',
     ]);
+  });
+
+  it('runs the plain search when the drawings are no pictures of the subject (#71)', async () => {
+    // Research C: «Federico García Lorca filetype:drawing» gave a signature, quote posters and
+    // logos; six of them blocked the 18 real photos of the plain search.
+    const notPictures = [
+      'Federico García Lorca signature',
+      'En la bandera de la libertad bordé - Federico García Lorca quote',
+      'Aena Granada logo',
+      'Poker.org-logo',
+      'Federico García Lorca frase',
+      'Federico García Lorca text',
+    ];
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(ok(pages(6, i => notPictures[i])))
+      .mockResolvedValueOnce(ok(pages(3)));
+    await searchCommons('Federico García Lorca', ctx(fetch));
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the drawings when the plain search fails', async () => {
