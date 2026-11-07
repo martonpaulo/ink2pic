@@ -22,8 +22,8 @@ describe('parseSearchPage', () => {
     if (!outcome.ok) {
       throw new Error(outcome.message);
     }
-    expect(outcome.results).toHaveLength(32);
-    const ladle = outcome.results[1];
+    expect(outcome.value.results).toHaveLength(32);
+    const ladle = outcome.value.results[1];
     expect(ladle.id).toBe('openclipart:340609');
     expect(ladle.title).toBe('Ladle with Hot Soup');
     expect(ladle.thumbUrl).toBe('https://openclipart.org/image/400px/340609');
@@ -36,7 +36,7 @@ describe('parseSearchPage', () => {
   it('reads the captured no-result page as a real empty result', () => {
     expect(parseSearchPage(fixture('openclipart-none.html'))).toEqual({
       ok: true,
-      results: [],
+      value: {results: []},
     });
   });
 
@@ -46,7 +46,7 @@ describe('parseSearchPage', () => {
       '<a href="/detail/1/a"><img src="/image/200px/1" alt="Fish &amp; chips" /></a>' +
       '<a href="/detail/1/a"><img alt="again" /></a>';
     const outcome = parseSearchPage(html);
-    expect(outcome.ok && outcome.results.map(r => r.title)).toEqual([
+    expect(outcome.ok && outcome.value.results.map(r => r.title)).toEqual([
       'Fish & chips',
     ]);
   });
@@ -87,7 +87,7 @@ describe('searchOpenclipart', () => {
       text: () => Promise.resolve(fixture('openclipart-soup.html')),
     });
     const outcome = await searchOpenclipart('soup', ctx(fetch));
-    expect(outcome.ok && outcome.results.length).toBe(32);
+    expect(outcome.ok && outcome.value.results.length).toBe(32);
     expect(fetch.mock.calls[0][0]).toBe(
       'https://openclipart.org/search/?query=soup',
     );
@@ -104,7 +104,7 @@ describe('searchOpenclipart', () => {
       ...ctx(fetch),
       dataSaver: true,
     });
-    const results = outcome.ok ? outcome.results : [];
+    const results = outcome.ok ? outcome.value.results : [];
     expect(results).toHaveLength(12);
     expect(results[0].thumbUrl).toMatch(/\/image\/200px\//);
   });

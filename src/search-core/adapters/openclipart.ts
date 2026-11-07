@@ -76,7 +76,7 @@ export function parseSearchPage(html: string): SourceOutcome {
       `the page counts ${total} results but none could be read`,
     );
   }
-  return {ok: true, results};
+  return {ok: true, value: {results}};
 }
 
 export async function searchOpenclipart(
@@ -87,17 +87,20 @@ export async function searchOpenclipart(
   if (!page.ok) {
     return sourceFailure(page.kind, page.message);
   }
-  const parsed = parseSearchPage(page.text);
+  const parsed = parseSearchPage(page.value);
   if (!parsed.ok || !ctx.dataSaver) {
     return parsed;
   }
   // The page is one request either way: fewer, smaller thumbnails are what the saver saves.
   return {
-    ...parsed,
-    results: parsed.results.slice(0, SAVER_RESULTS).map(result => ({
-      ...result,
-      thumbUrl: imageUrl(sourceId(result.id), SAVER_THUMB_WIDTH),
-    })),
+    ok: true,
+    value: {
+      ...parsed.value,
+      results: parsed.value.results.slice(0, SAVER_RESULTS).map(result => ({
+        ...result,
+        thumbUrl: imageUrl(sourceId(result.id), SAVER_THUMB_WIDTH),
+      })),
+    },
   };
 }
 

@@ -15,7 +15,7 @@ describe('createFetcher', () => {
   it('returns the body', async () => {
     expect(await fetcher(reply(200, 'hi'))('https://x.test/')).toEqual({
       ok: true,
-      text: 'hi',
+      value: 'hi',
     });
   });
 
@@ -107,7 +107,7 @@ describe('one retry within the budget (#65)', () => {
       await jest.advanceTimersByTimeAsync(399);
       expect(fetch).toHaveBeenCalledTimes(1);
       await jest.advanceTimersByTimeAsync(1);
-      expect(await pending).toEqual({ok: true, text: 'body'});
+      expect(await pending).toEqual({ok: true, value: 'body'});
       expect(fetch).toHaveBeenCalledTimes(2);
       expect(lines).toEqual([
         `request https://x.test/: HTTP ${status}; retrying in 400 ms`,
@@ -120,7 +120,7 @@ describe('one retry within the budget (#65)', () => {
     const fetch = answers(new TypeError('Network request failed'), 200);
     const pending = fetcher(fetch)('https://x.test/');
     await jest.advanceTimersByTimeAsync(400);
-    expect(await pending).toEqual({ok: true, text: 'body'});
+    expect(await pending).toEqual({ok: true, value: 'body'});
   });
 
   it('gives up after the second failure, with its kind', async () => {

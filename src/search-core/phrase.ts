@@ -129,7 +129,7 @@ export async function resolvePhrase(
     ctx.log(`phrase "${asked}": ${response.message}; the last word is searched`);
     return fallback;
   }
-  const found = parseTitles(response.text, groups);
+  const found = parseTitles(response.value, groups);
   if (found === null || 'ok' in found) {
     ctx.log(`phrase "${asked}": no title among ${groups.length} groups`);
     return fallback;

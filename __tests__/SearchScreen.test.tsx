@@ -28,7 +28,7 @@ const sources = (): SourceAdapter[] => [{name: 'fake', search}];
 
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
-  search = jest.fn().mockResolvedValue({ok: true, results: [result]});
+  search = jest.fn().mockResolvedValue({ok: true, value: {results: [result]}});
 });
 afterEach(() => jest.restoreAllMocks());
 
@@ -230,8 +230,8 @@ describe('the corrected search on the screen (#65)', () => {
   it('says which spelling it showed, keeps the typed word, and searches it on request', async () => {
     search = jest.fn(async (query: string) =>
       query === 'Confucious Institute'
-        ? {ok: true, results: [], suggestion: 'confucius institute'}
-        : {ok: true, results: query === 'confucius institute' ? [result] : []},
+        ? {ok: true, value: {results: [], suggestion: 'confucius institute'}}
+        : {ok: true, value: {results: query === 'confucius institute' ? [result] : []}},
     );
     const tree = await render({initialQuery: 'Confucious Institute'});
     expect(statusText(tree)).toBe('Showing results for confucius institute.');

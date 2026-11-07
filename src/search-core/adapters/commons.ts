@@ -235,16 +235,18 @@ function parseQuery(
   }
   if (!data.query) {
     return data.batchcomplete
-      ? {ok: true, results: []}
+      ? {ok: true, value: {results: []}}
       : sourceFailure('parse', 'neither query nor error in the response');
   }
   const suggestion = suggest(data);
   return {
     ok: true,
-    results: order(data.query.pages ?? [])
-      .map(toResult)
-      .filter((r): r is SearchResult => r !== null),
-    ...(suggestion && {suggestion}),
+    value: {
+      results: order(data.query.pages ?? [])
+        .map(toResult)
+        .filter((r): r is SearchResult => r !== null),
+      ...(suggestion && {suggestion}),
+    },
   };
 }
 
@@ -255,7 +257,7 @@ async function ask(
 ): Promise<SourceOutcome> {
   const response = await ctx.fetch(url, {'Api-User-Agent': ctx.userAgent});
   return response.ok
-    ? parse(response.text)
+    ? parse(response.value)
     : sourceFailure(response.kind, response.message);
 }
 
@@ -285,8 +287,8 @@ export async function searchCommons(
   // must not keep the real photos out (#71).
   if (
     !drawings.ok ||
-    drawings.results.filter(result => isPlainPicture(result, query)).length >=
-      PAGE_SIZE
+    drawings.value.results.filter(result => isPlainPicture(result, query))
+      .length >= PAGE_SIZE
   ) {
     return drawings;
   }
@@ -294,15 +296,17 @@ export async function searchCommons(
   if (!plain.ok) {
     return drawings;
   }
-  const seen = new Set(drawings.results.map(result => result.id));
-  const suggestion = drawings.suggestion ?? plain.suggestion;
+  const seen = new Set(drawings.value.results.map(result => result.id));
+  const suggestion = drawings.value.suggestion ?? plain.value.suggestion;
   return {
     ok: true,
-    results: [
-      ...drawings.results,
-      ...plain.results.filter(result => !seen.has(result.id)),
-    ],
-    ...(suggestion && {suggestion}),
+    value: {
+      results: [
+        ...drawings.value.results,
+        ...plain.value.results.filter(result => !seen.has(result.id)),
+      ],
+      ...(suggestion && {suggestion}),
+    },
   };
 }
 
@@ -320,7 +324,7 @@ export async function commonsFiles(
   ctx: SourceContext,
 ): Promise<SourceOutcome> {
   if (names.length === 0) {
-    return {ok: true, results: []};
+    return {ok: true, value: {results: []}};
   }
   return ask(filesUrl(names), ctx, text => parseFilesResponse(text, names));
 }

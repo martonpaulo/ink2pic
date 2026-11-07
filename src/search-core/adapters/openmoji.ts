@@ -215,9 +215,11 @@ export async function searchOpenmoji(
   const lead = leaders(matches);
   return {
     ok: true,
-    results: matches
-      .slice(0, MAX_RESULTS)
-      .map(match => toResult(match, lead.has(match))),
+    value: {
+      results: matches
+        .slice(0, MAX_RESULTS)
+        .map(match => toResult(match, lead.has(match))),
+    },
   };
 }
 

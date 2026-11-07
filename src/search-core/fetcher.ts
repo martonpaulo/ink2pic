@@ -5,7 +5,7 @@
  */
 import type {SourceContext} from './adapter';
 import {Clock, Log, noLog, sleep, systemClock} from './clock';
-import {Failure, FailureKind} from './types';
+import {Failure, FailureKind, Outcome} from './types';
 
 /** About 5 s per request, so a slow source never blocks the other (brief section 8.5). */
 export const SOURCE_TIMEOUT_MS = 5000;
@@ -24,7 +24,8 @@ export type FetchLike = (
   init: {headers: Record<string, string>; signal: AbortSignal},
 ) => Promise<{ok: boolean; status: number; text: () => Promise<string>}>;
 
-export type TextOutcome = {ok: true; text: string} | Failure;
+/** A response body, or why there is none (#105). */
+export type TextOutcome = Outcome<string, Failure>;
 
 /** GETs a text body; extra headers join the User-Agent. */
 export type Fetcher = (
@@ -76,7 +77,7 @@ async function attempt(
       const http = failure('http', code);
       return status >= HTTP_SERVER_ERROR ? {...http, retry: true} : http;
     }
-    return {ok: true, text: await response.text()};
+    return {ok: true, value: await response.text()};
   } catch (error) {
     if (controller.signal.aborted) {
       return failure('timeout', `no answer in ${timeoutMs} ms`);

@@ -91,8 +91,8 @@ function status(outcome: SourceOutcome): SourceStatus {
   if (!outcome.ok) {
     return {state: 'failed', kind: outcome.kind, message: outcome.message};
   }
-  return outcome.results.length
-    ? {state: 'ok', count: outcome.results.length}
+  return outcome.value.results.length
+    ? {state: 'ok', count: outcome.value.results.length}
     : {state: 'empty'};
 }
 
@@ -101,8 +101,8 @@ function answerText(outcome: SourceOutcome): string {
   if (!outcome.ok) {
     return `failed ${outcome.kind}`;
   }
-  return outcome.results.length
-    ? `${outcome.results.length} result(s)`
+  return outcome.value.results.length
+    ? `${outcome.value.results.length} result(s)`
     : 'no results';
 }
 
@@ -206,14 +206,14 @@ async function searchOnce(
   });
   // Adult pictures never show, from any source (#69).
   const results = rankForEink(
-    outcomes.map(o => (o.ok ? withoutAdult(o.results) : [])),
+    outcomes.map(o => (o.ok ? withoutAdult(o.value.results) : [])),
     query,
     ctx.photos ? PHOTO_SCORERS : DEFAULT_SCORERS,
   );
   const failed = outcomes.filter(o => !o.ok).length;
   const mainFailed = outcomes.some((o, i) => !o.ok && !sources[i].supplement);
   // The first source, in adapter order, that suggests a spelling.
-  const suggestion = outcomes.find(o => o.ok && o.suggestion);
+  const suggestion = outcomes.find(o => o.ok && o.value.suggestion);
   return {
     outcome: {
       results,
@@ -221,7 +221,7 @@ async function searchOnce(
       sourceDown: mainFailed && failed < sources.length,
       allFailed: failed === sources.length,
     },
-    suggestion: suggestion?.ok ? suggestion.suggestion : undefined,
+    suggestion: suggestion?.ok ? suggestion.value.suggestion : undefined,
   };
 }
 

@@ -83,7 +83,7 @@ describe('visible failures (#19)', () => {
   it('one source down and nothing found: says the sources did not answer, not «more pictures» (#98)', async () => {
     const tree = await render([
       source('a', {ok: false, kind: 'throttled', message: 'HTTP 429'}),
-      source('b', {ok: true, results: []}),
+      source('b', {ok: true, value: {results: []}}),
     ]);
     expect(texts(tree)).toContain(copy['error.sourcesDown']);
     expect(texts(tree)).not.toContain(copy['error.sourceDown']);
@@ -116,7 +116,7 @@ describe('visible failures (#19)', () => {
   });
 
   it('no picture found: says to try a simpler word', async () => {
-    const tree = await render([source('a', {ok: true, results: []})]);
+    const tree = await render([source('a', {ok: true, value: {results: []}})]);
     expect(texts(tree)).toContain(copy['search.empty']);
     act(() => tree.unmount());
   });

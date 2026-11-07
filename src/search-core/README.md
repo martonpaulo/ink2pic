@@ -51,7 +51,7 @@ Every failure is a `Failure` with a typed `kind` (`network`, `timeout`, `http`, 
 ## Adding a source
 
 Write `adapters/<name>.ts` exporting a `SourceAdapter`: `name`, `search(query, ctx)` that reaches
-the network only through `ctx.fetch` and returns `{ok: true, results}` or a `Failure`, and
+the network only through `ctx.fetch` and returns a `SourceOutcome`: `{ok: true, value: {results}}` or a `Failure`, and
 `requests` when it makes more than one request in a row. A source whose results it owns adds a
 `PictureHost` and a `SourceName`. List it in `registry.ts`.
 

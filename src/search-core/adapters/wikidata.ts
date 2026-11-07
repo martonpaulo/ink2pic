@@ -12,7 +12,7 @@ import type {SourceAdapter, SourceContext} from '../adapter';
 import {apiFailure} from '../fetcher';
 import {knownHit} from '../phrase';
 import {lookupLanguages, normalise, readIntent, words} from '../query';
-import {Failure, SourceOutcome, sourceFailure} from '../types';
+import {Failure, Outcome, SourceOutcome, sourceFailure} from '../types';
 import {commonsFiles, commonsSearch} from './commons';
 
 const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
@@ -166,7 +166,7 @@ export function parseLogoItem(
   });
   return {
     ok: true,
-    hit: item ? {title: subject, item, disambiguation: false} : null,
+    value: {hit: item ? {title: subject, item, disambiguation: false} : null},
   };
 }
 
@@ -229,9 +229,10 @@ export type WikiHit = {
   disambiguation: boolean;
 };
 
-export type WikiOutcome =
-  | {ok: true; hit: WikiHit | null; suggestion?: string}
-  | Failure;
+/** The article found, if any, and Wikipedia's «did you mean». */
+export type WikiAnswer = {hit: WikiHit | null; suggestion?: string};
+
+export type WikiOutcome = Outcome<WikiAnswer, Failure>;
 
 function parseJson<T>(text: string): T | Failure {
   let data: unknown;
@@ -273,7 +274,7 @@ export function parseWikipediaResponse(text: string): WikiOutcome {
         disambiguation: page.pageprops?.disambiguation !== undefined,
       }
     : null;
-  return {ok: true, hit, ...(suggestion && {suggestion})};
+  return {ok: true, value: {hit, ...(suggestion && {suggestion})}};
 }
 
 /** The preferred statement's value, else the first normal one; deprecated ones never. */
@@ -323,22 +324,22 @@ function leadingLogoOf(
   return leads ? logo : undefined;
 }
 
-export type EntityOutcome =
-  | {
-      ok: true;
-      files: string[];
-      human: boolean;
-      /** The item is a given or family name, not the person (#92). */
-      name?: true;
-      signature?: string;
-      /** The item's own flag (P41): it leads the page (#89). */
-      flag?: string;
-      /** The logo file, when the item is an organisation or a brand: it leads the page (#81). */
-      leadingLogo?: string;
-      /** An organisation with no logo: the Commons category whose «logos» child holds it (#92). */
-      logoCategory?: string;
-    }
-  | Failure;
+/** What an item's claims say about its pictures and kind. */
+export type EntityFacts = {
+  files: string[];
+  human: boolean;
+  /** The item is a given or family name, not the person (#92). */
+  name?: true;
+  signature?: string;
+  /** The item's own flag (P41): it leads the page (#89). */
+  flag?: string;
+  /** The logo file, when the item is an organisation or a brand: it leads the page (#81). */
+  leadingLogo?: string;
+  /** An organisation with no logo: the Commons category whose «logos» child holds it (#92). */
+  logoCategory?: string;
+};
+
+export type EntityOutcome = Outcome<EntityFacts, Failure>;
 
 /**
  * The Commons file names of the item's pictures, whether it is a person, its signature and its
@@ -383,13 +384,15 @@ export function parseEntityResponse(text: string): EntityOutcome {
   }
   return {
     ok: true,
-    files: files.filter(file => file !== signature),
-    human,
-    ...(name && {name: true as const}),
-    ...(signature && {signature}),
-    ...(flag && flag !== signature && {flag}),
-    ...(leadingLogo && {leadingLogo}),
-    ...(!leadingLogo && logoCategory && {logoCategory}),
+    value: {
+      files: files.filter(file => file !== signature),
+      human,
+      ...(name && {name: true as const}),
+      ...(signature && {signature}),
+      ...(flag && flag !== signature && {flag}),
+      ...(leadingLogo && {leadingLogo}),
+      ...(!leadingLogo && logoCategory && {logoCategory}),
+    },
   };
 }
 
@@ -424,7 +427,7 @@ async function logoItem(
 ): Promise<WikiOutcome> {
   const {subject, styles} = readIntent(query);
   if (!styles.has('logo') || subject.length === 0) {
-    return {ok: true, hit: null};
+    return {ok: true, value: {hit: null}};
   }
   const named = subject.join(' ');
   const headers = {'Api-User-Agent': ctx.userAgent};
@@ -432,12 +435,12 @@ async function logoItem(
   if (!found.ok) {
     return found;
   }
-  const order = parseLogoCandidates(found.text);
+  const order = parseLogoCandidates(found.value);
   if (isFailure(order) || order.length === 0) {
-    return isFailure(order) ? order : {ok: true, hit: null};
+    return isFailure(order) ? order : {ok: true, value: {hit: null}};
   }
   const claims = await ctx.fetch(claimsUrl(order), headers);
-  return claims.ok ? parseLogoItem(claims.text, order, named) : claims;
+  return claims.ok ? parseLogoItem(claims.value, order, named) : claims;
 }
 
 /** The first language whose Wikipedia has an article for the query; a failure stops the walk. */
@@ -447,7 +450,7 @@ async function lookup(query: string, ctx: SourceContext): Promise<WikiOutcome> {
     // A written line's check already found this article (#87): no request again.
     const known = knownHit(query, language);
     if (known) {
-      return {ok: true, hit: known};
+      return {ok: true, value: {hit: known}};
     }
     const response = await ctx.fetch(wikipediaUrl(query, language), {
       'Api-User-Agent': ctx.userAgent,
@@ -455,23 +458,24 @@ async function lookup(query: string, ctx: SourceContext): Promise<WikiOutcome> {
     if (!response.ok) {
       return response;
     }
-    const found = parseWikipediaResponse(response.text);
-    if (found.ok && found.hit && !isQueryArticle(query, found.hit.title)) {
+    const found = parseWikipediaResponse(response.value);
+    if (
+      found.ok &&
+      found.value.hit &&
+      !isQueryArticle(query, found.value.hit.title)
+    ) {
       return logoItem(query, language, ctx);
     }
-    if (!found.ok || found.hit) {
+    if (!found.ok || found.value.hit) {
       return found;
     }
-    suggestion ??= found.suggestion;
+    suggestion ??= found.value.suggestion;
   }
-  return {ok: true, hit: null, ...(suggestion && {suggestion})};
+  return {ok: true, value: {hit: null, ...(suggestion && {suggestion})}};
 }
 
 /** A spelling to try when nothing was found: Wikipedia's «did you mean», else its article title. */
-function suggestionOf(
-  query: string,
-  found: {hit: WikiHit | null; suggestion?: string},
-) {
+function suggestionOf(query: string, found: WikiAnswer) {
   const candidate = found.suggestion ?? found.hit?.title;
   return candidate &&
     candidate.toLocaleLowerCase() !== normalise(query).toLocaleLowerCase()
@@ -487,22 +491,22 @@ async function entityOf(
   const response = await ctx.fetch(entityUrl(item), {
     'Api-User-Agent': ctx.userAgent,
   });
-  return response.ok ? parseEntityResponse(response.text) : response;
+  return response.ok ? parseEntityResponse(response.value) : response;
 }
 
 /** The most notable person a name names, when there is one. */
 async function notablePerson(
   name: string,
   ctx: SourceContext,
-): Promise<{ok: true; item?: string} | Failure> {
+): Promise<Outcome<string | undefined, Failure>> {
   const response = await ctx.fetch(notablePersonUrl(name), {
     'Api-User-Agent': ctx.userAgent,
   });
   if (!response.ok) {
     return response;
   }
-  const found = parseNotablePerson(response.text);
-  return isFailure(found) ? found : {ok: true, ...(found && {item: found})};
+  const found = parseNotablePerson(response.value);
+  return isFailure(found) ? found : {ok: true, value: found || undefined};
 }
 
 export async function searchWikidata(
@@ -513,10 +517,10 @@ export async function searchWikidata(
   if (!found.ok) {
     return found;
   }
-  const {hit} = found;
-  const suggestion = suggestionOf(query, found);
+  const {hit} = found.value;
+  const suggestion = suggestionOf(query, found.value);
   if (!hit || hit.disambiguation) {
-    return {ok: true, results: [], ...suggestion};
+    return {ok: true, value: {results: [], ...suggestion}};
   }
   let files: string[] = [];
   let human = false;
@@ -528,14 +532,14 @@ export async function searchWikidata(
   let leadImage = hit.leadImage;
   if (item) {
     let entity = await entityOf(item, ctx);
-    if (entity.ok && entity.name) {
+    if (entity.ok && entity.value.name) {
       // The article is the name's: the most notable person it names is the subject (#92).
       const person = await notablePerson(query, ctx);
       if (!person.ok) {
         return person;
       }
-      if (person.item) {
-        item = person.item;
+      if (person.value) {
+        item = person.value;
         leadImage = undefined;
         entity = await entityOf(item, ctx);
       }
@@ -543,7 +547,7 @@ export async function searchWikidata(
     if (!entity.ok) {
       return entity;
     }
-    ({files, human, signature, flag, leadingLogo, logoCategory} = entity);
+    ({files, human, signature, flag, leadingLogo, logoCategory} = entity.value);
   }
   if (leadImage) {
     // The lead image uses underscores; Commons file names use spaces.
@@ -552,7 +556,7 @@ export async function searchWikidata(
       files.push(lead);
     }
   }
-  const none = Promise.resolve<SourceOutcome>({ok: true, results: []});
+  const none = Promise.resolve<SourceOutcome>({ok: true, value: {results: []}});
   const [pictures, gallery, logos] = await Promise.all([
     commonsFiles(files, ctx),
     human && item
@@ -570,7 +574,7 @@ export async function searchWikidata(
     ctx.log(`wikidata: logos of ${item}: ${logos.message}`);
   }
   // An organisation with no logo on its item leads with its Commons category's first logo (#92).
-  const categoryLogo = logos.ok ? logos.results[0] : undefined;
+  const categoryLogo = logos.ok ? logos.value.results[0] : undefined;
   const signed = (title: string) =>
     signature !== undefined && title === withoutExtension(signature);
   // A country's own flag leads, before regional and other flags (#89); so does an
@@ -580,18 +584,22 @@ export async function searchWikidata(
     (leadingLogo !== undefined && title === withoutExtension(leadingLogo));
   return {
     ok: true,
-    results: [
-      ...(categoryLogo
-        ? [{...categoryLogo, canonical: true, leads: true as const}]
-        : []),
-      ...pictures.results.map(result => ({
-        ...result,
-        canonical: true,
-        ...(leads(result.title) && {leads: true as const}),
-      })),
-      ...(gallery.ok ? gallery.results : []).filter(r => !signed(r.title)),
-    ],
-    ...suggestion,
+    value: {
+      results: [
+        ...(categoryLogo
+          ? [{...categoryLogo, canonical: true, leads: true as const}]
+          : []),
+        ...pictures.value.results.map(result => ({
+          ...result,
+          canonical: true,
+          ...(leads(result.title) && {leads: true as const}),
+        })),
+        ...(gallery.ok ? gallery.value.results : []).filter(
+          r => !signed(r.title),
+        ),
+      ],
+      ...suggestion,
+    },
   };
 }
 

@@ -37,8 +37,8 @@ afterEach(() => jest.useRealTimers());
 describe('searchAll', () => {
   it('merges both sources', async () => {
     const outcome = await searchAll('soup', [
-      answering('a', {ok: true, results: [result('a1')]}),
-      answering('b', {ok: true, results: [result('b1')]}),
+      answering('a', {ok: true, value: {results: [result('a1')]}}),
+      answering('b', {ok: true, value: {results: [result('b1')]}}),
     ]);
     expect(outcome.results.map(x => x.id)).toEqual(['a1', 'b1']);
     expect(outcome.statuses).toEqual({
@@ -52,7 +52,7 @@ describe('searchAll', () => {
     jest.useFakeTimers();
     const pending = searchAll(
       'soup',
-      [answering('a', {ok: true, results: [result('a1')]}), never('b')],
+      [answering('a', {ok: true, value: {results: [result('a1')]}}), never('b')],
       {timeoutMs: 5000},
     );
     await jest.advanceTimersByTimeAsync(5000);
@@ -98,7 +98,7 @@ describe('searchAll', () => {
 
   it('tells an empty answer from a failure', async () => {
     const outcome = await searchAll('qzx', [
-      answering('a', {ok: true, results: []}),
+      answering('a', {ok: true, value: {results: []}}),
     ]);
     expect(outcome.statuses.a).toEqual({state: 'empty'});
     expect(outcome.allFailed).toBe(false);
@@ -117,7 +117,7 @@ describe('the per-source time (#102)', () => {
       name: 'slow',
       search: async (): Promise<SourceOutcome> => {
         now += 1200;
-        return {ok: true, results: [result('s1'), result('s2')]};
+        return {ok: true, value: {results: [result('s1'), result('s2')]}};
       },
     };
     const down = answering('down', {
@@ -169,10 +169,12 @@ describe('the default adapters', () => {
     const outcome = await searchAll('cat', [
       answering('a', {
         ok: true,
-        results: [
-          titled('a1', 'Man walking past a house'),
-          titled('a2', 'Cat'),
-        ],
+        value: {
+          results: [
+            titled('a1', 'Man walking past a house'),
+            titled('a2', 'Cat'),
+          ],
+        },
       }),
     ]);
     expect(outcome.results.map(x => x.id)).toEqual(['a2', 'a1']);
@@ -183,7 +185,7 @@ describe('a failure beside an empty answer (#23)', () => {
   it('flags the failed source even when the other found nothing', async () => {
     const outcome = await searchAll('soup', [
       answering('a', {ok: false, kind: 'timeout', message: 'no answer'}),
-      answering('b', {ok: true, results: []}),
+      answering('b', {ok: true, value: {results: []}}),
     ]);
     expect(outcome.results).toEqual([]);
     expect(outcome.sourceDown).toBe(true);
@@ -238,7 +240,7 @@ describe('sources of two requests and the supplement (#43)', () => {
       requests: 2,
       search: () =>
         new Promise(resolve =>
-          setTimeout(() => resolve({ok: true, results: [result('b1')]}), 7000),
+          setTimeout(() => resolve({ok: true, value: {results: [result('b1')]}}), 7000),
         ),
     };
     const pending = searchAll('soup', [twoRequests], {timeoutMs: 5000});
@@ -248,7 +250,7 @@ describe('sources of two requests and the supplement (#43)', () => {
 
   it('a supplement failing is no source down, and the search is still cached', async () => {
     const sources: SourceAdapter[] = [
-      answering('a', {ok: true, results: [result('a1')]}),
+      answering('a', {ok: true, value: {results: [result('a1')]}}),
       {
         ...answering('w', {ok: false, kind: 'network', message: 'refused'}),
         supplement: true,
@@ -335,7 +337,7 @@ describe('the corrected search (#65)', () => {
   ): SourceAdapter & {search: jest.Mock} => ({
     name,
     search: jest.fn(
-      async (query: string) => answers[query] ?? {ok: true, results: []},
+      async (query: string) => answers[query] ?? {ok: true, value: {results: []}},
     ),
   });
 
@@ -343,10 +345,9 @@ describe('the corrected search (#65)', () => {
     const commons = suggesting('commons', {
       'Confucious Institute': {
         ok: true,
-        results: [],
-        suggestion: 'confucius institute',
+        value: {results: [], suggestion: 'confucius institute'},
       },
-      'confucius institute': {ok: true, results: [result('c1')]},
+      'confucius institute': {ok: true, value: {results: [result('c1')]}},
     });
     const clipart = suggesting('openclipart', {});
     const wikidata = {...suggesting('wikidata', {}), supplement: true as const};
@@ -368,8 +369,8 @@ describe('the corrected search (#65)', () => {
 
   it('tries one suggestion at most, and keeps the empty answer when it finds nothing', async () => {
     const commons = suggesting('commons', {
-      qzxv: {ok: true, results: [], suggestion: 'qzxw'},
-      qzxw: {ok: true, results: [], suggestion: 'qzxy'},
+      qzxv: {ok: true, value: {results: [], suggestion: 'qzxw'}},
+      qzxw: {ok: true, value: {results: [], suggestion: 'qzxy'}},
     });
     const outcome = await searchAll('qzxv', [commons]);
     expect(outcome.results).toEqual([]);
@@ -379,16 +380,16 @@ describe('the corrected search (#65)', () => {
 
   it('never corrects a query that filled page 1, or an exact search', async () => {
     const found = suggesting('commons', {
-      apple: {ok: true, results: page('a'), suggestion: 'apples'},
-      apples: {ok: true, results: [result('s1')]},
+      apple: {ok: true, value: {results: page('a'), suggestion: 'apples'}},
+      apples: {ok: true, value: {results: [result('s1')]}},
     });
     const full = await searchAll('apple', [found]);
     expect(full.correctedQuery).toBeUndefined();
     expect(full.results.map(x => x.id)).toEqual(page('a').map(x => x.id));
     expect(found.search).toHaveBeenCalledTimes(1);
     const exact = suggesting('commons', {
-      qzxv: {ok: true, results: [], suggestion: 'qzxw'},
-      qzxw: {ok: true, results: [result('w1')]},
+      qzxv: {ok: true, value: {results: [], suggestion: 'qzxw'}},
+      qzxw: {ok: true, value: {results: [result('w1')]}},
     });
     expect(
       (await searchAll('qzxv', [exact], {correct: false})).results,
@@ -400,12 +401,14 @@ describe('the corrected search (#65)', () => {
     const commons = suggesting('commons', {
       'Confucious Institute': {
         ok: true,
-        results: [result('c1'), result('c2')],
-        suggestion: 'confucius institute',
+        value: {
+          results: [result('c1'), result('c2')],
+          suggestion: 'confucius institute',
+        },
       },
       'confucius institute': {
         ok: true,
-        results: [result('k1'), result('c2'), result('k2')],
+        value: {results: [result('k1'), result('c2'), result('k2')]},
       },
     });
     const wikidata = {...suggesting('wikidata', {}), supplement: true as const};
@@ -422,8 +425,8 @@ describe('the corrected search (#65)', () => {
 
   it('a thin page tries only a suggestion, never a prefix or a longest word (#84)', async () => {
     const commons = suggesting('commons', {
-      elephan: {ok: true, results: [result('e1')]},
-      'elephan*': {ok: true, results: [result('e2')]},
+      elephan: {ok: true, value: {results: [result('e1')]}},
+      'elephan*': {ok: true, value: {results: [result('e2')]}},
     });
     const outcome = await searchAll('elephan', [commons]);
     expect(outcome.correctedQuery).toBeUndefined();
@@ -433,7 +436,7 @@ describe('the corrected search (#65)', () => {
 
   it('keeps the thin page when the suggestion finds nothing (#84)', async () => {
     const commons = suggesting('commons', {
-      qzxv: {ok: true, results: [result('q1')], suggestion: 'qzxw'},
+      qzxv: {ok: true, value: {results: [result('q1')], suggestion: 'qzxw'}},
     });
     const outcome = await searchAll('qzxv', [commons]);
     expect(outcome.correctedQuery).toBeUndefined();
@@ -464,7 +467,7 @@ describe('the circuit breaker (#65)', () => {
       }),
     ),
   });
-  const up = answering('up', {ok: true, results: [result('u1')]});
+  const up = answering('up', {ok: true, value: {results: [result('u1')]}});
 
   it('skips a source for five minutes after two failed searches in a row', async () => {
     const breaker = createBreaker({clock});
@@ -505,7 +508,7 @@ describe('the circuit breaker (#65)', () => {
         async (): Promise<SourceOutcome> =>
           fail
             ? {ok: false, kind: 'http', message: 'HTTP 503'}
-            : {ok: true, results: [result('f1')]},
+            : {ok: true, value: {results: [result('f1')]}},
       ),
     };
     await searchAll('soup', [up, flaky], {breaker});
@@ -530,7 +533,7 @@ describe('the circuit breaker (#65)', () => {
   it('asks every main source when all their breakers are open', async () => {
     const breaker = createBreaker({clock});
     const a = down();
-    const only = answering('w', {ok: true, results: []});
+    const only = answering('w', {ok: true, value: {results: []}});
     const wikidata = {...only, supplement: true as const};
     await searchAll('cat', [a, wikidata], {breaker});
     await searchAll('cat', [a, wikidata], {breaker});
@@ -545,7 +548,7 @@ describe('the fallback ladder (#71)', () => {
     search: jest.fn(
       async (query: string): Promise<SourceOutcome> => ({
         ok: true,
-        results: found[query] ?? [],
+        value: {results: found[query] ?? []},
       }),
     ),
   });
@@ -569,12 +572,12 @@ describe('the fallback ladder (#71)', () => {
       search: jest.fn(
         async (q: string): Promise<SourceOutcome> =>
           q === 'elefant'
-            ? {ok: true, results: []}
-            : {ok: true, results: q === 'elephant' ? [result('e1')] : []},
+            ? {ok: true, value: {results: []}}
+            : {ok: true, value: {results: q === 'elephant' ? [result('e1')] : []}},
       ),
     };
     const wikipedia = {
-      ...answering('wikidata', {ok: true, results: [], suggestion: 'elephant'}),
+      ...answering('wikidata', {ok: true, value: {results: [], suggestion: 'elephant'}}),
       supplement: true as const,
     };
     const outcome = await searchAll('elefant', [commons, wikipedia]);
@@ -602,7 +605,7 @@ describe('the source-down line shows only on a thin page (#82)', () => {
     searchState(
       await searchAll(
         'soup',
-        [answering('openclipart', {ok: true, results}), failed],
+        [answering('openclipart', {ok: true, value: {results}}), failed],
         {
           correct: false,
         },
@@ -635,7 +638,7 @@ describe('the source-down line shows only on a thin page (#82)', () => {
       message: 'Network request failed',
     });
   const local = (name: string, results: SearchResult[]): SourceAdapter => ({
-    ...answering(name, {ok: true, results}),
+    ...answering(name, {ok: true, value: {results}}),
     localIndex: true,
   });
   const symbols = (...results: SearchResult[]) => local('openmoji', results);
@@ -676,7 +679,7 @@ describe('the source-down line shows only on a thin page (#82)', () => {
     const outcome = await searchAll(
       'soup',
       [
-        answering('openclipart', {ok: true, results: page('a')}),
+        answering('openclipart', {ok: true, value: {results: page('a')}}),
         down,
         symbols(result('o1')),
       ],

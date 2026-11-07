@@ -30,6 +30,11 @@ const ok = (text: string) => ({
   text: () => Promise.resolve(text),
 });
 const FILES = fixture('commons-files.json');
+/** The facts an entity response gives, or its failure: what the logo assertions read. */
+const factsOf = (text: string) => {
+  const outcome = parseEntityResponse(text);
+  return outcome.ok ? outcome.value : outcome;
+};
 const NONE = fixture('commons-none.json');
 
 describe('the Wikipedia lookup (#71)', () => {
@@ -56,18 +61,19 @@ describe('the Wikipedia lookup (#71)', () => {
   it('reads the article, its item and its lead image', () => {
     expect(parseWikipediaResponse(fixture('wikipedia-hit.json'))).toEqual({
       ok: true,
-      hit: {
-        title: 'Federico García Lorca',
-        item: 'Q100',
-        leadImage: 'Example_portrait.jpg',
-        disambiguation: false,
+      value: {
+        hit: {
+          title: 'Federico García Lorca',
+          item: 'Q100',
+          leadImage: 'Example_portrait.jpg',
+          disambiguation: false,
+        },
+        suggestion: 'frederico garcia llorca',
       },
-      suggestion: 'frederico garcia llorca',
     });
     expect(parseWikipediaResponse(fixture('wikipedia-none.json'))).toEqual({
       ok: true,
-      hit: null,
-      suggestion: 'elephant',
+      value: {hit: null, suggestion: 'elephant'},
     });
     expect(parseWikipediaResponse('<html>').ok).toBe(false);
     expect(
@@ -119,18 +125,19 @@ describe('parseEntityResponse', () => {
   it('takes flag, logo and image in that order, preferred first, never deprecated', () => {
     expect(parseEntityResponse(fixture('wikidata-entity.json'))).toEqual({
       ok: true,
-      files: ['Example flag.svg', 'Example portrait.jpg'],
-      human: true,
-      signature: 'Example signature.svg',
-      flag: 'Example flag.svg',
+      value: {
+        files: ['Example flag.svg', 'Example portrait.jpg'],
+        human: true,
+        signature: 'Example signature.svg',
+        flag: 'Example flag.svg',
+      },
     });
   });
 
   it('reads an id with no item as a real empty answer', () => {
     expect(parseEntityResponse(fixture('wikidata-missing.json'))).toEqual({
       ok: true,
-      files: [],
-      human: false,
+      value: {files: [], human: false},
     });
   });
 
@@ -174,14 +181,14 @@ describe('searchWikidata', () => {
     if (!outcome.ok) {
       throw new Error(outcome.message);
     }
-    const canonical = outcome.results.filter(r => r.canonical);
+    const canonical = outcome.value.results.filter(r => r.canonical);
     expect(canonical.map(r => r.title)).toEqual([
       'Example flag',
       'Example portrait',
     ]);
     // The item's own flag (P41) leads the page (#89); its other pictures do not.
     expect(canonical.map(r => r.leads === true)).toEqual([true, false]);
-    expect(outcome.results.length).toBeGreaterThan(canonical.length);
+    expect(outcome.value.results.length).toBeGreaterThan(canonical.length);
   });
 
   it('makes one request for a word with no article, and passes the suggestion on', async () => {
@@ -190,8 +197,7 @@ describe('searchWikidata', () => {
       .mockResolvedValue(ok(fixture('wikipedia-none.json')));
     expect(await searchWikidata('elefant', ctx(fetch))).toEqual({
       ok: true,
-      results: [],
-      suggestion: 'elephant',
+      value: {results: [], suggestion: 'elephant'},
     });
     expect(fetch).toHaveBeenCalledTimes(1);
   });
@@ -212,7 +218,7 @@ describe('searchWikidata', () => {
     const fetch = jest.fn().mockResolvedValue(ok(page));
     expect(await searchWikidata('mercury', ctx(fetch))).toEqual({
       ok: true,
-      results: [],
+      value: {results: []},
     });
     expect(fetch).toHaveBeenCalledTimes(1);
   });
@@ -234,7 +240,7 @@ describe('searchWikidata', () => {
       encodeURIComponent('File:Example flag.svg'),
     );
     // The fixture answers every file it holds; the lead image comes first.
-    expect(outcome.ok && outcome.results[0].title).toBe('Example flag');
+    expect(outcome.ok && outcome.value.results[0].title).toBe('Example flag');
   });
 
   it('keeps the portrait when the depicts gallery fails', async () => {
@@ -248,7 +254,9 @@ describe('searchWikidata', () => {
           : ok(FILES),
       );
     const outcome = await searchWikidata('lorca', ctx(fetch));
-    expect(outcome.ok && outcome.results.every(r => r.canonical)).toBe(true);
+    expect(outcome.ok && outcome.value.results.every(r => r.canonical)).toBe(
+      true,
+    );
   });
 
   it('reports a refused host as a failure, not as no pictures', async () => {
@@ -284,7 +292,7 @@ describe('logos of organisations and brands (#81)', () => {
       P31: [claim('P31', {id: 'Q4830453'})],
       P154: [claim('P154', 'Example company logo.svg')],
     });
-    expect(parseEntityResponse(company)).toMatchObject({
+    expect(factsOf(company)).toMatchObject({
       files: ['Example company logo.svg'],
       leadingLogo: 'Example company logo.svg',
     });
@@ -293,7 +301,7 @@ describe('logos of organisations and brands (#81)', () => {
       P159: [claim('P159', {id: 'Q956'})],
       P154: [claim('P154', 'Example institute logo.svg')],
     });
-    expect(parseEntityResponse(institute)).toMatchObject({
+    expect(factsOf(institute)).toMatchObject({
       leadingLogo: 'Example institute logo.svg',
     });
   });
@@ -305,7 +313,7 @@ describe('logos of organisations and brands (#81)', () => {
       P154: [claim('P154', 'Example cola logo.svg')],
       P18: [claim('P18', 'Example cola bottle.jpg')],
     });
-    expect(parseEntityResponse(brand)).toMatchObject({
+    expect(factsOf(brand)).toMatchObject({
       leadingLogo: 'Example cola logo.svg',
     });
   });
@@ -317,12 +325,12 @@ describe('logos of organisations and brands (#81)', () => {
       P625: [claim('P625', {latitude: 1, longitude: 2})],
       P154: [claim('P154', 'Example city logo.svg')],
     });
-    const outcome = parseEntityResponse(city);
+    const outcome = factsOf(city);
     expect(outcome).toMatchObject({files: ['Example city logo.svg']});
     expect(outcome).not.toHaveProperty('leadingLogo');
-    expect(
-      parseEntityResponse(fixture('wikidata-entity.json')),
-    ).not.toHaveProperty('leadingLogo');
+    expect(factsOf(fixture('wikidata-entity.json'))).not.toHaveProperty(
+      'leadingLogo',
+    );
   });
 
   it('drops an article a style word found alone: «apple logo» is not the Logo language', async () => {
@@ -352,7 +360,7 @@ describe('logos of organisations and brands (#81)', () => {
       .mockResolvedValueOnce(ok(noItem));
     expect(await searchWikidata('apple logo', ctx(fetch))).toEqual({
       ok: true,
-      results: [],
+      value: {results: []},
     });
     expect(fetch).toHaveBeenCalledTimes(2);
   });
@@ -401,7 +409,7 @@ describe('logos of organisations and brands (#81)', () => {
     expect(fetch.mock.calls[3][0]).toBe(entityUrl('Q312'));
     expect(parseLogoItem(claims, ['Q89', 'Q312', 'Q213710'], 'apple')).toEqual({
       ok: true,
-      hit: {title: 'apple', item: 'Q312', disambiguation: false},
+      value: {hit: {title: 'apple', item: 'Q312', disambiguation: false}},
     });
   });
 
@@ -424,7 +432,7 @@ describe('logos of organisations and brands (#81)', () => {
       P373: [claim('P373', 'Example Institute')],
       P18: [claim('P18', 'Example facade.jpg')],
     });
-    expect(parseEntityResponse(institute)).toMatchObject({
+    expect(factsOf(institute)).toMatchObject({
       logoCategory: 'Example Institute',
     });
     const fetch = jest
@@ -437,7 +445,7 @@ describe('logos of organisations and brands (#81)', () => {
     expect(urls).toContainEqual(
       expect.stringContaining(logoCategorySearch('Example Institute')),
     );
-    expect(outcome.ok && outcome.results[0]).toMatchObject({
+    expect(outcome.ok && outcome.value.results[0]).toMatchObject({
       canonical: true,
       leads: true,
     });

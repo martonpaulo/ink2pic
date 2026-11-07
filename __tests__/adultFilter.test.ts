@@ -63,7 +63,7 @@ describe('the adult filter (#69)', () => {
 
   it('drops a Commons file by its title or its categories', () => {
     const outcome = parseSearchResponse(fixture('commons-adult.json'), 'body');
-    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+    expect(outcome.ok && outcome.value.results.map(r => r.id)).toEqual([
       'commons:112298399',
       'commons:113723433',
       'commons:67057188',
@@ -78,7 +78,7 @@ describe('the adult filter (#69)', () => {
       search: () =>
         Promise.resolve({
           ok: true,
-          results: [clipart('1', 'naked woman'), clipart('2', 'woman icon')],
+          value: {results: [clipart('1', 'naked woman'), clipart('2', 'woman icon')]},
         }),
     };
     const outcome = await searchAll('woman', [source]);

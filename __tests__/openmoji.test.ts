@@ -23,7 +23,7 @@ async function symbols(query: string, languages = ['en']) {
   if (!outcome.ok) {
     throw new Error(outcome.message);
   }
-  return outcome.results;
+  return outcome.value.results;
 }
 
 const hexes = (results: SearchResult[]) =>

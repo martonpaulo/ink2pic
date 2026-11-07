@@ -37,16 +37,18 @@ describe('searchCached (#16)', () => {
   it('answers a repeated search from the cache file', async () => {
     const search = jest.fn().mockResolvedValue({
       ok: true,
-      results: [
-        {
-          id: 'openclipart:1',
-          source: 'openclipart',
-          title: 'Soup',
-          thumbUrl: 'https://openclipart.org/image/400px/1',
-          license: 'CC0 1.0',
-          attribution: 'Openclipart',
-        },
-      ],
+      value: {
+        results: [
+          {
+            id: 'openclipart:1',
+            source: 'openclipart',
+            title: 'Soup',
+            thumbUrl: 'https://openclipart.org/image/400px/1',
+            license: 'CC0 1.0',
+            attribution: 'Openclipart',
+          },
+        ],
+      },
     });
     const sources: SourceAdapter[] = [{name: 'openclipart', search}];
     await searchCached('soup', sources);
@@ -67,16 +69,18 @@ describe('the search languages (#68)', () => {
       seen.push([...ctx.languages]);
       return {
         ok: true as const,
-        results: [
-          {
-            id: 'commons:Gato.png',
-            source: 'commons' as const,
-            title: 'Gato',
-            thumbUrl: 'https://upload.wikimedia.org/gato.png',
-            license: 'CC0',
-            attribution: 'Wikimedia Commons',
-          },
-        ],
+        value: {
+          results: [
+            {
+              id: 'commons:Gato.png',
+              source: 'commons' as const,
+              title: 'Gato',
+              thumbUrl: 'https://upload.wikimedia.org/gato.png',
+              license: 'CC0',
+              attribution: 'Wikimedia Commons',
+            },
+          ],
+        },
       };
     });
     const sources: SourceAdapter[] = [{name: 'commons', search}];
@@ -95,16 +99,18 @@ describe('the search settings (#70)', () => {
   const answer = (name: 'openclipart' | 'commons') =>
     jest.fn(async (_query: string, ctx) => ({
       ok: true as const,
-      results: [
-        {
-          id: `${name}:1`,
-          source: name,
-          title: `${ctx.photos ? 'photo' : 'drawing'} ${ctx.dataSaver}`,
-          thumbUrl: `https://example.org/${name}.png`,
-          license: 'CC0',
-          attribution: name,
-        },
-      ],
+      value: {
+        results: [
+          {
+            id: `${name}:1`,
+            source: name,
+            title: `${ctx.photos ? 'photo' : 'drawing'} ${ctx.dataSaver}`,
+            thumbUrl: `https://example.org/${name}.png`,
+            license: 'CC0',
+            attribution: name,
+          },
+        ],
+      },
     }));
 
   it('asks only the sources left on, with the style and the data saver', async () => {

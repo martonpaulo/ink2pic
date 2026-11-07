@@ -165,7 +165,7 @@ describe('SearchScreen', () => {
       .mockImplementationOnce(() => slow)
       .mockResolvedValue({
         ok: true,
-        results: [{...result, id: 'openclipart:2', title: 'Wine'}],
+        value: {results: [{...result, id: 'openclipart:2', title: 'Wine'}]},
       });
     const sources: SourceAdapter[] = [{name: 'openclipart', search}];
     const onPick = jest.fn((): Promise<Done<unknown>> => new Promise(() => {}));
@@ -187,7 +187,7 @@ describe('SearchScreen', () => {
     await act(async () =>
       tree.root.findByProps({testID: 'query'}).props.onSubmitEditing(),
     );
-    await act(async () => finishFirst({ok: true, results: [result]}));
+    await act(async () => finishFirst({ok: true, value: {results: [result]}}));
     expect(
       tree.root.findAllByProps({testID: 'tile-openclipart:2'}).length,
     ).toBeGreaterThan(0);

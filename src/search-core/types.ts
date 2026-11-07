@@ -64,15 +64,15 @@ export type Outcome<T, F extends {ok: false; message: string}> =
 /** A failure; `message` is detail for the log, never shown. */
 export type Failure = {ok: false; kind: FailureKind; message: string};
 
-/** A source's answer: results (possibly a real empty list) or why there are none. */
-export type SourceOutcome =
-  | {
-      ok: true;
-      results: SearchResult[];
-      /** A spelling the source suggests instead of the query, when it has one (#65). */
-      suggestion?: string;
-    }
-  | Failure;
+/** What a source found: results, possibly a real empty list. */
+export type SourceAnswer = {
+  results: SearchResult[];
+  /** A spelling the source suggests instead of the query, when it has one (#65). */
+  suggestion?: string;
+};
+
+/** A source's answer, or why there is none (#105). */
+export type SourceOutcome = Outcome<SourceAnswer, Failure>;
 
 export function sourceFailure(kind: FailureKind, message: string): Failure {
   return {ok: false, kind, message};

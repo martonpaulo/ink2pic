@@ -29,11 +29,11 @@ describe('parseSearchResponse', () => {
     if (!outcome.ok) {
       throw new Error(outcome.message);
     }
-    expect(outcome.results.map(r => r.id)).toEqual([
+    expect(outcome.value.results.map(r => r.id)).toEqual([
       'commons:1001',
       'commons:2002',
     ]);
-    const [bowl, engraving] = outcome.results;
+    const [bowl, engraving] = outcome.value.results;
     expect(bowl.title).toBe('Example bowl of soup');
     expect(bowl.license).toBe('CC BY-SA 4.0');
     expect(bowl.attribution).toBe('Example Artist');
@@ -46,7 +46,7 @@ describe('parseSearchResponse', () => {
   it('reads a search with no hits as a real empty result', () => {
     expect(parseSearchResponse(fixture('commons-none.json'))).toEqual({
       ok: true,
-      results: [],
+      value: {results: []},
     });
   });
 
@@ -174,7 +174,7 @@ describe('full width (#48)', () => {
     if (!outcome.ok) {
       throw new Error(outcome.message);
     }
-    return fullUrl(outcome.results[0], width);
+    return fullUrl(outcome.value.results[0], width);
   };
 
   it('takes the original of a picture narrower than the width, never an upscale', () => {
@@ -232,7 +232,7 @@ describe('drawings and canonical files (#43)', () => {
 
   it('drops PDF scans and videos, which are not pictures', () => {
     const outcome = parseSearchResponse(fixture('commons-mixed.json'));
-    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+    expect(outcome.ok && outcome.value.results.map(r => r.id)).toEqual([
       'commons:7007',
     ]);
   });
@@ -240,7 +240,7 @@ describe('drawings and canonical files (#43)', () => {
   it('makes one request when the drawings fill a page', async () => {
     const fetch = jest.fn().mockResolvedValue(ok(pages(PAGE_SIZE)));
     const outcome = await searchCommons('apple', ctx(fetch));
-    expect(outcome.ok && outcome.results).toHaveLength(PAGE_SIZE);
+    expect(outcome.ok && outcome.value.results).toHaveLength(PAGE_SIZE);
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][0]).toContain('filetype%3Adrawing');
   });
@@ -268,7 +268,7 @@ describe('drawings and canonical files (#43)', () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch.mock.calls[1][0]).not.toContain('filetype');
     // The drawing comes first; the file both searches found is shown once.
-    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+    expect(outcome.ok && outcome.value.results.map(r => r.id)).toEqual([
       'commons:100',
       'commons:101',
       'commons:102',
@@ -300,7 +300,7 @@ describe('drawings and canonical files (#43)', () => {
       .mockResolvedValueOnce(ok(pages(1)))
       .mockResolvedValueOnce({ok: false, status: 429, text: jest.fn()});
     const outcome = await searchCommons('okra soup', ctx(fetch));
-    expect(outcome.ok && outcome.results.map(r => r.id)).toEqual([
+    expect(outcome.ok && outcome.value.results.map(r => r.id)).toEqual([
       'commons:100',
     ]);
   });
@@ -314,12 +314,14 @@ describe('drawings and canonical files (#43)', () => {
     if (!outcome.ok) {
       throw new Error(outcome.message);
     }
-    expect(outcome.results.map(r => r.title)).toEqual([
+    expect(outcome.value.results.map(r => r.title)).toEqual([
       'Example portrait',
       'Example flag',
     ]);
-    expect(outcome.results[0].license).toBe('CC BY-SA 4.0');
-    expect(outcome.results[1].thumbUrl).toContain('330px-Example_flag.svg.png');
+    expect(outcome.value.results[0].license).toBe('CC BY-SA 4.0');
+    expect(outcome.value.results[1].thumbUrl).toContain(
+      '330px-Example_flag.svg.png',
+    );
   });
 
   it('asks for every named file in one request, and none for no file', async () => {
@@ -327,7 +329,10 @@ describe('drawings and canonical files (#43)', () => {
       `titles=${encodeURIComponent('File:A b.jpg|File:C.svg')}`,
     );
     const fetch = jest.fn();
-    expect(await commonsFiles([], ctx(fetch))).toEqual({ok: true, results: []});
+    expect(await commonsFiles([], ctx(fetch))).toEqual({
+      ok: true,
+      value: {results: []},
+    });
     expect(fetch).not.toHaveBeenCalled();
   });
 });
@@ -350,7 +355,10 @@ describe('the spelling suggestion (#65)', () => {
         fixture('commons-suggestion.json'),
         'Instituto Conficio',
       ),
-    ).toEqual({ok: true, results: [], suggestion: 'instituto confúcio'});
+    ).toEqual({
+      ok: true,
+      value: {results: [], suggestion: 'instituto confúcio'},
+    });
   });
 
   it('gives none when it only repeats the query', () => {
@@ -358,7 +366,10 @@ describe('the spelling suggestion (#65)', () => {
       batchcomplete: true,
       query: {searchinfo: {suggestion: 'soup filetype:drawing'}, search: []},
     });
-    expect(parseSearchResponse(same, 'Soup')).toEqual({ok: true, results: []});
+    expect(parseSearchResponse(same, 'Soup')).toEqual({
+      ok: true,
+      value: {results: []},
+    });
   });
 
   it('passes the suggestion of either Commons request on', async () => {
@@ -369,8 +380,7 @@ describe('the spelling suggestion (#65)', () => {
     });
     expect(await searchCommons('Instituto Conficio', ctx(fetch))).toEqual({
       ok: true,
-      results: [],
-      suggestion: 'instituto confúcio',
+      value: {results: [], suggestion: 'instituto confúcio'},
     });
   });
 });

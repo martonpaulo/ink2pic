@@ -52,22 +52,22 @@ const source = (
   answer: () => Promise<SourceOutcome>,
 ): SourceAdapter => ({name, search: answer});
 const answers = (results: SearchResult[]) =>
-  source('fixture', async () => ({ok: true, results}));
+  source('fixture', async () => ({ok: true, value: {results}}));
 const fails = (kind: 'network' | 'http') =>
   source(`fixture-${kind}`, async () => ({ok: false, kind, message: 'fixture'}));
 /** Answers only when `settle` runs, after the screen was rendered while it searched. */
 const waiting: (() => void)[] = [];
 const slow = source(
   'fixture-slow',
-  () => new Promise(resolve => waiting.push(() => resolve({ok: true, results: []}))),
+  () => new Promise(resolve => waiting.push(() => resolve({ok: true, value: {results: []}}))),
 );
 /** Finds a few pictures for a misspelled word and suggests the spelling that finds more (#65). */
 const suggests = (typo: string, word: string): SourceAdapter => ({
   name: 'fixture-suggests',
   search: async (query: string): Promise<SourceOutcome> =>
     query === typo
-      ? {ok: true, results: FIXTURE_RESULTS.slice(0, 2), suggestion: word}
-      : {ok: true, results: FIXTURE_RESULTS},
+      ? {ok: true, value: {results: FIXTURE_RESULTS.slice(0, 2), suggestion: word}}
+      : {ok: true, value: {results: FIXTURE_RESULTS}},
 });
 /** Stand-ins one screen sets on a module, undone after that screen. */
 const stubs: jest.SpyInstance[] = [];
