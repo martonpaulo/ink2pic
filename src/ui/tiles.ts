@@ -5,8 +5,8 @@
  * leaves the list, so the next result takes its place and the page count follows.
  */
 import {isContourUri} from '../flow/measure';
-import {pageCount, pageOf} from '../search/pages';
 import {webRetryUri} from '../search/thumbs';
+import {pageCount, pageOf} from '../search-core';
 import type {SearchResult} from '../search-core';
 
 export type Tile =

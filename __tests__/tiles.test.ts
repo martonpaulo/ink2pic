@@ -1,4 +1,4 @@
-import {PAGE_SIZE} from '../src/search/pages';
+import {PAGE_SIZE} from '../src/search-core';
 import type {SearchResult} from '../src/search-core/types';
 import {
   initialTile,
