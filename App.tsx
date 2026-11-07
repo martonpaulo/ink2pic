@@ -22,11 +22,13 @@ import {
 } from './src/flow/opening';
 import type {LassoPlace} from './src/flow/place';
 import {insertBest} from './src/flow/quickInsert';
+import {onHeadlessNote, takeHeadlessNote} from './src/flow/headlessInsert';
 import {startSession} from './src/storage/logFile';
 import {pluginFolder} from './src/storage/session';
 import {
   CONFIG_BUTTON_ID,
   INSERT_BUTTON_ID,
+  INSERT_NOTE_ID,
   LASSO_BUTTON_ID,
   SIDEBAR_BUTTON_ID,
 } from './src/buttons';
@@ -80,6 +82,8 @@ function App(): React.JSX.Element {
   const opening = useRef<OpeningState>(initialOpening);
   // Where the lasso was when the view opened; the picture goes there (#20).
   const place = useRef<LassoPlace | null>(null);
+  // The sentence of a failed «Insert picture» that ran with no view (#74).
+  const headlessNote = useRef<string | null>(null);
 
   /** Sets a screen for a flow, unless a newer opening or a close made the flow stale. */
   const show = (flow: number, next: Screen): boolean => {
@@ -132,6 +136,14 @@ function App(): React.JSX.Element {
     if (buttonId === INSERT_BUTTON_ID) {
       place.current = null;
       await insertNow(flow, lasso);
+      return;
+    }
+    if (buttonId === INSERT_NOTE_ID) {
+      place.current = null;
+      show(flow, {
+        name: 'note',
+        text: headlessNote.current ?? copy['error.unexpected'],
+      });
       return;
     }
     if (buttonId !== LASSO_BUTTON_ID) {
@@ -274,6 +286,16 @@ function App(): React.JSX.Element {
         now: Date.now(),
       });
     });
+    // 2c. A failed «Insert picture» with no view opened the view for its sentence (#74).
+    const noteNow = (how: 'pending' | 'live') => {
+      const text = takeHeadlessNote();
+      if (text !== null) {
+        headlessNote.current = text;
+        dispatch({type: 'press', id: INSERT_NOTE_ID, how, now: Date.now()});
+      }
+    };
+    noteNow('pending');
+    const stopNote = onHeadlessNote(() => noteNow('live'));
     // 3. Closed: the next opening starts fresh; opened again: decide again, unless pressed.
     const stopLife = onLifecycle(state => dispatch({type: 'lifecycle', state}));
     // 4. Now, on mount, unless a press already chose: the controller starts the session log
@@ -282,6 +304,7 @@ function App(): React.JSX.Element {
     return () => {
       stopPresses();
       stopConfig();
+      stopNote();
       stopLife();
     };
     // Registered once for the life of the view; the controller holds the state.

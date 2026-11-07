@@ -31,12 +31,25 @@ export type ButtonPress = {id: number};
 let pending: number | null = null;
 const pressListeners = new Set<(press: ButtonPress) => void>();
 
-export function startButtonQueue(): Result<true> {
+/** Keeps the press for the view: pending until it mounts, live while it is mounted. */
+export function queuePress(id: number): void {
+  pending = id;
+  pressListeners.forEach(listener => listener({id}));
+}
+
+/**
+ * Listens at startup. A press `headless` answers true for runs with no view (showType 0, #74)
+ * and never reaches the view; every other press is queued for it.
+ */
+export function startButtonQueue(
+  headless: (id: number) => boolean = () => false,
+): Result<true> {
   return attemptNow(() =>
     PluginManager.registerButtonListener({
       onButtonPress: event => {
-        pending = event.id;
-        pressListeners.forEach(listener => listener({id: event.id}));
+        if (!headless(event.id)) {
+          queuePress(event.id);
+        }
       },
     }),
   );

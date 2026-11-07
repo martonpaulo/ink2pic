@@ -32,6 +32,12 @@ export const RULES = {
     source: 'docs/brief.md section 10.5 (host code)',
     tag: 'CONFIRMED',
   },
+  noView: {
+    rule: 'A press of a button registered with showType 0 sends plugin_button_event only: no view and no lifecycle 2',
+    source:
+      'docs.supernote.com PluginButton (showType 0: do not show plugin UI); docs/brief.md section 10.5 (#74)',
+    tag: 'TO TEST',
+  },
   silentHide: {
     rule: 'A hide because the Note app paused or the file changed sends no lifecycle event',
     source: 'docs/brief.md section 10.5 (host code)',

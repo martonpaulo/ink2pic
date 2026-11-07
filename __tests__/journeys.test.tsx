@@ -52,7 +52,9 @@ describe('journeys (#78)', () => {
   it('Insert picture in one tap: the best picture goes below the word with no grid', async () => {
     const j = lassoedSoup();
     await j.press(INSERT_BUTTON_ID);
-    await j.settle(() => j.host.view === 'hidden');
+    // No view (#74): the person stays on the note while the picture goes in.
+    await j.settle(() => j.host.pictures().length > 0);
+    expect(j.host.view).toBe('hidden');
     expect(j.tiles()).toEqual([]);
     const [picture] = j.host.pictures();
     expect(picture.type).toBe(PICTURE_TYPE);

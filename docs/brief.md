@@ -927,9 +927,15 @@ Open on the device, each logged so the session log answers it:
   `PluginButton` has no position field (sn-plugin-lib 0.2.3 and the official docs), so «Insert
   picture» is registered before «Find picture»; the device shows whether that order sets their
   order in the «•••» menu, and whether a plugin button can sit on the toolbar itself.
-- A lasso button with `showType: 0` (no plugin view, official docs) [TO TEST]: whether the press
-  still reaches the plugin and the SDK calls work with no view. Until then «Insert picture» opens
-  the view with one line and closes it.
+- A lasso button with `showType: 0` (no plugin view, official docs «PluginButton»: `0` do not
+  show plugin UI) [TO TEST]: whether the press still reaches the plugin and the SDK calls work
+  with no view. Build 16 registers «Insert picture» so (owner, build 15,
+  [#74](https://github.com/martonpaulo/ink2pic/issues/74)): `index.js`'s button listener runs
+  the insert and logs each step as `insert picture (no view): …`; a failure calls
+  `showPluginView()` (official docs: «shows the current plugin UI») to show its sentence, and a
+  missing permission opens the view's onboarding. Whether `showPluginView()` opens the view from
+  a button listener is TO TEST too. If the press never arrives, build 17 goes back to
+  `showType: 1`. «Find picture» keeps its view.
 
 ## 11. Risks
 

@@ -101,6 +101,13 @@ const checks: Record<RuleId, () => Promise<void>> = {
     ]);
     expect(host.view).toBe('shown');
   },
+  noView: async () => {
+    const host = started();
+    await PluginManager.registerButton(2, ['NOTE'], {id: 300, showType: 0});
+    host.press(300);
+    expect(host.sent.slice(1)).toEqual(['button 300']);
+    expect(host.view).toBe('hidden');
+  },
   silentHide: async () => {
     const host = started();
     host.press(200);

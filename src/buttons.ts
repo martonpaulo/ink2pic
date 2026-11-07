@@ -13,6 +13,10 @@ export const EDIT_DATA_STROKES = 0;
 
 /** `showType` value for a full-screen React Native view. */
 export const SHOW_FULL_VIEW = 1;
+/** `showType` value for no plugin view (official docs, «PluginButton»): «Insert picture» (#74). */
+export const SHOW_NO_VIEW = 0;
+/** Not a registered button: the view opened to show a failed «Insert picture» sentence (#74). */
+export const INSERT_NOTE_ID = 901;
 
 /**
  * The plugin's Settings entry (#68): not a registered button, but its click goes through the same

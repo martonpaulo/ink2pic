@@ -316,10 +316,18 @@ export class PluginHost {
         : null;
   }
 
-  /** A press: the button event, then lifecycle 2, as a pair (rule pressPair). */
+  /**
+   * A press: the button event, then lifecycle 2, as a pair (rule pressPair); a button registered
+   * with showType 0 sends the event only (rule noView).
+   */
   press(id: number): void {
     this.send('button', {id, pressEvent: CLICK});
-    this.show();
+    const button = this.buttons.find(
+      args => (args[2] as {id?: number} | undefined)?.id === id,
+    );
+    if ((button?.[2] as {showType?: number} | undefined)?.showType !== 0) {
+      this.show();
+    }
   }
 
   /** The Note app paused or the file changed: hidden, with no lifecycle event (rule silentHide). */

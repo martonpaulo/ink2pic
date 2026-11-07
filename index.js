@@ -12,8 +12,10 @@ import {
   INSERT_BUTTON_ID,
   LASSO_BUTTON_ID,
   SHOW_FULL_VIEW,
+  SHOW_NO_VIEW,
   SIDEBAR_BUTTON_ID,
 } from './src/buttons';
+import {insertWithoutView} from './src/flow/headlessInsert';
 import {
   initPlugin,
   registerButton,
@@ -63,12 +65,13 @@ registerButton(BUTTON_TYPE_SIDEBAR, ['NOTE'], {
 }).then(result => report('sidebar button', result));
 
 // Before Find picture: the host gives no position field, so the order may set the menu's (#74).
+// No view: the person stays on the note; a failure opens the view (#74, TO TEST).
 registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
   id: INSERT_BUTTON_ID,
   name: copy['button.insert'],
   icon: Image.resolveAssetSource(require('./assets/insert.png')).uri,
   editDataTypes: [EDIT_DATA_STROKES],
-  showType: SHOW_FULL_VIEW,
+  showType: SHOW_NO_VIEW,
 }).then(result => report('insert button', result));
 
 registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
@@ -80,7 +83,18 @@ registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
 }).then(result => report('lasso button', result));
 
 // After registerButton, as the official docs order it; before the view exists (gotcha 11).
-report('button listener', startButtonQueue());
+// «Insert picture» runs here, with no view (#74); every other press goes to the view.
+report(
+  'button listener',
+  startButtonQueue(id => {
+    if (id !== INSERT_BUTTON_ID) {
+      return false;
+    }
+    log('insert button pressed: no view');
+    insertWithoutView();
+    return true;
+  }),
+);
 
 // The plugin's own Settings entry opens the Languages screen (#68): registered first, then its
 // listener, as the official docs order it. A click queues like a press and shows the view, which

@@ -13,7 +13,15 @@ import {
   EDIT_DATA_STROKES,
   INSERT_BUTTON_ID,
   LASSO_BUTTON_ID,
+  SHOW_FULL_VIEW,
+  SHOW_NO_VIEW,
 } from '../src/buttons';
+import {
+  HeadlessDeps,
+  insertWithoutView,
+  takeHeadlessNote,
+} from '../src/flow/headlessInsert';
+import {takePendingButton} from '../src/sdk/buttons';
 import {insertBest} from '../src/flow/quickInsert';
 import {startButtonQueue} from '../src/sdk/buttons';
 import {copy} from '../src/ui/copy';
@@ -56,6 +64,11 @@ async function openedBy(id: number) {
   startButtonQueue();
   const calls = (PluginManager.registerButtonListener as jest.Mock).mock.calls;
   calls[calls.length - 1][0].onButtonPress({id});
+  return mounted();
+}
+
+/** The view, mounted, once its opening settled. */
+async function mounted() {
   let tree!: renderer.ReactTestRenderer;
   await act(async () => {
     tree = renderer.create(<App />);
@@ -68,7 +81,8 @@ async function openedBy(id: number) {
   return tree;
 }
 
-const text = (tree: renderer.ReactTestRenderer) => JSON.stringify(tree.toJSON());
+const text = (tree: renderer.ReactTestRenderer) =>
+  JSON.stringify(tree.toJSON());
 
 describe('Insert picture (#74)', () => {
   it('inserts the best picture for the lassoed word at the lasso, then closes, with no grid', async () => {
@@ -130,4 +144,103 @@ it('registers Insert picture before Find picture, both for handwriting only (#74
     expect(button.apps).toEqual(['NOTE']);
     expect(button.editDataTypes).toEqual([EDIT_DATA_STROKES]);
   }
+  // Insert picture stays on the note; Find picture keeps its view (#74).
+  expect(lassoButtons.map(button => button.showType)).toEqual([
+    SHOW_NO_VIEW,
+    SHOW_FULL_VIEW,
+  ]);
+});
+
+describe('Insert picture with no view (#74)', () => {
+  const place = {
+    rect: lassoRect,
+    page: 3,
+    pageSize: {width: 1920, height: 2560},
+  };
+  const headless = (more: Partial<HeadlessDeps> = {}): HeadlessDeps => ({
+    session: jest.fn().mockResolvedValue(undefined),
+    folder: jest.fn().mockResolvedValue({ok: true, value: '/p'}),
+    missing: jest.fn().mockResolvedValue([]),
+    read: jest
+      .fn()
+      .mockResolvedValue({ok: true, value: {query: 'soup', place}}),
+    insert: jest.fn().mockResolvedValue({ok: true, value: '/s/a.png'}),
+    show: jest.fn().mockResolvedValue({ok: true, value: true}),
+    press: jest.fn(),
+    ...more,
+  });
+
+  beforeEach(() => {
+    takeHeadlessNote();
+    takePendingButton();
+  });
+
+  it('runs the press in the button listener and never queues it for the view', () => {
+    let listener!: (event: {id: number}) => void;
+    let run!: jest.Mock;
+    jest.isolateModules(() => {
+      const sdk = require('sn-plugin-lib');
+      sdk.PluginManager.registerButton.mockResolvedValue(true);
+      jest.doMock('../src/flow/headlessInsert', () => ({
+        insertWithoutView: jest.fn().mockResolvedValue(undefined),
+      }));
+      run = require('../src/flow/headlessInsert').insertWithoutView;
+      require('../index');
+      const calls = sdk.PluginManager.registerButtonListener.mock.calls;
+      listener = calls[calls.length - 1][0].onButtonPress;
+      listener({id: INSERT_BUTTON_ID});
+      expect(require('../src/sdk/buttons').takePendingButton()).toBeNull();
+      listener({id: LASSO_BUTTON_ID});
+      expect(require('../src/sdk/buttons').takePendingButton()).toBe(
+        LASSO_BUTTON_ID,
+      );
+    });
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('inserts the lassoed word and opens no view', async () => {
+    const deps = headless();
+    await insertWithoutView(deps);
+    expect(deps.insert).toHaveBeenCalledWith('soup', place);
+    expect(deps.show).not.toHaveBeenCalled();
+    expect(takeHeadlessNote()).toBeNull();
+  });
+
+  it('opens the view with the failure sentence when the insert fails', async () => {
+    const deps = headless({
+      insert: jest
+        .fn()
+        .mockResolvedValue({ok: false, text: copy['error.place']}),
+    });
+    await insertWithoutView(deps);
+    expect(deps.show).toHaveBeenCalledTimes(1);
+    // The view, once open, shows that sentence and inserts nothing more.
+    const tree = await mounted();
+    expect(text(tree)).toContain(copy['error.place']);
+    expect(insertBest).not.toHaveBeenCalled();
+    expect(tree.root.findAllByType(SearchScreen)).toHaveLength(0);
+    act(() => tree.unmount());
+  });
+
+  it('opens the view with the recognition sentence when the word is not read', async () => {
+    const deps = headless({
+      read: jest
+        .fn()
+        .mockResolvedValue({ok: false, code: 104, message: 'empty'}),
+    });
+    await insertWithoutView(deps);
+    expect(deps.insert).not.toHaveBeenCalled();
+    expect(deps.show).toHaveBeenCalledTimes(1);
+    expect(takeHeadlessNote()).toEqual(expect.any(String));
+  });
+
+  it('hands the press to the view for its onboarding when a permission is missing', async () => {
+    const deps = headless({
+      missing: jest.fn().mockResolvedValue([{permission: 'x', reason: 'y'}]),
+    });
+    await insertWithoutView(deps);
+    expect(deps.press).toHaveBeenCalledWith(INSERT_BUTTON_ID);
+    expect(deps.show).toHaveBeenCalledTimes(1);
+    expect(deps.read).not.toHaveBeenCalled();
+  });
 });
