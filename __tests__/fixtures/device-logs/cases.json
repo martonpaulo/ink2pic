@@ -1,0 +1,7 @@
+{
+  "build15-sidebar-lasso.txt": {
+    "report": "docs/device-tests.md, Build 0.1.0 (15)",
+    "opening": "button 100 (live)",
+    "expect": "the side bar press checks the three declared permissions, in the logged order"
+  }
+}

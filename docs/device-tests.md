@@ -1,6 +1,9 @@
 # Device tests
 
 One entry per build sent to the owner's Manta ([brief section 18](brief.md#18-device-test-protocol)).
+A report that comes with a session log gets a scrubbed fixture in `__tests__/fixtures/device-logs/` (`.txt`, since Git ignores `*.log`)
+and a row in its `cases.json`, in the same change; `__tests__/deviceLog.test.ts` replays each one
+through the PluginHost simulator ([#79](https://github.com/martonpaulo/ink2pic/issues/79)).
 
 ## Contents
 
