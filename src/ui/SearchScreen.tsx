@@ -266,7 +266,7 @@ export function SearchScreen({
         <ResultsGrid
           results={outcome?.results ?? []}
           searching={searching}
-          sourceDown={outcome?.sourceDown ?? false}
+          sourceDown={state?.kind === 'partial'}
           emptyText={stateLine ?? copy['search.empty']}
           onPick={pick}
           thumbDir={thumbDir}

@@ -2,6 +2,7 @@
  * What a search shows, as one explicit state: the screen maps each kind to one sentence and
  * never reads the outcome's flags itself.
  */
+import {isThin} from './pages';
 import type {SearchOutcome} from './search';
 import type {FailureKind, SearchResult} from './types';
 
@@ -9,11 +10,14 @@ export type SearchState =
   | {kind: 'searching'}
   /** Every source answered; `results` is not empty. */
   | {kind: 'ready'; results: SearchResult[]}
-  /** The query found nothing; these are the results of the spelling a source suggested. */
+  /** Page 1 was thin; the results of the spelling a source suggested lead (#84). */
   | {kind: 'corrected'; results: SearchResult[]; query: string}
   /** Every source failed; these are the results of an earlier search, past their week. */
   | {kind: 'stale'; results: SearchResult[]}
-  /** A main source failed or was skipped; the others' results, possibly none. */
+  /**
+   * A source failed or was skipped while another answered, and page 1 is thin or empty (#82). A
+   * full page 1 is `ready`: the missing source changed nothing the person needs to know.
+   */
   | {kind: 'partial'; results: SearchResult[]}
   /** Every source answered and none had a picture. */
   | {kind: 'empty'}
@@ -43,7 +47,10 @@ export function searchState(outcome: SearchOutcome): SearchState {
   if (outcome.correctedQuery && results.length > 0) {
     return {kind: 'corrected', results, query: outcome.correctedQuery};
   }
-  if (outcome.sourceDown) {
+  const missing = Object.values(outcome.statuses).some(
+    status => status.state === 'failed' || status.state === 'skipped',
+  );
+  if (missing && isThin(results.length)) {
     return {kind: 'partial', results};
   }
   return results.length > 0 ? {kind: 'ready', results} : {kind: 'empty'};

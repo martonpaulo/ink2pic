@@ -24,7 +24,7 @@ export const copy = {
   'nav.nextLabel': 'Next page',
   'insert.running': 'Adding to your note…',
   'error.offline': 'No internet. Showing your library.',
-  'error.sourceDown': 'One source did not answer. Showing the other one.',
+  'error.sourceDown': 'A picture source did not answer. Try again later for more pictures.',
   'error.permission.internet':
     'Ink2Pic needs Network Access to search pictures.',
   'error.permission.files':

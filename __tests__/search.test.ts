@@ -4,7 +4,7 @@ import {BREAKER_OPEN_MS, createBreaker} from '../src/search-core/breaker';
 import {cachedSearch} from '../src/search-core/cache';
 import {systemClock} from '../src/search-core/clock';
 import type {SourceAdapter} from '../src/search-core/adapter';
-import {PAGE_SIZE} from '../src/search-core/pages';
+import {PAGE_SIZE, isThin} from '../src/search-core/pages';
 import {searchAll} from '../src/search-core/search';
 import {searchState} from '../src/search-core/state';
 import {createContext, FetchLike} from '../src/search-core/fetcher';
@@ -506,3 +506,47 @@ describe('the fallback ladder (#71)', () => {
   });
 });
 
+describe('the source-down line shows only on a thin page (#82)', () => {
+  const down = answering('commons', {
+    ok: false,
+    kind: 'http',
+    message: 'HTTP 500',
+  });
+  const kind = async (results: SearchResult[], failed = down) =>
+    searchState(
+      await searchAll(
+        'soup',
+        [answering('openclipart', {ok: true, results}), failed],
+        {
+          correct: false,
+        },
+      ),
+    ).kind;
+
+  it('one full page is thin no more', () => {
+    expect(isThin(PAGE_SIZE - 1)).toBe(true);
+    expect(isThin(0)).toBe(true);
+    expect(isThin(PAGE_SIZE)).toBe(false);
+  });
+
+  it('a full page 1 with a source down shows no line', async () => {
+    expect(await kind(page('a'))).toBe('ready');
+  });
+
+  it('a thin page 1 with a source down says so', async () => {
+    expect(await kind([result('a1'), result('a2')])).toBe('partial');
+  });
+
+  it('an empty page with a source down says so', async () => {
+    expect(await kind([])).toBe('partial');
+  });
+
+  it('a failed supplement on a thin page says so too', async () => {
+    const wikidata = {
+      ...answering('wikidata', {ok: false, kind: 'timeout', message: 'x'}),
+      supplement: true as const,
+    };
+    expect(await kind([result('a1')], wikidata)).toBe('partial');
+    expect(await kind(page('a'), wikidata)).toBe('ready');
+  });
+});
