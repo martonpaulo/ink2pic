@@ -48,7 +48,8 @@ type Entry = {query: string; savedAt: number; outcome: StoredOutcome};
 
 export type CachedSearch = {
   outcome: SearchOutcome;
-  fromCache: boolean;
+  /** Fresh: a cached answer in its week; live: the sources' answer; stale: see `stale`. */
+  freshness: 'fresh' | 'live' | 'stale';
   /** Why the cache file could not be read; the caller logs it. */
   problem?: string;
   /**
@@ -139,7 +140,8 @@ function isEntry(value: unknown): value is Entry {
     Object.values(statuses).every(isStatus) &&
     typeof sourceDown === 'boolean' &&
     typeof allFailed === 'boolean' &&
-    (correctedQuery === undefined || typeof correctedQuery === 'string')
+    (correctedQuery === undefined || typeof correctedQuery === 'string') &&
+    value.outcome.stale === undefined
   );
 }
 
@@ -227,12 +229,20 @@ export async function cachedSearch(
     return {
       // A new outcome per hit, as a fresh search gives one.
       outcome: {...hit.outcome, results: [...hit.outcome.results]},
-      fromCache: true,
+      freshness: 'fresh',
     };
   }
   const outcome = await run(query);
+  if (hit && outcome.allFailed) {
+    // Every source failed: an expired answer is better than none, and says it is old.
+    return {
+      outcome: {...hit.outcome, results: [...hit.outcome.results], stale: true},
+      freshness: 'stale',
+      problem,
+    };
+  }
   if (!worthKeeping(outcome)) {
-    return {outcome, fromCache: false, problem};
+    return {outcome, freshness: 'live', problem};
   }
   const entry: Entry = {
     query: key,
@@ -251,5 +261,5 @@ export async function cachedSearch(
       () => null,
       error => `cannot write the search cache: ${message(error)}`,
     );
-  return {outcome, fromCache: false, problem, saved};
+  return {outcome, freshness: 'live', problem, saved};
 }

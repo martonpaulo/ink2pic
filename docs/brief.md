@@ -552,6 +552,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `search.needWord` | Type a word first. |
 | `search.corrected` | Showing results for {query}. |
 | `search.instead` | Search for {query} instead |
+| `search.stale` | The sources did not answer. Showing an earlier search. |
 | `nav.previous` / `nav.next` | ◀ / ▶ |
 | `nav.previousLabel` / `nav.nextLabel` | Previous page / Next page |
 | `insert.running` | Adding to your note… |

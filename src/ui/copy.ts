@@ -14,6 +14,7 @@ export const copy = {
   'search.needWord': 'Type a word first.',
   'search.corrected': 'Showing results for {query}.',
   'search.instead': 'Search for {query} instead',
+  'search.stale': 'The sources did not answer. Showing an earlier search.',
   // Outside the brief's table: a page waits for its thumbnails after the search ended (#35).
   'page.loading': 'Loading pictures…',
   'nav.previous': '◀',

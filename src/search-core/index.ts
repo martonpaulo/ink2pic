@@ -3,6 +3,8 @@ export type {PictureHost, SourceAdapter, SourceContext} from './adapter';
 export {commonsAdapter} from './adapters/commons';
 export {openclipartAdapter} from './adapters/openclipart';
 export {wikidataAdapter} from './adapters/wikidata';
+export {createBreaker} from './breaker';
+export type {Breaker} from './breaker';
 export {cachedSearch} from './cache';
 export type {CachedSearch, CacheOptions, TextStore} from './cache';
 export {noLog, systemClock} from './clock';

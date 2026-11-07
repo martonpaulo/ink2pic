@@ -9,6 +9,7 @@ import type {SearchOutcome} from '../src/search-core/search';
 import type {SearchResult} from '../src/search-core/types';
 import {systemClock} from '../src/search-core/clock';
 import {fullUrl} from '../src/search-core/registry';
+import {searchState} from '../src/search-core/state';
 import type {TextStorage} from '../src/storage/text';
 
 const PATH = '/plugin/search-cache.json';
@@ -71,13 +72,13 @@ describe('cachedSearch', () => {
       path: PATH,
       clock: at(NOW),
     });
-    expect(first.fromCache).toBe(false);
+    expect(first.freshness).toBe('live');
     const again = await cachedSearch('soup', run, {
       storage,
       path: PATH,
       clock: at(NOW + 1),
     });
-    expect(again.fromCache).toBe(true);
+    expect(again.freshness).toBe('fresh');
     expect(again.problem).toBeUndefined();
     expect(run).toHaveBeenCalledTimes(1);
     expect(again.outcome.results.map(r => r.id)).toEqual([
@@ -113,12 +114,12 @@ describe('cachedSearch', () => {
     });
     await fresh.saved;
     // A new storage over the same files: the entry is read back from the file.
-    const {outcome: cached, fromCache} = await cachedSearch('soup', runner(), {
+    const {outcome: cached, freshness} = await cachedSearch('soup', runner(), {
       storage: memoryStorage(files).storage,
       path: PATH,
       clock: at(NOW),
     });
-    expect(fromCache).toBe(true);
+    expect(freshness).toBe('fresh');
     expect(fullUrl(cached.results[0], 960)).toBe(original.url);
     expect(fullUrl(cached.results[0], 960)).toBe(fullUrl(narrow, 960));
   });
@@ -132,7 +133,7 @@ describe('cachedSearch', () => {
       path: PATH,
       clock: at(NOW + CACHE_MAX_AGE_MS),
     });
-    expect(late.fromCache).toBe(false);
+    expect(late.freshness).toBe('live');
     expect(run).toHaveBeenCalledTimes(2);
   });
 
@@ -174,7 +175,7 @@ describe('cachedSearch', () => {
       clock: at(NOW),
     });
     expect(run).toHaveBeenCalledTimes(1);
-    expect(result.fromCache).toBe(false);
+    expect(result.freshness).toBe('live');
     expect(result.outcome.results).toHaveLength(2);
     expect(result.problem).toContain(why);
     expect(await result.saved).toBeNull();
@@ -194,7 +195,7 @@ describe('cachedSearch', () => {
       path: PATH,
       clock: at(NOW),
     });
-    expect(again.fromCache).toBe(false);
+    expect(again.freshness).toBe('live');
     expect(run).toHaveBeenCalledTimes(2);
     expect(files[PATH]).toBeUndefined();
   });
@@ -228,7 +229,7 @@ describe('cachedSearch', () => {
       clock: at(NOW),
     });
     expect(readText).toHaveBeenCalledTimes(1);
-    expect(again.fromCache).toBe(true);
+    expect(again.freshness).toBe('fresh');
     expect(run).toHaveBeenCalledTimes(2);
   });
 
@@ -254,5 +255,61 @@ describe('cachedSearch', () => {
 
   it('normalizes the key', () => {
     expect(cacheKey('  Soup Bowl ')).toBe('soup bowl');
+  });
+});
+
+describe('an expired answer when every source fails (#65)', () => {
+  const allDown: SearchOutcome = {
+    results: [],
+    statuses: {
+      openclipart: {state: 'failed', kind: 'network', message: 'offline'},
+    },
+    sourceDown: false,
+    allFailed: true,
+  };
+
+  it('shows the expired entry, marked stale, instead of nothing', async () => {
+    const {storage} = memoryStorage();
+    const first = await cachedSearch('soup', runner(), {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
+    await first.saved;
+    const late = await cachedSearch('soup', runner(allDown), {
+      storage,
+      path: PATH,
+      clock: at(NOW + CACHE_MAX_AGE_MS),
+    });
+    expect(late.freshness).toBe('stale');
+    expect(late.outcome.stale).toBe(true);
+    expect(late.outcome.results.map(x => x.id)).toEqual([
+      openclipart.id,
+      commons.id,
+    ]);
+    expect(searchState(late.outcome)).toEqual({
+      kind: 'stale',
+      results: late.outcome.results,
+    });
+  });
+
+  it('prefers a live empty answer, and has nothing stale without an entry', async () => {
+    const {storage} = memoryStorage();
+    await cachedSearch('soup', runner(), {storage, path: PATH, clock: at(NOW)});
+    const empty = outcome([]);
+    const live = await cachedSearch('soup', runner(empty), {
+      storage,
+      path: PATH,
+      clock: at(NOW + CACHE_MAX_AGE_MS),
+    });
+    expect(live.freshness).toBe('live');
+    expect(live.outcome).toBe(empty);
+    const none = await cachedSearch('bread', runner(allDown), {
+      storage,
+      path: PATH,
+      clock: at(NOW + CACHE_MAX_AGE_MS),
+    });
+    expect(none.freshness).toBe('live');
+    expect(none.outcome).toBe(allDown);
   });
 });

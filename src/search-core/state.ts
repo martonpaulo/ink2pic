@@ -11,6 +11,8 @@ export type SearchState =
   | {kind: 'ready'; results: SearchResult[]}
   /** The query found nothing; these are the results of the spelling a source suggested. */
   | {kind: 'corrected'; results: SearchResult[]; query: string}
+  /** Every source failed; these are the results of an earlier search, past their week. */
+  | {kind: 'stale'; results: SearchResult[]}
   /** A main source failed or was skipped; the others' results, possibly none. */
   | {kind: 'partial'; results: SearchResult[]}
   /** Every source answered and none had a picture. */
@@ -27,9 +29,14 @@ const OFFLINE_KINDS: ReadonlySet<FailureKind> = new Set(['network', 'timeout']);
 
 export function searchState(outcome: SearchOutcome): SearchState {
   const {results} = outcome;
+  if (outcome.stale) {
+    return {kind: 'stale', results};
+  }
   if (outcome.allFailed) {
     const offline = Object.values(outcome.statuses).every(
-      status => status.state === 'failed' && OFFLINE_KINDS.has(status.kind),
+      status =>
+        (status.state === 'failed' || status.state === 'skipped') &&
+        OFFLINE_KINDS.has(status.kind),
     );
     return {kind: offline ? 'offline' : 'failed'};
   }

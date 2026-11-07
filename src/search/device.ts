@@ -8,6 +8,7 @@ import {USER_AGENT} from '../config';
 import {log} from '../log/memory';
 import {
   cachedSearch,
+  createBreaker,
   createContext,
   DEFAULT_ADAPTERS,
   FetchLike,
@@ -18,6 +19,9 @@ import {
 } from '../search-core';
 import {pluginFolder} from '../storage/session';
 import {deviceStorage} from '../storage/text';
+
+/** In memory for the plugin's run: a source that keeps failing is skipped for a while (#65). */
+const breaker = createBreaker();
 
 export function deviceContext(
   fetch: FetchLike = globalThis.fetch,
@@ -31,7 +35,8 @@ export async function searchCached(
   ctx: SourceContext = deviceContext(),
   {exact = false}: {exact?: boolean} = {},
 ): Promise<SearchOutcome> {
-  const run = (q: string) => searchAll(q, sources, {ctx, correct: !exact});
+  const run = (q: string) =>
+    searchAll(q, sources, {ctx, correct: !exact, breaker});
   if (exact) {
     // The cached answer may be the corrected one: the person asked for the word as typed.
     return run(query);
@@ -54,6 +59,14 @@ export async function searchCached(
       log(`search cache: ${problem}`);
     }
   });
-  log(`search cache: ${cached.fromCache ? 'hit' : 'miss'}`);
+  log(
+    `search cache: ${
+      {
+        fresh: 'hit',
+        live: 'miss',
+        stale: 'every source failed; showing an expired answer',
+      }[cached.freshness]
+    }`,
+  );
   return cached.outcome;
 }

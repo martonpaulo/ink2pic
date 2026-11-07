@@ -77,6 +77,7 @@ const STATE_COPY: Record<SearchStateKind, CopyKey | null> = {
   searching: 'search.running',
   ready: null,
   corrected: 'search.corrected',
+  stale: 'search.stale',
   partial: 'error.sourceDown',
   empty: 'search.empty',
   offline: 'error.offline',

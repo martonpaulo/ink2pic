@@ -103,16 +103,20 @@ describe('searchCommons', () => {
     expect(headers['Api-User-Agent']).toBe(headers['User-Agent']);
   });
 
-  it('reports HTTP 429 as throttled and does not retry', async () => {
+  it('reports HTTP 429 as throttled after its one retry (#65)', async () => {
+    jest.useFakeTimers();
     const fetch = jest
       .fn()
       .mockResolvedValue({ok: false, status: 429, text: jest.fn()});
-    expect(await searchCommons('soup', ctx(fetch))).toEqual({
+    const pending = searchCommons('soup', ctx(fetch));
+    await jest.advanceTimersByTimeAsync(400);
+    expect(await pending).toEqual({
       ok: false,
       kind: 'throttled',
       message: 'HTTP 429',
     });
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 });
 

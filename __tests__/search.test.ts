@@ -1,6 +1,8 @@
 import {readFileSync} from 'fs';
 import {join} from 'path';
+import {BREAKER_OPEN_MS, createBreaker} from '../src/search-core/breaker';
 import {cachedSearch} from '../src/search-core/cache';
+import {systemClock} from '../src/search-core/clock';
 import type {SourceAdapter} from '../src/search-core/adapter';
 import {searchAll} from '../src/search-core/search';
 import {createContext, FetchLike} from '../src/search-core/fetcher';
@@ -88,17 +90,20 @@ const withFetch = (fetch: FetchLike) => ({
 
 describe('the default adapters', () => {
   it('queries Openclipart, Commons and Wikidata with the given fetch', async () => {
+    jest.useFakeTimers();
     const fetch = jest
       .fn()
       .mockResolvedValue({ok: false, status: 503, text: jest.fn()});
-    const outcome = await searchAll('soup', DEFAULT_ADAPTERS, withFetch(fetch));
+    const pending = searchAll('soup', DEFAULT_ADAPTERS, withFetch(fetch));
+    await jest.advanceTimersByTimeAsync(400);
+    const outcome = await pending;
     expect(Object.keys(outcome.statuses)).toEqual([
       'openclipart',
       'commons',
       'wikidata',
     ]);
-    // A failed request is never retried: one per source.
-    expect(fetch).toHaveBeenCalledTimes(3);
+    // A 5xx is tried once more (#65): two per source.
+    expect(fetch).toHaveBeenCalledTimes(6);
   });
 
   it('ranks with the query: the plain picture of the word comes first (#43)', async () => {
@@ -296,5 +301,93 @@ describe('the corrected search (#65)', () => {
       message: 'offline',
     });
     expect((await searchAll('soup', [down])).allFailed).toBe(true);
+  });
+});
+
+describe('the circuit breaker (#65)', () => {
+  let now = Date.UTC(2026, 10, 6, 12);
+  const clock = {...systemClock, now: () => now};
+  const down = () => ({
+    name: 'down',
+    search: jest.fn(
+      async (): Promise<SourceOutcome> => ({
+        ok: false,
+        kind: 'throttled',
+        message: 'HTTP 429',
+      }),
+    ),
+  });
+  const up = answering('up', {ok: true, results: [result('u1')]});
+
+  it('skips a source for five minutes after two failed searches in a row', async () => {
+    const breaker = createBreaker({clock});
+    const source = down();
+    const lines: string[] = [];
+    const ctx = {
+      ...withFetch(jest.fn()).ctx,
+      log: (line: string) => lines.push(line),
+    };
+    await searchAll('soup', [up, source], {breaker, ctx});
+    await searchAll('soup', [up, source], {breaker, ctx});
+    expect(source.search).toHaveBeenCalledTimes(2);
+    const skipped = await searchAll('soup', [up, source], {breaker, ctx});
+    expect(source.search).toHaveBeenCalledTimes(2);
+    expect(skipped.statuses.down).toEqual({
+      state: 'skipped',
+      kind: 'throttled',
+      message: 'HTTP 429',
+    });
+    // The screen says one source did not answer.
+    expect(skipped.sourceDown).toBe(true);
+    expect(skipped.results.map(x => x.id)).toEqual(['u1']);
+    expect(
+      lines.some(line => line.startsWith('breaker: down failed twice')),
+    ).toBe(true);
+    expect(lines).toContain('breaker: down skipped: HTTP 429');
+    now += BREAKER_OPEN_MS;
+    await searchAll('soup', [up, source], {breaker, ctx});
+    expect(source.search).toHaveBeenCalledTimes(3);
+  });
+
+  it('a success clears the count', async () => {
+    const breaker = createBreaker({clock});
+    let fail = true;
+    const flaky: SourceAdapter = {
+      name: 'flaky',
+      search: jest.fn(
+        async (): Promise<SourceOutcome> =>
+          fail
+            ? {ok: false, kind: 'http', message: 'HTTP 503'}
+            : {ok: true, results: [result('f1')]},
+      ),
+    };
+    await searchAll('soup', [up, flaky], {breaker});
+    fail = false;
+    await searchAll('soup', [up, flaky], {breaker});
+    fail = true;
+    await searchAll('soup', [up, flaky], {breaker});
+    await searchAll('soup', [up, flaky], {breaker});
+    expect(flaky.search).toHaveBeenCalledTimes(4);
+  });
+
+  it('never opens while no other source answers: the device is offline', async () => {
+    const breaker = createBreaker({clock});
+    const a = down();
+    const b = {...down(), name: 'other'};
+    for (let i = 0; i < 3; i++) {
+      await searchAll('soup', [a, b], {breaker});
+    }
+    expect(a.search).toHaveBeenCalledTimes(3);
+  });
+
+  it('asks every main source when all their breakers are open', async () => {
+    const breaker = createBreaker({clock});
+    const a = down();
+    const only = answering('w', {ok: true, results: []});
+    const wikidata = {...only, supplement: true as const};
+    await searchAll('soup', [a, wikidata], {breaker});
+    await searchAll('soup', [a, wikidata], {breaker});
+    await searchAll('soup', [a, wikidata], {breaker});
+    expect(a.search).toHaveBeenCalledTimes(3);
   });
 });
