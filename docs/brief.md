@@ -515,7 +515,7 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 - Goal [TO TEST, spike S5]: place the image where the handwritten word was, using `getLassoRect()` for the position and a Picture element with `rect` via `insertElements`, then optionally delete the handwritten word with `deleteLassoElements()` (or by `numInPage` if the lasso context expired). This is the "magic" moment and the biggest differentiator. Only ship it if it works reliably. Otherwise keep the baseline.
 - Capture `getLassoRect()` and the stroke identifiers **before** any navigation, because lasso context is ephemeral.
 - Handwritten word after insertion: **kept** by default [DEFAULT]. The Settings screen's «Where the picture goes» chooses Below (default), Beside (to the right, top-aligned, else to the left, else below) or In place of word: the picture is placed from the word's top-left corner and, only after it was placed there by `insertPageElements` on the person's tap, `deleteLassoElements()` deletes the lassoed handwriting, logged; a failed or host-placed insert keeps the word ([#70](https://github.com/martonpaulo/ink2pic/issues/70)). Whether the lasso still holds the word after the insert, and whether the delete leaves the new picture, is TO TEST on the device.
-- Size: Small 400, Medium 640 (default), Large 960 page pixels; the picture is prepared at that width, and a library picture saved larger shrinks to it, never enlarged ([#70](https://github.com/martonpaulo/ink2pic/issues/70)).
+- Size: Small 400, Medium 640 (default), Large 960 page pixels; the picture is prepared at that width, and a library picture saved larger shrinks to it, never enlarged ([#70](https://github.com/martonpaulo/ink2pic/issues/70)); a tall picture shrinks further to the page height of 2560 pixels, keeping its ratio ([#95](https://github.com/martonpaulo/ink2pic/issues/95)).
 
 ### 8.4 Results screen (e-ink rules)
 
@@ -824,7 +824,7 @@ interface ImageFetchModule {
   // Downloads url to destPath. Returns bytes written. HTTPS only.
   downloadToFile(url: string, destPath: string, headers: Record<string, string>): Promise<number>;
   // Decodes srcPath with a memory budget, flattens alpha on white, converts to gray,
-  // applies contrast, scales to targetWidth, writes PNG or JPG to destPath.
+  // applies contrast, scales to targetWidth and at most 2560 px high, writes PNG or JPG to destPath.
   prepareForEink(srcPath: string, destPath: string, targetWidth: number, format: 'png' | 'jpg'): Promise<{ width: number; height: number; bytes: number }>;
   // Small text persistence for cache and library index, since FileUtils has no writeFile.
   writeText(path: string, text: string): Promise<void>;

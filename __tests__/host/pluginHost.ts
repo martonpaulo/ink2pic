@@ -657,7 +657,8 @@ export class PluginHost {
   private api(): Record<string, Record<string, Impl>> {
     return {
       PluginManager: {
-        init: () => {
+        // Async, as in sn-plugin-lib 0.2.3 (#95).
+        init: async () => {
           this.initialized = true;
           // The SDK reports mounted in init(); the host answers lifecycle 1 (rule mounted).
           this.life(LIFE.mounted);

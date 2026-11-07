@@ -24,11 +24,26 @@ describe('registerButton (#24)', () => {
 });
 
 describe('initPlugin (#24)', () => {
-  it('reports a thrown init', () => {
+  it('reports a thrown init', async () => {
     init.mockImplementation(() => {
       throw new Error('no bridge');
     });
-    expect(initPlugin()).toEqual({ok: false, code: -1, message: 'no bridge'});
+    expect(await initPlugin()).toEqual({
+      ok: false,
+      code: -1,
+      message: 'no bridge',
+    });
+  });
+
+  it('awaits init: a rejection is a failure, never ok (#95)', async () => {
+    init.mockRejectedValue(new Error('host not ready'));
+    expect(await initPlugin()).toEqual({
+      ok: false,
+      code: -1,
+      message: 'host not ready',
+    });
+    init.mockResolvedValue(undefined);
+    expect(await initPlugin()).toEqual({ok: true, value: true});
   });
 });
 

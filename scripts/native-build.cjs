@@ -152,7 +152,7 @@ function packagePlugin() {
 function testNative() {
   // A temporary folder: the gate may run as another user than the one that owns build/.
   const classes = fs.mkdtempSync(path.join(os.tmpdir(), 'ink2pic-native-tests-'));
-  const pure = ['SafePaths', 'EinkPixels', 'ThumbGate', 'ThumbMeasures', 'Contour', 'Decolor', 'PerceptualHash', 'PngTail'].map(name =>
+  const pure = ['SafePaths', 'EinkPixels', 'ThumbGate', 'ThumbMeasures', 'Contour', 'Decolor', 'PerceptualHash', 'PngTail', 'Workers'].map(name =>
     path.join(root, `native/src/com/ink2pic/files/${name}.java`),
   );
   // Compile inside the try, so a compile error also removes the folder.
@@ -161,7 +161,7 @@ function testNative() {
       '--release', '8', '-encoding', 'UTF-8', '-Xlint:-options', '-d', classes,
       ...pure, ...javaSources(path.join(root, 'native/tests')),
     ]);
-    for (const test of ['SafePathsTest', 'EinkPixelsTest', 'ThumbGateTest', 'ThumbMeasuresTest', 'ContourTest', 'DecolorTest', 'PerceptualHashTest', 'PngTailTest']) {
+    for (const test of ['SafePathsTest', 'EinkPixelsTest', 'ThumbGateTest', 'ThumbMeasuresTest', 'ContourTest', 'DecolorTest', 'PerceptualHashTest', 'PngTailTest', 'WorkersTest']) {
       run('java', ['-cp', classes, `com.ink2pic.files.${test}`]);
     }
   } finally {

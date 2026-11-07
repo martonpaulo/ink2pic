@@ -84,6 +84,10 @@ function App(): React.JSX.Element {
   const place = useRef<LassoPlace | null>(null);
   // The sentence of a failed «Insert picture» that ran with no view (#74).
   const headlessNote = useRef<string | null>(null);
+  // The session's settings now: a tap before the e-ink redraw chains from it (#95).
+  const settingsNow = useRef<Settings | null>(null);
+  // The settings saves, in tap order.
+  const saving = useRef<Promise<void>>(Promise.resolve());
 
   /** Sets a screen for a flow, unless a newer opening or a close made the flow stale. */
   const show = (flow: number, next: Screen): boolean => {
@@ -130,7 +134,10 @@ function App(): React.JSX.Element {
   ) => {
     if (buttonId === CONFIG_BUTTON_ID) {
       place.current = null;
-      show(flow, {name: 'settings', settings: await getSettings()});
+      const loaded = await getSettings();
+      if (show(flow, {name: 'settings', settings: loaded})) {
+        settingsNow.current = loaded;
+      }
       return;
     }
     if (buttonId === INSERT_BUTTON_ID) {
@@ -199,9 +206,10 @@ function App(): React.JSX.Element {
     }
   };
 
-  const run = async (buttonId: number, flow: number, lasso: OpenedLasso) => {
+  /** Runs a flow's host calls with one catch, then tells the controller it ended (#95). */
+  const run = async (flow: number, body: () => Promise<void>) => {
     try {
-      await startFlow(buttonId, flow, lasso);
+      await body();
     } catch (error) {
       // A rejected promise is not an uncaught error: report it the same way (#13).
       log(`start failed: ${String(error)}`);
@@ -240,7 +248,12 @@ function App(): React.JSX.Element {
           log(action.text);
           break;
         case 'start':
-          run(action.id, action.flow, action.lasso);
+          run(action.flow, () =>
+            startFlow(action.id, action.flow, action.lasso),
+          );
+          break;
+        case 'resume':
+          run(action.flow, () => openSearch(action.id, action.flow, undefined));
           break;
         case 'decide':
           decide();
@@ -337,13 +350,16 @@ function App(): React.JSX.Element {
       action.type === 'reset'
         ? {type: 'reset', system: systemLanguage()}
         : action;
-    const next = settingsStep(current, applied);
-    if (next === current) {
+    const base = settingsNow.current ?? current;
+    const next = settingsStep(base, applied);
+    if (next === base) {
       return;
     }
+    settingsNow.current = next;
     log(`settings: ${JSON.stringify(action)}`);
     setScreen({name, settings: next});
-    await saveSettings(next);
+    saving.current = saving.current.then(() => saveSettings(next));
+    await saving.current;
   };
 
   switch (screen.name) {
@@ -355,7 +371,10 @@ function App(): React.JSX.Element {
             changeSettings('settings', screen.settings, action)
           }
           onLanguages={() =>
-            setScreen({name: 'languages', settings: screen.settings})
+            setScreen({
+              name: 'languages',
+              settings: settingsNow.current ?? screen.settings,
+            })
           }
           onClear={clearLibrary}
           onClose={() => closePluginView()}
@@ -378,7 +397,10 @@ function App(): React.JSX.Element {
             })
           }
           onBack={() =>
-            setScreen({name: 'settings', settings: screen.settings})
+            setScreen({
+              name: 'settings',
+              settings: settingsNow.current ?? screen.settings,
+            })
           }
           onClose={() => closePluginView()}
         />
@@ -387,7 +409,13 @@ function App(): React.JSX.Element {
       return (
         <Onboarding
           missing={screen.missing}
-          onDone={() => openSearch(screen.buttonId, screen.flow, undefined)}
+          onDone={() =>
+            dispatch({
+              type: 'onboarded',
+              id: screen.buttonId,
+              flow: screen.flow,
+            })
+          }
           onClose={() => closePluginView()}
         />
       );

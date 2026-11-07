@@ -39,6 +39,11 @@ public final class EinkPixels {
   /** Decode caps, as Pic2Note uses for exports (brief section 7, step 2). */
   public static final long MAX_DECODE_PIXELS = 16L * 1000 * 1000;
   public static final int MAX_DECODE_EDGE = 8192;
+  /**
+   * The output height cap, the page height in pixels (1920 x 2560): a tall picture capped only in
+   * width reached the contour's full-size arrays at 640 x 8192, over 150 MB (#95).
+   */
+  public static final int MAX_OUTPUT_HEIGHT = 2560;
 
   /** Rec. 601 luma weights, in thousandths. */
   private static final int RED_WEIGHT = 299;
@@ -151,13 +156,19 @@ public final class EinkPixels {
     }
   }
 
-  /** The output size: scaled down to `targetWidth`, keeping the ratio, never scaled up. */
+  /**
+   * The output size: scaled down to fit `targetWidth` and {@link #MAX_OUTPUT_HEIGHT}, keeping the
+   * ratio, never scaled up.
+   */
   public static int[] targetSize(int width, int height, int targetWidth) {
-    if (width <= targetWidth) {
+    double scale = Math.min((double) targetWidth / width, (double) MAX_OUTPUT_HEIGHT / height);
+    if (scale >= 1) {
       return new int[] {width, height};
     }
-    int scaledHeight = (int) Math.max(1, Math.round((double) height * targetWidth / width));
-    return new int[] {targetWidth, scaledHeight};
+    int scaledWidth = (int) Math.max(1, Math.min(targetWidth, Math.round(width * scale)));
+    int scaledHeight =
+        (int) Math.max(1, Math.min(MAX_OUTPUT_HEIGHT, Math.round(height * scale)));
+    return new int[] {scaledWidth, scaledHeight};
   }
 
   /**

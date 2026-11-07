@@ -67,6 +67,11 @@ public final class EinkPixelsTest {
     check(Arrays.equals(EinkPixels.targetSize(300, 200, 640), new int[] {300, 200}), "never scales up");
     check(Arrays.equals(EinkPixels.targetSize(640, 480, 640), new int[] {640, 480}), "same width kept");
     check(Arrays.equals(EinkPixels.targetSize(10000, 1, 640), new int[] {640, 1}), "height at least 1");
+    // #95: the height is capped at the page height too, keeping the ratio.
+    check(Arrays.equals(EinkPixels.targetSize(640, 8192, 640), new int[] {200, 2560}), "tall capped at page height");
+    check(Arrays.equals(EinkPixels.targetSize(1280, 16384, 640), new int[] {200, 2560}), "wide and tall: the tighter cap wins");
+    check(Arrays.equals(EinkPixels.targetSize(300, 2560, 640), new int[] {300, 2560}), "page height kept");
+    check(Arrays.equals(EinkPixels.targetSize(1, 100000, 640), new int[] {1, 2560}), "width at least 1");
     check(EinkPixels.sampleSize(4000, 3000, 640) == 4, "sample keeps width above target");
     check(EinkPixels.sampleSize(640, 480, 640) == 1, "no sample at target width");
     check(EinkPixels.sampleSize(300, 200, 640) == 1, "no sample below target width");

@@ -53,7 +53,7 @@ function report(what, result) {
   }
 }
 
-report('init', initPlugin());
+initPlugin().then(result => report('init', result));
 
 const icon = Image.resolveAssetSource(require('./assets/icon.png')).uri;
 

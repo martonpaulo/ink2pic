@@ -121,6 +121,50 @@ it('a stop drops a waiting press', () => {
   expect(state.running).toBeNull();
 });
 
+describe('the onboarding hand-off (#95)', () => {
+  const onboarded = (flow: number): OpeningEvent => ({
+    type: 'onboarded',
+    id: 200,
+    flow,
+  });
+
+  it('runs the current flow as a tracked start: a press during it waits', () => {
+    const {state, actions} = run([
+      press(200, 0),
+      {type: 'finished', flow: 1},
+      onboarded(1),
+      press(100, 2_000),
+      {type: 'finished', flow: 1},
+    ]);
+    expect(actions).toEqual([
+      {type: 'start', id: 200, flow: 1, lasso: undefined},
+      {type: 'resume', id: 200, flow: 1},
+      {type: 'start', id: 100, flow: 2, lasso: undefined},
+    ]);
+    expect(state.running).toBe(2);
+  });
+
+  it('drops a hand-off for a stale flow', () => {
+    const {actions} = run([
+      press(200, 0),
+      {type: 'finished', flow: 1},
+      stop,
+      onboarded(1),
+    ]);
+    expect(actions).toEqual([
+      {type: 'start', id: 200, flow: 1, lasso: undefined},
+      {type: 'reset'},
+    ]);
+  });
+
+  it('never runs beside a flow that runs', () => {
+    const {actions} = run([press(200, 0), onboarded(1)]);
+    expect(actions).toEqual([
+      {type: 'start', id: 200, flow: 1, lasso: undefined},
+    ]);
+  });
+});
+
 describe('the session log of an opening (#58)', () => {
   /** Every action, logs included, so the order of startSession and the first line shows. */
   function all(events: OpeningEvent[], from: OpeningState = initialOpening) {

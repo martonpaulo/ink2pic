@@ -43,11 +43,15 @@ export type OpeningEvent =
   | {type: 'press'; id: number; how: 'pending' | 'live'; now: number}
   | {type: 'decided'; id: number; lasso: OpenedLasso; now: number}
   | {type: 'lifecycle'; state: number}
+  /** Onboarding granted every permission: the flow goes on to its screen (#95). */
+  | {type: 'onboarded'; id: number; flow: number}
   | {type: 'finished'; flow: number};
 
 export type OpeningAction =
   | {type: 'log'; text: string}
   | {type: 'start'; id: number; flow: number; lasso: OpenedLasso}
+  /** Go on from onboarding to the flow's screen, tracked as running like a start (#95). */
+  | {type: 'resume'; id: number; flow: number}
   /** Read the lasso to decide which button opened the view, then send `decided`. */
   | {type: 'decide'}
   /** Show the starting screen: the view closed. */
@@ -162,6 +166,23 @@ export function step(state: OpeningState, event: OpeningEvent): Step {
       }
       return {state, actions: [logLine]};
     }
+    case 'onboarded':
+      // Only the latest flow goes on, and never beside another flow's host calls (#95).
+      if (!isCurrent(state, event.flow) || state.running !== null) {
+        return {
+          state,
+          actions: [
+            {
+              type: 'log',
+              text: `flow ${event.flow}: onboarding hand-off dropped`,
+            },
+          ],
+        };
+      }
+      return {
+        state: {...state, running: event.flow},
+        actions: [{type: 'resume', id: event.id, flow: event.flow}],
+      };
     case 'finished': {
       if (state.running !== event.flow) {
         return {state, actions: []};

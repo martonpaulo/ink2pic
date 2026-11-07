@@ -12,7 +12,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Prepares a saved picture for the 16-gray e-ink screen (brief sections 7 and 9.4, issue #17):
@@ -29,7 +28,8 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   /** Thumbnails come at 330 (Commons) and 400 px (Openclipart); larger files are sampled down. */
   private static final int MEASURE_WIDTH = 400;
   private static final double NANOS_PER_MS = 1e6;
-  private final ExecutorService worker = Executors.newSingleThreadExecutor();
+  private final Workers workers = new Workers();
+  private final ExecutorService worker = workers.single();
 
   public Ink2PicImageModule(ReactApplicationContext context) {
     super(context);
@@ -38,6 +38,13 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   @Override
   public String getName() {
     return "Ink2PicImage";
+  }
+
+  /** A new React instance makes a new module: this one's thread stops with it (#95). */
+  @Override
+  public void invalidate() {
+    workers.shutdown();
+    super.invalidate();
   }
 
   /**
@@ -139,8 +146,8 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
   }
 
   /**
-   * The picture's pixels scaled down to `targetWidth` (never up): bounds-first decode with a
-   * power-of-two sample size, then one bitmap scale.
+   * The picture's pixels scaled down to `targetWidth` and the page height (never up): bounds-first
+   * decode with a power-of-two sample size, then one bitmap scale.
    */
   private static Pixels decode(File source, int targetWidth) throws Exception {
     if (!source.isFile()) {
@@ -161,7 +168,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
     }
     int[] size = EinkPixels.targetSize(decoded.getWidth(), decoded.getHeight(), targetWidth);
     Bitmap scaled = decoded;
-    if (size[0] != decoded.getWidth()) {
+    if (size[0] != decoded.getWidth() || size[1] != decoded.getHeight()) {
       scaled = Bitmap.createScaledBitmap(decoded, size[0], size[1], true);
       decoded.recycle();
     }

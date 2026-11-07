@@ -14,7 +14,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Downloads and small text files for Ink2Pic: sn-plugin-lib 0.2.3 and PluginHost have no file
@@ -30,9 +29,10 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   private static final int THUMB_THREADS = 3;
   /** A thumbnail waits at most this long for an insert, the insert's own limit (20 s). */
   private static final long THUMB_WAIT_MS = 20000;
-  private final ExecutorService files = Executors.newSingleThreadExecutor();
-  private final ExecutorService downloads = Executors.newSingleThreadExecutor();
-  private final ExecutorService thumbs = Executors.newFixedThreadPool(THUMB_THREADS);
+  private final Workers workers = new Workers();
+  private final ExecutorService files = workers.single();
+  private final ExecutorService downloads = workers.single();
+  private final ExecutorService thumbs = workers.pool(THUMB_THREADS);
   private final ThumbGate gate = new ThumbGate();
   /** The person's downloads, holding the gate from submit to end, also when refused (#46). */
   private final java.util.concurrent.Executor heldDownloads = gate.holding(downloads);
@@ -44,6 +44,13 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
   @Override
   public String getName() {
     return "Ink2PicFiles";
+  }
+
+  /** A new React instance makes a new module: this one's threads stop with it (#95). */
+  @Override
+  public void invalidate() {
+    workers.shutdown();
+    super.invalidate();
   }
 
   private void submit(Promise promise, ModuleWork.Job job) {

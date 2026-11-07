@@ -204,6 +204,38 @@ describe('the Settings entry (#68)', () => {
     ]);
     act(() => tree.unmount());
   });
+
+  it('keeps both of two taps that come before the screen redraws (#95)', async () => {
+    files[settingsPath()] = JSON.stringify({languages: ['zh', 'es', 'en']});
+    startConfigQueue();
+    (
+      PluginManager.registerConfigButtonListener as jest.Mock
+    ).mock.calls[0][0].onClick();
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<App />);
+    });
+    await settle();
+    await act(async () =>
+      buttons(tree)
+        .find(b => b.label === copy['settings.languagesOpenLabel'])
+        ?.press(),
+    );
+    // Both taps reach the same rendered button: the second comes before the redraw.
+    const up = buttons(tree).find(b => b.label === 'Move English up');
+    await act(async () => {
+      up?.press();
+      up?.press();
+    });
+    await settle();
+    expect(texts(tree)).toContain('1. English');
+    expect(JSON.parse(files[settingsPath()]).languages).toEqual([
+      'en',
+      'zh',
+      'es',
+    ]);
+    act(() => tree.unmount());
+  });
 });
 
 it('registers the Settings entry at startup, and a click shows the view (#68)', async () => {
