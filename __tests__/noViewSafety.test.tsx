@@ -4,6 +4,7 @@
  * temporary download is named per result and removed after the insert.
  */
 import {INSERT_BUTTON_ID} from '../src/buttons';
+import {copy} from '../src/ui/copy';
 import {NO_VIEW_LIMIT_MS} from '../src/flow/headlessInsert';
 import {defaultSettings, serializeSettings} from '../src/settings/settings';
 import {safeFileName, settingsPath} from '../src/storage/paths';
@@ -189,5 +190,43 @@ describe('Insert picture with no view (#93)', () => {
       path.startsWith(`${PLUGIN_DIR}/insert-`),
     );
     expect(temporary).toEqual([]);
+  });
+});
+
+/** The view the failure opened, mounted, with its status line and query field. */
+async function failureView(j: Journey) {
+  await j.settle(() => j.host.view === 'shown');
+  await j.mountIfShown();
+  await j.settle(() => j.searching());
+  const status = () =>
+    String(j.tree?.root.findByProps({testID: 'status'}).props.children);
+  const field = j.tree!.root.findByProps({testID: 'query'}).props.value;
+  return {status, field};
+}
+
+const downloadFails = () =>
+  Promise.reject(Object.assign(new Error('HTTP 503'), {code: 'HTTP_503'}));
+
+describe('a failed Insert picture opens the search screen (#96)', () => {
+  it('a failed download: the word searched again, its grid, and the sentence in the status line', async () => {
+    const j = lassoedSoup();
+    // The early download and the insert's own download both fail.
+    j.host.script('downloadToFile', downloadFails, downloadFails);
+    j.host.press(INSERT_BUTTON_ID);
+    const view = await failureView(j);
+    expect(view.field).toBe('soup');
+    await j.settle(() => j.tiles().length > 0);
+    expect(view.status()).toBe(copy['error.download']);
+    expect(j.shows(copy['insert.running'])).toBe(false);
+    expect(j.host.pictures()).toEqual([]);
+  });
+
+  it('a word not read: an empty field and the lasso sentence, as Find picture shows', async () => {
+    const j = lassoedSoup();
+    j.host.recognize = () => ' ';
+    j.host.press(INSERT_BUTTON_ID);
+    const view = await failureView(j);
+    expect(view.field).toBe('');
+    expect(view.status()).toBe(copy['error.recognition']);
   });
 });

@@ -96,6 +96,11 @@ export type SearchScreenProps = {
   /** Reading the lasso failed: show why, with the field empty and focused. */
   lassoFailure: StepFailure | null;
   /**
+   * A failed «Insert picture»'s sentence (#96): in the status line through the first search,
+   * which shows the grid it names.
+   */
+  initialStatus?: string | null;
+  /**
    * Inserts the picture, as a contour drawing when its tile shows one (#66); a failure shows its
    * sentence (#37).
    */
@@ -111,6 +116,7 @@ export type SearchScreenProps = {
 export function SearchScreen({
   initialQuery,
   lassoFailure,
+  initialStatus = null,
   onPick,
   onClose,
   sources,
@@ -123,8 +129,10 @@ export function SearchScreen({
     initialQuery || lassoFailure ? 'results' : 'library',
   );
   const [status, setStatus] = useState<string | null>(
-    lassoFailure ? failureText(lassoFailure) : null,
+    lassoFailure ? failureText(lassoFailure) : initialStatus,
   );
+  // The failed insert's sentence stays through the search the screen opens with (#96).
+  const keptStatus = useRef(initialStatus);
   const [library, setLibrary] = useState<Library | null>(null);
   const [thumbDir, setThumbDir] = useState<string | null>(null);
   // The word the shown results answer, for «Search for X instead» (#65).
@@ -192,7 +200,8 @@ export function SearchScreen({
       // The keyboard covered half of the results on build 0.1.0 (12) (#42).
       Keyboard.dismiss();
       setView('results');
-      setStatus(null);
+      setStatus(keptStatus.current);
+      keptStatus.current = null;
       const ticket = ++latestSearch.current;
       setSearching(true);
       const run = await runSearch(

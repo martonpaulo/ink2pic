@@ -66,6 +66,25 @@ describe('journeys (#78)', () => {
     expect(j.host.sent[j.host.sent.length - 1]).toBe(`life ${LIFE.stop}`);
   });
 
+  it('Find picture, pick, Close while the picture is prepared: nothing goes in the note (#96)', async () => {
+    const j = lassoedSoup();
+    await j.press(LASSO_BUTTON_ID);
+    await j.settle(() => j.tiles().length > 0);
+    // The person taps Close while the picture is prepared; the preparation then ends.
+    j.host.script('prepareForEink', () => {
+      j.tree!.root
+        .find(node => node.props.label === copy['action.close'] && typeof node.props.onPress === 'function')
+        .props.onPress();
+      return new Promise(resolve =>
+        setImmediate(() => setImmediate(() => resolve({width: 640, height: 480, bytes: 1, ms: 1}))),
+      );
+    });
+    await j.pick(0);
+    await j.settle(() => /stopped before the note/.test(j.log().join('\n')));
+    expect(j.host.view).toBe('hidden');
+    expect(j.host.pictures()).toEqual([]);
+  });
+
   it('Insert picture in one tap: the best picture goes below the word with no grid', async () => {
     const j = lassoedSoup();
     await j.press(INSERT_BUTTON_ID);

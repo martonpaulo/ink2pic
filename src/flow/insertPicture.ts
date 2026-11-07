@@ -37,6 +37,9 @@ import {LassoPlace, placeAtLasso, Placement} from './place';
 /** About one third of the 1920 px page (brief section 7): the default prepared width. */
 export const INSERT_WIDTH = SIZE_WIDTHS.medium;
 
+/** Why an insert must stop before the note is written, or null to go on (#96). */
+export type Stop = () => string | null;
+
 /** What the person chose in Settings for an insert (#70). */
 export type InsertOptions = {
   /** The prepared picture's width in page pixels. */
@@ -420,6 +423,12 @@ export async function insertPicture(
   contour = false,
   options?: InsertOptions,
   early: EarlyDownload | null = null,
+  /**
+   * Why the insert must stop, or null to go on: read once the picture is ready, before the note
+   * is written, so a Close or a passed limit writes nothing (#93, #96). The one host write itself
+   * cannot be stopped.
+   */
+  stop: Stop = () => null,
 ): Promise<Done<string>> {
   const chosen = options ?? (await savedOptions());
   const saved = await picture(
@@ -430,6 +439,11 @@ export async function insertPicture(
   );
   if (!saved.ok) {
     return atStep('download', saved);
+  }
+  const reason = stop();
+  if (reason) {
+    log(`insert ${result.id}: stopped before the note was written: ${reason}`);
+    return atStep('download', fail(THROWN_CODE, `stopped: ${reason}`));
   }
   let at = Date.now();
   const inserted = await insertInNote(saved.value, place, chosen);

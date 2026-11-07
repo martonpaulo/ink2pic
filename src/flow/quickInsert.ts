@@ -20,6 +20,7 @@ import {
   EarlyDownload,
   insertPicture,
   startEarlyDownload,
+  Stop,
 } from './insertPicture';
 import {isContourUri, measureFirstPages} from './measure';
 import type {LassoPlace} from './place';
@@ -45,30 +46,40 @@ const DEVICE: QuickInsertDeps = {
   early: startEarlyDownload,
 };
 
-/** False, logged, once Date.now() passed `deadline` before `step` (#93). */
-export function inTime(deadline: number, step: string): boolean {
-  const late = Date.now() - deadline;
-  if (late <= 0) {
-    return true;
-  }
-  log(`insert best: the limit passed before ${step}, ${late} ms late`);
-  return false;
-}
+/**
+ * When the flow stops: `deadline`, a Date.now() value the no-view flow gives up at (#93), and
+ * `stop`, the view's own reason, such as a Close (#96). Both are checked before each step.
+ */
+export type InsertLimit = {deadline?: number; stop?: Stop};
 
 const LATE: QuickInsert = {ok: false, text: copy['error.sourcesDown']};
 
-/**
- * `deadline` is a Date.now() value the flow gives up at, checked before each step; the
- * no-view flow sets it (#93).
- */
+/** One check for the deadline and the caller's reason; null while the flow may go on. */
+function stopOf({deadline, stop}: InsertLimit): Stop {
+  return () =>
+    deadline !== undefined && Date.now() > deadline
+      ? 'the limit passed'
+      : stop?.() ?? null;
+}
+
+/** True, logged, when the flow must stop before `step`. */
+function halted(stop: Stop, step: string): boolean {
+  const reason = stop();
+  if (reason) {
+    log(`insert best: ${reason} before ${step}`);
+  }
+  return reason !== null;
+}
+
 export async function insertBest(
   word: string,
   place: LassoPlace | null,
   deps: QuickInsertDeps = DEVICE,
-  deadline = Number.POSITIVE_INFINITY,
+  limit: InsertLimit = {},
 ): Promise<QuickInsert> {
   const started = Date.now();
-  if (!inTime(deadline, 'search')) {
+  const stop = stopOf(limit);
+  if (halted(stop, 'search')) {
     return LATE;
   }
   const run = await timed('search', () =>
@@ -84,7 +95,7 @@ export async function insertBest(
   const measuring = Date.now();
   const early: {value: EarlyDownload | null} = {value: null};
   const leading = outcome.results[0];
-  if (!inTime(deadline, 'thumbnails')) {
+  if (halted(stop, 'thumbnails')) {
     return LATE;
   }
   const pages = await timed('thumbnails', () =>
@@ -115,7 +126,7 @@ export async function insertBest(
     log(`early download ${early.value.id} dropped: ${best.id} won`);
     dropEarly(early.value);
   }
-  if (!inTime(deadline, 'the insert')) {
+  if (halted(stop, 'the insert')) {
     if (usable) {
       dropEarly(usable);
     }
@@ -130,6 +141,7 @@ export async function insertBest(
       isContourUri(pages.contourThumbs.get(best.id) ?? ''),
       undefined,
       usable,
+      stop,
     ),
   );
   if (!inserted.ok) {

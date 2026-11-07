@@ -22,7 +22,11 @@ import {
 } from './src/flow/opening';
 import type {LassoPlace} from './src/flow/place';
 import {insertBest} from './src/flow/quickInsert';
-import {onHeadlessNote, takeHeadlessNote} from './src/flow/headlessInsert';
+import {
+  HeadlessNote,
+  onHeadlessNote,
+  takeHeadlessNote,
+} from './src/flow/headlessInsert';
 import {startSession} from './src/storage/logFile';
 import {pluginFolder} from './src/storage/session';
 import {
@@ -58,7 +62,7 @@ import {copy} from './src/ui/copy';
 type Screen =
   | {name: 'starting'}
   | {name: 'failed'}
-  /** One line: «Adding…» while Insert picture runs, then its failure, if any (#74). */
+  /** One line: «Adding…» while Insert picture runs (#74); a failure opens the search (#96). */
   | {name: 'note'; text: string}
   /** The plugin's Settings entry, each tap saved at once (#70), and its Languages screen (#68). */
   | {name: 'settings' | 'languages'; settings: Settings}
@@ -72,6 +76,8 @@ type Screen =
       name: 'search';
       query: string;
       lassoFailure: StepFailure | null;
+      /** A failed «Insert picture»'s sentence, kept through the search it opens with (#96). */
+      status: string | null;
       opened: number;
       flow: number;
     };
@@ -82,8 +88,8 @@ function App(): React.JSX.Element {
   const opening = useRef<OpeningState>(initialOpening);
   // Where the lasso was when the view opened; the picture goes there (#20).
   const place = useRef<LassoPlace | null>(null);
-  // The sentence of a failed «Insert picture» that ran with no view (#74).
-  const headlessNote = useRef<string | null>(null);
+  // A failed «Insert picture» that ran with no view (#74, #96).
+  const headlessNote = useRef<HeadlessNote | null>(null);
   // The session's settings now: a tap before the e-ink redraw chains from it (#95).
   const settingsNow = useRef<Settings | null>(null);
   // The settings saves, in tap order.
@@ -99,9 +105,32 @@ function App(): React.JSX.Element {
     return true;
   };
 
+  /** Why a flow's insert must stop before the note is written: a Close or a newer opening (#96). */
+  const stopFor = (flow: number) => () =>
+    isCurrent(opening.current, flow) ? null : 'the view closed';
+
+  /**
+   * The search screen, as Find picture opens it, after a failed «Insert picture» (#96): every
+   * sentence then names a control on screen, and a pick still goes to the word.
+   */
+  const searchAfterFailure = (flow: number, failed: HeadlessNote) => {
+    if (
+      show(flow, {
+        name: 'search',
+        query: failed.query,
+        lassoFailure: failed.lassoFailure,
+        status: failed.lassoFailure ? null : failed.text,
+        opened: Date.now(),
+        flow,
+      })
+    ) {
+      place.current = failed.place;
+    }
+  };
+
   /**
    * Insert picture (#74): the lassoed word, then the best result inserted at once; the view
-   * closes after the insert, as after a pick, and shows the sentence when anything fails.
+   * closes after the insert, as after a pick, and opens the search screen when anything fails.
    */
   const insertNow = async (flow: number, lasso: OpenedLasso) => {
     if (!show(flow, {name: 'note', text: copy['insert.running']})) {
@@ -110,10 +139,21 @@ function App(): React.JSX.Element {
     const query = await readLassoQuery(lasso);
     if (!query.ok) {
       log(`recognition failed: ${query.code} ${query.message}`);
-      show(flow, {name: 'note', text: failureText(atStep('lasso', query))});
+      const lassoFailure = atStep('lasso', query);
+      searchAfterFailure(flow, {
+        query: '',
+        place: null,
+        lassoFailure,
+        text: failureText(lassoFailure),
+      });
       return;
     }
-    const inserted = await insertBest(query.value.query, query.value.place);
+    const inserted = await insertBest(
+      query.value.query,
+      query.value.place,
+      undefined,
+      {stop: stopFor(flow)},
+    );
     // A newer opening or a close made this flow stale: never close or change its view (#44).
     if (!isCurrent(opening.current, flow)) {
       log(`flow ${flow} is stale: its insert ends here`);
@@ -123,7 +163,12 @@ function App(): React.JSX.Element {
       await logged('closePluginView', closePluginView);
       return;
     }
-    show(flow, {name: 'note', text: inserted.text});
+    searchAfterFailure(flow, {
+      query: query.value.query,
+      place: query.value.place,
+      lassoFailure: null,
+      text: inserted.text,
+    });
   };
 
   /** Reads the lasso when the lasso button opened the view; permissions are checked by now. */
@@ -146,11 +191,15 @@ function App(): React.JSX.Element {
       return;
     }
     if (buttonId === INSERT_NOTE_ID) {
-      place.current = null;
-      show(flow, {
-        name: 'note',
-        text: headlessNote.current ?? copy['error.unexpected'],
-      });
+      searchAfterFailure(
+        flow,
+        headlessNote.current ?? {
+          query: '',
+          place: null,
+          lassoFailure: null,
+          text: copy['error.unexpected'],
+        },
+      );
       return;
     }
     if (buttonId !== LASSO_BUTTON_ID) {
@@ -159,6 +208,7 @@ function App(): React.JSX.Element {
           name: 'search',
           query: '',
           lassoFailure: null,
+          status: null,
           opened: Date.now(),
           flow,
         })
@@ -176,6 +226,7 @@ function App(): React.JSX.Element {
         name: 'search',
         query: query.ok ? query.value.query : '',
         lassoFailure: query.ok ? null : atStep('lasso', query),
+        status: null,
         opened: Date.now(),
         flow,
       })
@@ -301,9 +352,9 @@ function App(): React.JSX.Element {
     });
     // 2c. A failed «Insert picture» with no view opened the view for its sentence (#74).
     const noteNow = (how: 'pending' | 'live') => {
-      const text = takeHeadlessNote();
-      if (text !== null) {
-        headlessNote.current = text;
+      const failed = takeHeadlessNote();
+      if (failed !== null) {
+        headlessNote.current = failed;
         dispatch({type: 'press', id: INSERT_NOTE_ID, how, now: Date.now()});
       }
     };
@@ -332,7 +383,15 @@ function App(): React.JSX.Element {
     contour = false,
   ) => {
     log(`picked ${result.id}${contour ? ' (contour)' : ''}`);
-    const inserted = await insertPicture(result, query, place.current, contour);
+    const inserted = await insertPicture(
+      result,
+      query,
+      place.current,
+      contour,
+      undefined,
+      null,
+      stopFor(flow),
+    );
     if (inserted.ok && isCurrent(opening.current, flow)) {
       await logged('closePluginView', closePluginView);
     }
@@ -425,6 +484,7 @@ function App(): React.JSX.Element {
           key={screen.opened}
           initialQuery={screen.query}
           lassoFailure={screen.lassoFailure}
+          initialStatus={screen.status}
           onPick={(result, query, contour) =>
             pick(result, query, screen.flow, contour)
           }

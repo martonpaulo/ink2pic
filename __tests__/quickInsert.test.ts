@@ -96,6 +96,7 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       true,
       undefined,
       null,
+      expect.any(Function),
     );
     expect(d.insert).toHaveBeenCalledTimes(1);
     // A recent search, after the insert: one library write at a time.
@@ -130,6 +131,7 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       false,
       undefined,
       early,
+      expect.any(Function),
     );
     const text = logLines().join('\n');
     expect(text).toMatch(/time search: \d+ ms, 2 results/);
@@ -151,6 +153,7 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       false,
       undefined,
       null,
+      expect.any(Function),
     );
   });
 

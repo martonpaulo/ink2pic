@@ -88,17 +88,18 @@ describe('Insert picture (#74)', () => {
   it('inserts the best picture for the lassoed word at the lasso, then closes, with no grid', async () => {
     (insertBest as jest.Mock).mockResolvedValue({ok: true, value: '/s/a.png'});
     const tree = await openedBy(INSERT_BUTTON_ID);
-    expect(insertBest).toHaveBeenCalledWith('soup', {
-      rect: lassoRect,
-      page: 3,
-      pageSize: {width: 1920, height: 2560},
-    });
+    expect(insertBest).toHaveBeenCalledWith(
+      'soup',
+      {rect: lassoRect, page: 3, pageSize: {width: 1920, height: 2560}},
+      undefined,
+      {stop: expect.any(Function)},
+    );
     expect(PluginManager.closePluginView).toHaveBeenCalledTimes(1);
     expect(tree.root.findAllByType(SearchScreen)).toHaveLength(0);
     act(() => tree.unmount());
   });
 
-  it('shows the sentence and stays open when the insert fails', async () => {
+  it('opens the search screen with the sentence and stays open when the insert fails (#96)', async () => {
     (insertBest as jest.Mock).mockResolvedValue({
       ok: false,
       text: copy['error.place'],
@@ -106,6 +107,24 @@ describe('Insert picture (#74)', () => {
     const tree = await openedBy(INSERT_BUTTON_ID);
     expect(text(tree)).toContain(copy['error.place']);
     expect(PluginManager.closePluginView).not.toHaveBeenCalled();
+    act(() => tree.unmount());
+  });
+
+  it('a Close while the insert runs stops it before the note is written (#96)', async () => {
+    let stop: (() => string | null) | undefined;
+    (insertBest as jest.Mock).mockImplementation(
+      async (_w: string, _p: unknown, _d: unknown, limit: {stop: () => string | null}) => {
+        stop = limit.stop;
+        return new Promise(() => {});
+      },
+    );
+    const tree = await openedBy(INSERT_BUTTON_ID);
+    expect(stop?.()).toBeNull();
+    const calls = (PluginManager.registerPluginLifeListener as jest.Mock).mock
+      .calls;
+    // Lifecycle 3: the person closed the view.
+    await act(async () => calls[calls.length - 1][0].onMsg({state: 3}));
+    expect(stop?.()).toBe('the view closed');
     act(() => tree.unmount());
   });
 
@@ -205,13 +224,13 @@ describe('Insert picture with no view (#74)', () => {
       'soup',
       {...place, recheck: true},
       undefined,
-      expect.any(Number),
+      {deadline: expect.any(Number)},
     );
     expect(deps.show).not.toHaveBeenCalled();
     expect(takeHeadlessNote()).toBeNull();
   });
 
-  it('opens the view with the failure sentence when the insert fails', async () => {
+  it('opens the search screen with the word and the failure sentence when the insert fails', async () => {
     const deps = headless({
       insert: jest
         .fn()
@@ -223,7 +242,8 @@ describe('Insert picture with no view (#74)', () => {
     const tree = await mounted();
     expect(text(tree)).toContain(copy['error.place']);
     expect(insertBest).not.toHaveBeenCalled();
-    expect(tree.root.findAllByType(SearchScreen)).toHaveLength(0);
+    // The search screen, with the word, as Find picture opens it (#96).
+    expect(tree.root.findByProps({testID: 'query'}).props.value).toBe('soup');
     act(() => tree.unmount());
   });
 
@@ -236,7 +256,12 @@ describe('Insert picture with no view (#74)', () => {
     await insertWithoutView(deps);
     expect(deps.insert).not.toHaveBeenCalled();
     expect(deps.show).toHaveBeenCalledTimes(1);
-    expect(takeHeadlessNote()).toEqual(expect.any(String));
+    expect(takeHeadlessNote()).toEqual({
+      query: '',
+      place: null,
+      lassoFailure: expect.objectContaining({step: 'lasso'}),
+      text: expect.any(String),
+    });
   });
 
   it('hands the press to the view for its onboarding when a permission is missing', async () => {
