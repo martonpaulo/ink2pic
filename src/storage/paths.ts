@@ -30,6 +30,18 @@ export function insertDownloadPath(
   return `${pluginDir}/insert-download.${extension}`;
 }
 
+/**
+ * `<plugin folder>/insert-early.<extension>`: the full download «Insert picture» starts for the
+ * leading picture before page 1's order is known (#88); its own name, so a dropped one never
+ * overwrites the winner's download. One fixed name, overwritten by each early download.
+ */
+export function earlyDownloadPath(
+  pluginDir: string,
+  extension: string,
+): string {
+  return `${pluginDir}/insert-early.${extension}`;
+}
+
 /** A file name safe on the device: letters, digits, dot, dash and underscore only. */
 export function safeFileName(name: string): string {
   return (

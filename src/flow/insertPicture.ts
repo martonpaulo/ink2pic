@@ -7,14 +7,19 @@
  */
 import {getLibrary, recordInsert} from '../library/device';
 import {findItem} from '../library/library';
-import {logged, log} from '../log/memory';
+import {logged, log, logTime} from '../log/memory';
 import {deleteLassoElements, lassoElements, Rect} from '../sdk/lasso';
 import {insertImage} from '../sdk/note';
 import {fail, ok, Result, THROWN_CODE, TIMEOUT_CODE} from '../sdk/result';
 import {insertUrl, SearchResult, sourceId} from '../search-core';
 import {downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
-import {insertDownloadPath, libraryDir, safeFileName} from '../storage/paths';
+import {
+  earlyDownloadPath,
+  insertDownloadPath,
+  libraryDir,
+  safeFileName,
+} from '../storage/paths';
 import {pluginFolder} from '../storage/session';
 import {atStep, Done} from './failure';
 import {SIZE_WIDTHS} from '../settings/settings';
@@ -62,6 +67,61 @@ export function imageExtension(url: string): string {
   return match ? match[1].toLowerCase() : 'png';
 }
 
+/**
+ * A full-size download started for the leading picture while page 1 is still measured (#88).
+ * `raw` is the downloaded file, or null when the picture needs no download. The module cannot
+ * stop a download: one for a picture that did not win is dropped, and the winner's download
+ * waits behind it on the module's one download thread.
+ */
+export type EarlyDownload = {
+  id: string;
+  started: number;
+  raw: Promise<Result<string> | null>;
+};
+
+/** Starts the leading picture's download before it is known to win (#88). Never rejects. */
+export function startEarlyDownload(result: SearchResult): EarlyDownload {
+  const started = Date.now();
+  const raw = (async (): Promise<Result<string> | null> => {
+    if (result.localPath || findItem(await getLibrary(), result.id)) {
+      return null;
+    }
+    const dir = await pluginFolder();
+    if (!dir.ok) {
+      return dir;
+    }
+    const url = insertUrl(result);
+    const path = earlyDownloadPath(dir.value, imageExtension(url));
+    const bytes = await logged(`downloadToFile(${url} -> ${path}, early)`, () =>
+      downloadToFile(url, path),
+    );
+    return bytes.ok ? ok(path) : bytes;
+  })().catch(error => fail(THROWN_CODE, String(error)));
+  return {id: result.id, started, raw};
+}
+
+/** The early download's file when it is this picture's and it worked; else null, logged. */
+async function earlyFile(
+  result: SearchResult,
+  early: EarlyDownload | null,
+): Promise<string | null> {
+  if (!early || early.id !== result.id) {
+    return null;
+  }
+  const waited = Date.now();
+  const raw = await early.raw;
+  if (raw?.ok) {
+    logTime(
+      'download',
+      waited,
+      `early, started ${waited - early.started} ms before`,
+    );
+    return raw.value;
+  }
+  log(`early download ${result.id}: ${raw ? raw.message : 'none'}`);
+  return null;
+}
+
 type Saved = {
   path: string;
   size: {width: number; height: number} | null;
@@ -79,6 +139,7 @@ async function download(
   result: SearchResult,
   contour: boolean,
   width: number,
+  early: EarlyDownload | null,
 ): Promise<Result<Saved>> {
   const url = insertUrl(result);
   const base = `${libraryDir()}/${safeFileName(result.id)}`;
@@ -86,17 +147,26 @@ async function download(
   if (!dir.ok) {
     return dir;
   }
-  const raw = insertDownloadPath(dir.value, imageExtension(url));
-  const bytes = await logged(`downloadToFile(${url} -> ${raw})`, () =>
-    downloadToFile(url, raw),
-  );
-  if (!bytes.ok) {
-    return bytes;
+  let raw = await earlyFile(result, early);
+  if (!raw) {
+    raw = insertDownloadPath(dir.value, imageExtension(url));
+    const path = raw;
+    const at = Date.now();
+    const bytes = await logged(`downloadToFile(${url} -> ${path})`, () =>
+      downloadToFile(url, path),
+    );
+    logTime('download', at);
+    if (!bytes.ok) {
+      return bytes;
+    }
   }
+  const from = raw;
+  const at = Date.now();
   const prepared = await logged(
     `prepareForEink(${raw}${contour ? ', contour' : ''})`,
-    () => prepareForEink(raw, `${base}.png`, width, 'png', contour),
+    () => prepareForEink(from, `${base}.png`, width, 'png', contour),
   );
+  logTime('conversion', at);
   if (prepared.ok) {
     return ok({path: `${base}.png`, size: prepared.value, record: true});
   }
@@ -112,6 +182,7 @@ async function picture(
   result: SearchResult,
   contour: boolean,
   width: number,
+  early: EarlyDownload | null,
 ): Promise<Result<Saved>> {
   if (result.localPath) {
     return ok({
@@ -129,7 +200,7 @@ async function picture(
         : null;
     return ok({path: known.path, size, record: false});
   }
-  return download(result, contour, width);
+  return download(result, contour, width, early);
 }
 
 /**
@@ -209,21 +280,34 @@ export async function insertPicture(
   place: LassoPlace | null = null,
   contour = false,
   options?: InsertOptions,
+  early: EarlyDownload | null = null,
 ): Promise<Done<string>> {
   const chosen = options ?? (await savedOptions());
-  const saved = await picture(result, contour || chosen.contour, chosen.width);
+  const saved = await picture(
+    result,
+    contour || chosen.contour,
+    chosen.width,
+    early,
+  );
   if (!saved.ok) {
     return atStep('download', saved);
   }
+  let at = Date.now();
   const inserted = await insertInNote(saved.value, place, chosen);
+  logTime('insert', at);
   if (!inserted.ok) {
     return atStep('place', inserted);
   }
   if (place && chosen.placement === 'replace') {
+    at = Date.now();
     await deleteWord(inserted.value);
+    logTime('word delete', at);
   }
+  at = Date.now();
   await lassoPlaced(inserted.value);
+  logTime('lasso', at);
   if (saved.value.record) {
+    at = Date.now();
     await recordInsert({
       id: result.id,
       source: result.source,
@@ -237,6 +321,7 @@ export async function insertPicture(
       width: saved.value.size?.width ?? null,
       height: saved.value.size?.height ?? null,
     });
+    logTime('write', at);
   }
   return {ok: true, value: saved.value.path};
 }

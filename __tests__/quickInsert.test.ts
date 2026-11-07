@@ -3,6 +3,7 @@ import {insertBest, QuickInsertDeps} from '../src/flow/quickInsert';
 import {unmeasured} from '../src/flow/measure';
 import type {SearchOutcome, SearchResult} from '../src/search-core';
 import {copy} from '../src/ui/copy';
+import {logLines, startLog} from '../src/log/memory';
 
 const picture = (id: string): SearchResult => ({
   id,
@@ -36,12 +37,31 @@ function deps(found: SearchOutcome): QuickInsertDeps & {
   return {
     search: jest.fn().mockResolvedValue({outcome: found, thumbDir: '/p'}),
     // The grid's page 1 order: the pixels put the second result first (#66).
-    measure: jest.fn().mockImplementation(async (results: SearchResult[]) => ({
-      ...unmeasured([...results].reverse()),
-      contourThumbs: new Map([[second.id, 'file:///p/2.contour.png']]),
-    })),
+    // Page 1's thumbnails are on the device before the order is known (#88).
+    measure: jest
+      .fn()
+      .mockImplementation(
+        async (
+          results: SearchResult[],
+          _dir: string,
+          _word: string,
+          _deps: unknown,
+          onThumbs?: () => void,
+        ) => {
+          onThumbs?.();
+          return {
+            ...unmeasured([...results].reverse()),
+            contourThumbs: new Map([[second.id, 'file:///p/2.contour.png']]),
+          };
+        },
+      ),
     insert: jest.fn().mockResolvedValue({ok: true, value: '/s/2.png'}),
     record: jest.fn().mockResolvedValue(null),
+    early: jest.fn().mockImplementation((result: SearchResult) => ({
+      id: result.id,
+      started: 0,
+      raw: Promise.resolve({ok: true, value: `/data/plugin/${result.id}`}),
+    })),
   };
 }
 
@@ -59,14 +79,76 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       value: '/s/2.png',
     });
     expect(d.search).toHaveBeenCalledWith('soup');
-    expect(d.measure).toHaveBeenCalledWith([first, second], '/p', 'soup');
-    // As a contour drawing when its tile shows one, the same as a tap on it (#66).
-    expect(d.insert).toHaveBeenCalledWith(second, 'soup', place, true);
+    expect(d.measure.mock.calls[0].slice(0, 3)).toEqual([
+      [first, second],
+      '/p',
+      'soup',
+    ]);
+    // As a contour drawing when its tile shows one, the same as a tap on it (#66). The early
+    // download of the search's first picture is dropped: the measured order chose another (#88).
+    expect(d.early).toHaveBeenCalledWith(first);
+    expect(d.insert).toHaveBeenCalledWith(
+      second,
+      'soup',
+      place,
+      true,
+      undefined,
+      null,
+    );
     expect(d.insert).toHaveBeenCalledTimes(1);
     // A recent search, after the insert: one library write at a time.
     expect(d.record).toHaveBeenCalledWith('soup', found);
     expect(d.record.mock.invocationCallOrder[0]).toBeGreaterThan(
       d.insert.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('inserts with the early download when its picture wins, and logs each step time (#88)', async () => {
+    const d = deps(outcome([first, second]));
+    d.measure.mockImplementation(
+      async (
+        results: SearchResult[],
+        _dir: string,
+        _word: string,
+        _deps: unknown,
+        onThumbs?: () => void,
+      ) => {
+        onThumbs?.();
+        return unmeasured(results);
+      },
+    );
+    startLog();
+    await insertBest('soup', place, d);
+    const early = d.early.mock.results[0].value;
+    expect(early.id).toBe(first.id);
+    expect(d.insert).toHaveBeenCalledWith(
+      first,
+      'soup',
+      place,
+      false,
+      undefined,
+      early,
+    );
+    const text = logLines().join('\n');
+    expect(text).toMatch(/time search: \d+ ms, 2 results/);
+    expect(text).toMatch(/time thumbnails: \d+ ms, 0 of 2 measured/);
+    expect(text).toMatch(/time total: \d+ ms/);
+  });
+
+  it('starts no early download when the thumbnails never all arrive (#88)', async () => {
+    const d = deps(outcome([first, second]));
+    d.measure.mockImplementation(async (results: SearchResult[]) =>
+      unmeasured(results),
+    );
+    await insertBest('soup', place, d);
+    expect(d.early).not.toHaveBeenCalled();
+    expect(d.insert).toHaveBeenCalledWith(
+      first,
+      'soup',
+      place,
+      false,
+      undefined,
+      null,
     );
   });
 

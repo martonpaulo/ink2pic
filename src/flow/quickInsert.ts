@@ -3,11 +3,19 @@
  * inserted at once at the lasso and left lassoed (#73), with no grid. A failure is the sentence
  * the grid would show: the search state's, or the failed insert's; Find picture still opens the
  * grid to pick another.
+ *
+ * Each step logs its time (#88). Once page 1's thumbnails are on the device, the full download
+ * of the picture leading the search order starts while they are measured; the winner is still the
+ * measured order's first, and the early download is used only when it is that picture.
  */
-import {log} from '../log/memory';
-import {searchState} from '../search-core';
+import {log, logTime} from '../log/memory';
+import {MEASURED_RESULTS, searchState} from '../search-core';
 import {failureText, offlineText} from './failure';
-import {insertPicture} from './insertPicture';
+import {
+  EarlyDownload,
+  insertPicture,
+  startEarlyDownload,
+} from './insertPicture';
 import {measureFirstPages} from './measure';
 import type {LassoPlace} from './place';
 import {afterSearch, runSearch, stateText} from './search';
@@ -21,6 +29,7 @@ export type QuickInsertDeps = {
   measure: typeof measureFirstPages;
   insert: typeof insertPicture;
   record: typeof afterSearch;
+  early: typeof startEarlyDownload;
 };
 
 const DEVICE: QuickInsertDeps = {
@@ -28,6 +37,7 @@ const DEVICE: QuickInsertDeps = {
   measure: measureFirstPages,
   insert: insertPicture,
   record: afterSearch,
+  early: startEarlyDownload,
 };
 
 export async function insertBest(
@@ -35,14 +45,35 @@ export async function insertBest(
   place: LassoPlace | null,
   deps: QuickInsertDeps = DEVICE,
 ): Promise<QuickInsert> {
+  const started = Date.now();
   const run = await deps.search(word);
+  logTime('search', started, `${run.outcome?.results.length ?? 0} results`);
   // Only a newer search makes it null; this flow runs one search.
   const outcome = run.outcome;
   if (!outcome) {
     return {ok: false, text: copy['error.unexpected']};
   }
   // Page 1 in the grid's order: re-sorted by its pixels, as Find picture shows it (#66).
-  const pages = await deps.measure(outcome.results, run.thumbDir, word);
+  const measuring = Date.now();
+  const early: {value: EarlyDownload | null} = {value: null};
+  const leading = outcome.results[0];
+  const pages = await deps.measure(
+    outcome.results,
+    run.thumbDir,
+    word,
+    undefined,
+    () => {
+      early.value = leading ? deps.early(leading) : null;
+    },
+  );
+  logTime(
+    'thumbnails',
+    measuring,
+    `${pages.measures.size} of ${Math.min(
+      outcome.results.length,
+      MEASURED_RESULTS,
+    )} measured`,
+  );
   const best = pages.results[0];
   if (!best) {
     const state = searchState(outcome);
@@ -52,19 +83,28 @@ export async function insertBest(
     return {ok: false, text: text ?? copy['search.empty']};
   }
   log(`insert best: ${best.id}`);
+  // The early download serves only the picture that won; another one is dropped (#88).
+  const usable = early.value?.id === best.id ? early.value : null;
+  if (early.value && !usable) {
+    log(`early download ${early.value.id} dropped: ${best.id} won`);
+  }
   // As a contour drawing when its tile shows one, as a tap in the grid does (#66, #72).
   const inserted = await deps.insert(
     best,
     word,
     place,
     pages.contourThumbs.has(best.id),
+    undefined,
+    usable,
   );
   if (!inserted.ok) {
     log(
       `insert failed at ${inserted.step}: ${inserted.code} ${inserted.message}`,
     );
+    logTime('total', started, 'failed');
     return {ok: false, text: failureText(inserted)};
   }
+  logTime('total', started);
   // A recent search, as from the grid; after the insert, so the library file is written once at a time.
   await deps.record(word, outcome);
   return inserted;

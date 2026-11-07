@@ -75,6 +75,14 @@ export function logLines(): string[] {
   return [...lines];
 }
 
+/**
+ * One step of «Insert picture» with its duration since `since` (#88): `time <step>: <ms> ms`,
+ * so the session log shows where an insert spends its time.
+ */
+export function logTime(step: string, since: number, detail = ''): void {
+  log(`time ${step}: ${Date.now() - since} ms${detail ? `, ${detail}` : ''}`);
+}
+
 /** Long enough for a lasso rect or a page size, short enough for the report. */
 const BRIEF_MAX = 160;
 

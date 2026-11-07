@@ -182,12 +182,16 @@ export async function measureThumb(
 /**
  * The results with pages 1 and 2 re-sorted by their pixels; unchanged without a thumbnail
  * folder. Never rejects: a failed download or measure leaves its result unmeasured.
+ * `onThumbs` runs once every measured thumbnail is on the device (or failed), before the
+ * limit: from then on a full download no longer holds a thumbnail back (#46, #88). It never
+ * runs once the result is returned.
  */
 export async function measureFirstPages(
   results: SearchResult[],
   thumbDir: string | null,
   query: string,
   deps: MeasureDeps = DEVICE,
+  onThumbs?: () => void,
 ): Promise<MeasuredPages> {
   if (!thumbDir || results.length === 0) {
     return unmeasured(results);
@@ -195,10 +199,17 @@ export async function measureFirstPages(
   const started = Date.now();
   const found = new Map<string, Measured>();
   const contourAll = (await deps.allContour?.()) ?? false;
+  const firstPages = results.slice(0, MEASURED_RESULTS);
+  const uris = firstPages.map(result => deps.thumb(result, thumbDir));
+  let returned = false;
+  Promise.allSettled(uris).then(() => {
+    if (!returned) {
+      onThumbs?.();
+    }
+  });
   const all = Promise.all(
-    results.slice(0, MEASURED_RESULTS).map(result =>
-      deps
-        .thumb(result, thumbDir)
+    firstPages.map((result, index) =>
+      uris[index]
         .then(uri =>
           measureFile(result, uri, deps, query, undefined, contourAll),
         )
@@ -211,6 +222,7 @@ export async function measureFirstPages(
     ),
   );
   const late = (await withinLimit(all, deps.limitMs)) === undefined;
+  returned = true;
   // Copies: a measure that ends after the limit changes nothing already shown.
   const used = new Map<string, Measures>();
   const contourThumbs = new Map<string, string>();

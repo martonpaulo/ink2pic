@@ -384,6 +384,51 @@ describe('measureFirstPages (#66)', () => {
     expect([...measured.measures.keys()]).toEqual(['line']);
     expect(logLines().join('\n')).toContain('limit reached');
   });
+
+  describe('the early-download hook of Insert picture (#88)', () => {
+    it('runs once every thumbnail is on the device, before the order is returned', async () => {
+      const events: string[] = [];
+      const thumbs = deps();
+      const watched: MeasureDeps = {
+        ...thumbs,
+        thumb: async (item, dir) => {
+          const uri = await thumbs.thumb(item, dir);
+          events.push(`thumb ${item.id}`);
+          return uri;
+        },
+      };
+      const measured = await measureFirstPages(list, '/p', 'x', watched, () =>
+        events.push('hook'),
+      );
+      events.push('returned');
+      expect(events.indexOf('hook')).toBe(list.length);
+      expect(events.filter(event => event === 'hook')).toHaveLength(1);
+      expect(events[events.length - 1]).toBe('returned');
+      // The order is the one without the hook: it never changes the winner.
+      const without = await measureFirstPages(list, '/p', 'x', deps());
+      expect(measured.results).toEqual(without.results);
+      expect(measured.measures).toEqual(without.measures);
+      expect(measured.contourThumbs).toEqual(without.contourThumbs);
+    });
+
+    it('never runs after the limit returned the order', async () => {
+      let finish: (uri: string) => void = () => {};
+      const slow: MeasureDeps = {
+        ...deps(5),
+        thumb: item =>
+          item.id === 'line'
+            ? Promise.resolve('file:///p/thumbs/line')
+            : new Promise(resolve => {
+                finish = resolve;
+              }),
+      };
+      const hook = jest.fn();
+      await measureFirstPages(list, '/p', 'x', slow, hook);
+      finish('file:///p/thumbs/gloss');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(hook).not.toHaveBeenCalled();
+    });
+  });
   describe('a later page, as it loads (#72)', () => {
     it('shows and inserts a dark picture as its contour drawing', async () => {
       expect(await measureThumb(result('dark'), '/p', 'x', deps())).toBe(

@@ -1,6 +1,11 @@
 import {NativeModules} from 'react-native';
 import {FileUtils, PluginCommAPI, PluginNoteAPI} from 'sn-plugin-lib';
-import {imageExtension, insertPicture} from '../src/flow/insertPicture';
+import {
+  imageExtension,
+  insertPicture,
+  startEarlyDownload,
+} from '../src/flow/insertPicture';
+import {logLines, startLog} from '../src/log/memory';
 import {resetSessionForTests} from '../src/storage/session';
 import {resetLibraryForTests} from '../src/library/device';
 import {closeLogFileForTests} from '../src/storage/logFile';
@@ -47,6 +52,59 @@ beforeEach(() => {
   (PluginNoteAPI.insertImage as jest.Mock).mockResolvedValue({
     success: true,
     result: true,
+  });
+});
+
+describe('the early download of Insert picture (#88)', () => {
+  const library =
+    '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.png';
+
+  it('prepares the early file and downloads nothing more when its picture wins', async () => {
+    startLog();
+    const early = startEarlyDownload(result);
+    expect(
+      await insertPicture(result, 'soup', null, false, undefined, early),
+    ).toEqual({
+      ok: true,
+      value: library,
+    });
+    expect(native.downloadToFile).toHaveBeenCalledTimes(1);
+    expect(native.downloadToFile.mock.calls[0][1]).toBe(
+      '/data/plugin/insert-early.png',
+    );
+    expect(image.prepareForEink.mock.calls[0][0]).toBe(
+      '/data/plugin/insert-early.png',
+    );
+    const text = logLines().join('\n');
+    expect(text).toMatch(/time download: \d+ ms, early, started \d+ ms before/);
+    for (const step of ['conversion', 'insert', 'lasso', 'write']) {
+      expect(text).toMatch(new RegExp(`time ${step}: \\d+ ms`));
+    }
+  });
+
+  it('downloads the winner itself when the early download was for another picture', async () => {
+    const early = startEarlyDownload({...result, id: 'openclipart:1'});
+    await early.raw;
+    native.downloadToFile.mockClear();
+    await insertPicture(result, 'soup', null, false, undefined, early);
+    expect(native.downloadToFile.mock.calls[0][1]).toBe(
+      '/data/plugin/insert-download.png',
+    );
+    expect(image.prepareForEink.mock.calls[0][0]).toBe(
+      '/data/plugin/insert-download.png',
+    );
+  });
+
+  it('downloads again when the early download failed', async () => {
+    native.downloadToFile.mockRejectedValueOnce(
+      Object.assign(new Error('HTTP 503'), {code: 'HTTP_503'}),
+    );
+    const early = startEarlyDownload(result);
+    await insertPicture(result, 'soup', null, false, undefined, early);
+    expect(native.downloadToFile).toHaveBeenCalledTimes(2);
+    expect(native.downloadToFile.mock.calls[1][1]).toBe(
+      '/data/plugin/insert-download.png',
+    );
   });
 });
 
