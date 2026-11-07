@@ -1,5 +1,5 @@
 /**
- * «Insert picture» with no plugin view (#74, owner on build 15): the button is registered with
+ * «Insert best picture» with no plugin view (#74, owner on build 15): the button is registered with
  * showType 0, so the person stays on the note while the lassoed word is read and the best picture
  * inserted. Each step goes to the log. A failure opens the view, through showPluginView (official
  * docs), on the search screen with the word and the sentence (#96); a missing permission opens the view's onboarding, which then
@@ -53,7 +53,7 @@ const DEVICE: HeadlessDeps = {
 export const NO_VIEW_LIMIT_MS = 60000;
 
 /**
- * What the view opens on after a failure (#96): the search screen, as Find picture opens it, with
+ * What the view opens on after a failure (#96): the search screen, as Choose picture opens it, with
  * the word, where it was, and the sentence in its status line; a lasso failure shows as Find
  * picture shows one, with an empty field.
  */
@@ -94,7 +94,7 @@ async function showFailure(
   await logged('showPluginView', deps.show);
 }
 
-/** Runs one «Insert picture» press with no view. Never rejects; a second press waits its turn. */
+/** Runs one «Insert best picture» press with no view. Never rejects; a second press waits its turn. */
 export async function insertWithoutView(
   deps: HeadlessDeps = DEVICE,
 ): Promise<void> {

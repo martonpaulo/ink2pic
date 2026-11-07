@@ -36,7 +36,7 @@ export function insertDownloadPath(
 }
 
 /**
- * `<plugin folder>/insert-early-<result id>.<extension>`: the full download «Insert picture»
+ * `<plugin folder>/insert-early-<result id>.<extension>`: the full download «Insert best picture»
  * starts for the leading picture before page 1's order is known (#88); its own name, so a dropped
  * one never overwrites the winner's download (#93); removed once used or dropped.
  */

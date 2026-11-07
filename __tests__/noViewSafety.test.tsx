@@ -1,5 +1,5 @@
 /**
- * «Insert picture» with no view is safe (#93), through the PluginHost simulator: it ends with JS
+ * «Insert best picture» with no view is safe (#93), through the PluginHost simulator: it ends with JS
  * timers stopped (brief section 3.3), it deletes or lassoes only the word it read, and its
  * temporary download is named per result and removed after the insert.
  */
@@ -82,7 +82,7 @@ const ended = (j: Journey) => () =>
     logText(j),
   );
 
-describe('Insert picture with no view (#93)', () => {
+describe('Insert best picture with no view (#93)', () => {
   it('ends offline with JS timers stopped, shows the failure, and takes the next press', async () => {
     const j = lassoedSoup();
     j.host.online = false;
@@ -129,7 +129,7 @@ describe('Insert picture with no view (#93)', () => {
     expect(j.host.pictures()).toHaveLength(1);
   });
 
-  it('In place of the word: deletes nothing when the person lassoed other strokes meanwhile', async () => {
+  it('In place of the word: deletes nothing and lassoes nothing when the person lassoed other strokes meanwhile', async () => {
     const j = lassoedSoup(withPlacement('replace'));
     j.host.write('cake', other);
     // The person stays on the note and lassoes «cake» while the picture is prepared.
@@ -146,18 +146,17 @@ describe('Insert picture with no view (#93)', () => {
     ]);
     expect(j.host.called('deleteLassoElements')).toEqual([]);
     expect(j.host.called('lassoElements')).toEqual([]);
-    expect(logText(j)).toMatch(
-      /deleteLassoElements: skipped, the lasso changed/,
-    );
+    expect(logText(j)).toMatch(/lassoElements: skipped, the lasso changed/);
   });
 
-  it('In place of the word: still deletes the word when the lasso is the one read', async () => {
+  it('In place of the word: keeps the word and lassoes the picture, which goes below it (#106)', async () => {
     const j = lassoedSoup(withPlacement('replace'));
     j.host.press(INSERT_BUTTON_ID);
     expect(await drain(ended(j))).toBe(true);
     const [picture] = j.host.pictures();
     expect(picture.type).toBe(PICTURE_TYPE);
-    expect(j.host.elements.some(e => e.text === 'soup')).toBe(false);
+    expect(j.host.elements.some(e => e.text === 'soup')).toBe(true);
+    expect(j.host.called('deleteLassoElements')).toEqual([]);
     expect(j.host.lassoed()).toEqual([picture]);
   });
 
@@ -207,7 +206,7 @@ async function failureView(j: Journey) {
 const downloadFails = () =>
   Promise.reject(Object.assign(new Error('HTTP 503'), {code: 'HTTP_503'}));
 
-describe('a failed Insert picture opens the search screen (#96)', () => {
+describe('a failed Insert best picture opens the search screen (#96)', () => {
   it('a failed download: the word searched again, its grid, and the sentence in the status line', async () => {
     const j = lassoedSoup();
     // The early download and the insert's own download both fail.
@@ -221,7 +220,7 @@ describe('a failed Insert picture opens the search screen (#96)', () => {
     expect(j.host.pictures()).toEqual([]);
   });
 
-  it('a word not read: an empty field and the lasso sentence, as Find picture shows', async () => {
+  it('a word not read: an empty field and the lasso sentence, as Choose picture shows', async () => {
     const j = lassoedSoup();
     j.host.recognize = () => ' ';
     j.host.press(INSERT_BUTTON_ID);

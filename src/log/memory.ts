@@ -86,7 +86,7 @@ export function logCount(): number {
 }
 
 /**
- * One step of «Insert picture» with its duration since `since` (#88): `time <step>: <ms> ms`,
+ * One step of «Insert best picture» with its duration since `since` (#88): `time <step>: <ms> ms`,
  * so the session log shows where an insert spends its time.
  */
 export function logTime(step: string, since: number, detail = ''): void {

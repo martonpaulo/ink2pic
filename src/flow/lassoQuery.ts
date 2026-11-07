@@ -22,7 +22,7 @@ import {
 export type LassoQuery = {query: string; place: LassoPlace | null};
 
 /**
- * What Lasso last word chose (#87): the words it lassoed and what they search. Insert picture on
+ * What Lasso last word chose (#87): the words it lassoed and what they search. Insert best picture on
  * that same lasso searches it with no second recognition; any other lasso is recognised as before.
  */
 export type WordPick = {query: string; rect: Rect; strokes: number};

@@ -1,4 +1,4 @@
-/** The «Insert picture» lasso button (#74): registered first, and no grid on its press. */
+/** The «Insert best picture» lasso button (#74): registered first, and no grid on its press. */
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import {
@@ -88,7 +88,7 @@ async function mounted() {
 const text = (tree: renderer.ReactTestRenderer) =>
   JSON.stringify(tree.toJSON());
 
-describe('Insert picture (#74)', () => {
+describe('Insert best picture (#74)', () => {
   it('inserts the best picture for the lassoed word at the lasso, then closes, with no grid', async () => {
     (insertBest as jest.Mock).mockResolvedValue({ok: true, value: '/s/a.png'});
     const tree = await openedBy(INSERT_BUTTON_ID);
@@ -140,7 +140,7 @@ describe('Insert picture (#74)', () => {
     act(() => tree.unmount());
   });
 
-  it('keeps Find picture on the grid', async () => {
+  it('keeps Choose picture on the grid', async () => {
     const tree = await openedBy(LASSO_BUTTON_ID);
     expect(insertBest).not.toHaveBeenCalled();
     expect(tree.root.findByProps({testID: 'query'}).props.value).toBe('soup');
@@ -148,7 +148,7 @@ describe('Insert picture (#74)', () => {
   });
 });
 
-it('registers Insert picture before Find picture, both for handwriting only (#74)', () => {
+it('registers Insert best picture before Choose picture, both for handwriting only (#74)', () => {
   // index.js in its own module registry, with that registry's SDK mock.
   let register!: jest.Mock;
   jest.isolateModules(() => {
@@ -167,14 +167,14 @@ it('registers Insert picture before Find picture, both for handwriting only (#74
     expect(button.apps).toEqual(['NOTE']);
     expect(button.editDataTypes).toEqual([EDIT_DATA_STROKES]);
   }
-  // Insert picture stays on the note; Find picture keeps its view (#74).
+  // Insert best picture stays on the note; Choose picture keeps its view (#74).
   expect(lassoButtons.map(button => button.showType)).toEqual([
     SHOW_NO_VIEW,
     SHOW_FULL_VIEW,
   ]);
 });
 
-describe('Insert picture with no view (#74)', () => {
+describe('Insert best picture with no view (#74)', () => {
   const place = {
     rect: lassoRect,
     page: 3,
@@ -246,7 +246,7 @@ describe('Insert picture with no view (#74)', () => {
     const tree = await mounted();
     expect(text(tree)).toContain(copy['error.place']);
     expect(insertBest).not.toHaveBeenCalled();
-    // The search screen, with the word, as Find picture opens it (#96).
+    // The search screen, with the word, as Choose picture opens it (#96).
     expect(tree.root.findByProps({testID: 'query'}).props.value).toBe('soup');
     act(() => tree.unmount());
   });

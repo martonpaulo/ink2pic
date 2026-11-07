@@ -1,7 +1,7 @@
 /**
- * «Insert picture» (#74): the same search as Find picture, then the first picture of page 1,
+ * «Insert best picture» (#74): the same search as Choose picture, then the first picture of page 1,
  * inserted at once at the lasso and left lassoed (#73), with no grid. A failure is the sentence
- * the grid would show: the search state's, or the failed insert's; Find picture still opens the
+ * the grid would show: the search state's, or the failed insert's; Choose picture still opens the
  * grid to pick another.
  *
  * Each step logs its time (#88). Once page 1's thumbnails are on the device, the full download
@@ -21,6 +21,7 @@ import {
   insertPicture,
   startEarlyDownload,
   Stop,
+  wordKeptOptions,
 } from './insertPicture';
 import {isContourUri, measureFirstPages} from './measure';
 import type {LassoPlace} from './place';
@@ -36,6 +37,7 @@ export type QuickInsertDeps = {
   insert: typeof insertPicture;
   record: typeof afterSearch;
   early: typeof startEarlyDownload;
+  options: typeof wordKeptOptions;
 };
 
 const DEVICE: QuickInsertDeps = {
@@ -44,6 +46,7 @@ const DEVICE: QuickInsertDeps = {
   insert: insertPicture,
   record: afterSearch,
   early: startEarlyDownload,
+  options: wordKeptOptions,
 };
 
 /**
@@ -91,7 +94,7 @@ export async function insertBest(
   if (!outcome) {
     return {ok: false, text: copy['error.unexpected']};
   }
-  // Page 1 in the grid's order: re-sorted by its pixels, as Find picture shows it (#66).
+  // Page 1 in the grid's order: re-sorted by its pixels, as Choose picture shows it (#66).
   const measuring = Date.now();
   const early: {value: EarlyDownload | null} = {value: null};
   const leading = outcome.results[0];
@@ -132,6 +135,8 @@ export async function insertBest(
     }
     return LATE;
   }
+  // The word is never deleted here: «In place of word» places the picture below it (#106).
+  const options = await deps.options();
   // As a contour drawing when its tile shows one, as a tap in the grid does (#66, #72).
   const inserted = await timed('insert', () =>
     deps.insert(
@@ -139,7 +144,7 @@ export async function insertBest(
       word,
       place,
       isContourUri(pages.contourThumbs.get(best.id) ?? ''),
-      undefined,
+      options,
       usable,
       stop,
     ),

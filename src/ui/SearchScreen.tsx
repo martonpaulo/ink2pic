@@ -115,7 +115,7 @@ export type SearchScreenProps = {
   /** Reading the lasso failed: show why, with the field empty and focused. */
   lassoFailure: StepFailure | null;
   /**
-   * A failed «Insert picture»'s sentence (#96): in the status line through the first search,
+   * A failed «Insert best picture»'s sentence (#96): in the status line through the first search,
    * which shows the grid it names.
    */
   initialStatus?: string | null;

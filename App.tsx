@@ -1,7 +1,7 @@
 /**
  * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
  * search; the lasso button first turns the lassoed word into the query (#13). A tap on a result
- * inserts it (#12). «Insert picture» inserts the best result with no grid (#74). The plugin's
+ * inserts it (#12). «Insert best picture» inserts the best result with no grid (#74). The plugin's
  * Settings entry opens the Settings screen (#70) and its Languages screen (#68). Every step is logged; the log shows only behind
  * the Log button (#36).
  *
@@ -62,7 +62,7 @@ import {copy} from './src/ui/copy';
 type Screen =
   | {name: 'starting'}
   | {name: 'failed'}
-  /** One line: «Adding…» while Insert picture runs (#74); a failure opens the search (#96). */
+  /** One line: «Adding…» while Insert best picture runs (#74); a failure opens the search (#96). */
   | {name: 'note'; text: string}
   /** The plugin's Settings entry, each tap saved at once (#70), and its Languages screen (#68). */
   | {name: 'settings' | 'languages'; settings: Settings}
@@ -76,7 +76,7 @@ type Screen =
       name: 'search';
       query: string;
       lassoFailure: StepFailure | null;
-      /** A failed «Insert picture»'s sentence, kept through the search it opens with (#96). */
+      /** A failed «Insert best picture»'s sentence, kept through the search it opens with (#96). */
       status: string | null;
       opened: number;
       flow: number;
@@ -88,7 +88,7 @@ function App(): React.JSX.Element {
   const opening = useRef<OpeningState>(initialOpening);
   // Where the lasso was when the view opened; the picture goes there (#20).
   const place = useRef<LassoPlace | null>(null);
-  // A failed «Insert picture» that ran with no view (#74, #96).
+  // A failed «Insert best picture» that ran with no view (#74, #96).
   const headlessNote = useRef<HeadlessNote | null>(null);
   // The session's settings now: a tap before the e-ink redraw chains from it (#95).
   const settingsNow = useRef<Settings | null>(null);
@@ -110,7 +110,7 @@ function App(): React.JSX.Element {
     isCurrent(opening.current, flow) ? null : 'the view closed';
 
   /**
-   * The search screen, as Find picture opens it, after a failed «Insert picture» (#96): every
+   * The search screen, as Choose picture opens it, after a failed «Insert best picture» (#96): every
    * sentence then names a control on screen, and a pick still goes to the word.
    */
   const searchAfterFailure = (flow: number, failed: HeadlessNote) => {
@@ -129,7 +129,7 @@ function App(): React.JSX.Element {
   };
 
   /**
-   * Insert picture (#74): the lassoed word, then the best result inserted at once; the view
+   * Insert best picture (#74): the lassoed word, then the best result inserted at once; the view
    * closes after the insert, as after a pick, and opens the search screen when anything fails.
    */
   const insertNow = async (flow: number, lasso: OpenedLasso) => {
@@ -275,7 +275,7 @@ function App(): React.JSX.Element {
    * Decides without the button event and without a timer: build 0.1.0 (8) stayed at lifecycle 1
    * with no press and no timer firing. A lasso selection means the lasso button (#13); its
    * elements go on to the recognition, so the opening reads them once (#44). Without a press,
-   * Insert picture and Find picture look the same: the grid opens, where nothing is inserted
+   * Insert best picture and Choose picture look the same: the grid opens, where nothing is inserted
    * unasked (#74).
    */
   const decide = async () => {
@@ -350,7 +350,7 @@ function App(): React.JSX.Element {
         now: Date.now(),
       });
     });
-    // 2c. A failed «Insert picture» with no view opened the view for its sentence (#74).
+    // 2c. A failed «Insert best picture» with no view opened the view for its sentence (#74).
     const noteNow = (how: 'pending' | 'live') => {
       const failed = takeHeadlessNote();
       if (failed !== null) {

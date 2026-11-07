@@ -4,7 +4,12 @@ import {
   imageExtension,
   insertPicture,
   startEarlyDownload,
+  wordKeptOptions,
 } from '../src/flow/insertPicture';
+import {insertBest} from '../src/flow/quickInsert';
+import {unmeasured} from '../src/flow/measure';
+import {parseSettings} from '../src/settings/settings';
+import {resetSettingsForTests, saveSettings} from '../src/storage/settings';
 import {CALL_TIMEOUT_MS, logLines, startLog} from '../src/log/memory';
 import {resetSessionForTests} from '../src/storage/session';
 import {resetLibraryForTests} from '../src/library/device';
@@ -153,7 +158,7 @@ describe('a library picture is reused only in its own style (#103)', () => {
   });
 });
 
-describe('the early download of Insert picture (#88)', () => {
+describe('the early download of Insert best picture (#88)', () => {
   const library =
     '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.png';
 
@@ -596,6 +601,36 @@ describe('the insert options from Settings (#70)', () => {
     expect(
       (await insertPicture(result, 'soup', place, false, options)).ok,
     ).toBe(true);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('Insert best picture never deletes the word, even in place of it (#106)', async () => {
+    resetSettingsForTests();
+    await saveSettings({
+      ...parseSettings(null, null).settings,
+      placement: 'replace',
+    });
+    expect((await wordKeptOptions()).placement).toBe('below');
+    const inserted = await insertBest('soup', place, {
+      search: jest.fn().mockResolvedValue({
+        outcome: {
+          results: [result],
+          statuses: {},
+          sourceDown: false,
+          allFailed: false,
+        },
+        thumbDir: '/p',
+      }),
+      measure: jest.fn().mockResolvedValue(unmeasured([result])),
+      insert: insertPicture,
+      record: jest.fn().mockResolvedValue(null),
+      early: jest.fn().mockReturnValue(null),
+      options: wordKeptOptions,
+    });
+    resetSettingsForTests();
+    expect(inserted.ok).toBe(true);
+    // Below the word, as «Below» places it; the word stays.
+    expect(placedAt().top).toBeGreaterThanOrEqual(place.rect.bottom);
     expect(remove).not.toHaveBeenCalled();
   });
 

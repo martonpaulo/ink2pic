@@ -3,8 +3,8 @@
  * Permission request descriptions reuse the `error.permission.*` texts.
  */
 export const copy = {
-  'button.lasso': 'Find picture',
-  'button.insert': 'Insert picture',
+  'button.lasso': 'Choose picture',
+  'button.insert': 'Insert best picture',
   'button.sidebar': 'Ink2Pic',
   'tab.search': 'Search',
   'tab.library': 'Library',
@@ -37,7 +37,7 @@ export const copy = {
   'onboarding.1': 'Write a word in your note.',
   'onboarding.2': 'Circle it with the lasso.',
   'onboarding.3':
-    'Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one.',
+    'Tap ••• on the lasso toolbar, then Insert best picture, or Choose picture to choose one.',
   'onboarding.undo': 'A wrong picture stays lassoed: tap Delete.',
   'onboarding.start': 'Start',
   // Outside the brief's table: the close button of the plugin view (#3).
@@ -120,7 +120,7 @@ export const copy = {
   'settings.placement.replace': 'In place of word',
   'settings.placement.beside': 'Beside',
   'settings.placementNote':
-    'In place of word deletes the lassoed handwriting when you tap a picture.',
+    'Only a picture chosen in the grid replaces your word. Insert best picture keeps it.',
   'settings.style': 'Picture style',
   'settings.style.drawings': 'Drawings first',
   'settings.style.photos': 'Drawings and photos',

@@ -59,6 +59,17 @@ async function savedOptions(): Promise<InsertOptions> {
 }
 
 /**
+ * The options of «Insert best picture»: it never deletes the handwriting (#106), so «In place of
+ * word» places the picture below it. Only a picture chosen in the grid replaces the word.
+ */
+export async function wordKeptOptions(): Promise<InsertOptions> {
+  const options = await savedOptions();
+  return options.placement === 'replace'
+    ? {...options, placement: 'below'}
+    : options;
+}
+
+/**
  * The size the picture is placed at: no wider than the chosen width, keeping its proportions. A
  * library picture saved at a larger size shrinks; one saved smaller is never enlarged.
  */

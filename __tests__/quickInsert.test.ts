@@ -15,6 +15,7 @@ const picture = (id: string): SearchResult => ({
 });
 const first = picture('openclipart:1');
 const second = picture('openclipart:2');
+const options = {width: 640, placement: 'below' as const, contour: false};
 const place = {
   rect: {left: 100, top: 200, right: 300, bottom: 260},
   page: 3,
@@ -57,6 +58,7 @@ function deps(found: SearchOutcome): QuickInsertDeps & {
       ),
     insert: jest.fn().mockResolvedValue({ok: true, value: '/s/2.png'}),
     record: jest.fn().mockResolvedValue(null),
+    options: jest.fn().mockResolvedValue(options),
     early: jest.fn().mockImplementation((result: SearchResult) => ({
       id: result.id,
       started: 0,
@@ -70,7 +72,7 @@ beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
 });
 
-describe('Insert picture inserts the best result at once (#74)', () => {
+describe('Insert best picture inserts the best result at once (#74)', () => {
   it('inserts the first picture of page 1 as the grid shows it, at the lasso', async () => {
     const found = outcome([first, second]);
     const d = deps(found);
@@ -94,7 +96,7 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       'soup',
       place,
       true,
-      undefined,
+      options,
       null,
       expect.any(Function),
     );
@@ -129,7 +131,7 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       'soup',
       place,
       false,
-      undefined,
+      options,
       early,
       expect.any(Function),
     );
@@ -151,7 +153,7 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       'soup',
       place,
       false,
-      undefined,
+      options,
       null,
       expect.any(Function),
     );

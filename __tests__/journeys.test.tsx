@@ -46,7 +46,7 @@ const query = (j: Journey) =>
   j.tree?.root.findByProps({testID: 'query'}).props.value as string;
 
 describe('journeys (#78)', () => {
-  it('lasso a word, Find picture, pick: the picture lands below the word, lassoed, and the view closes', async () => {
+  it('lasso a word, Choose picture, pick: the picture lands below the word, lassoed, and the view closes', async () => {
     const j = lassoedSoup();
     await j.press(LASSO_BUTTON_ID);
     await j.settle(() => j.tiles().length > 0);
@@ -62,7 +62,7 @@ describe('journeys (#78)', () => {
     expect(j.host.sent[j.host.sent.length - 1]).toBe(`life ${LIFE.stop}`);
   });
 
-  it('Find picture, pick, Close while the picture is prepared: nothing goes in the note (#96)', async () => {
+  it('Choose picture, pick, Close while the picture is prepared: nothing goes in the note (#96)', async () => {
     const j = lassoedSoup();
     await j.press(LASSO_BUTTON_ID);
     await j.settle(() => j.tiles().length > 0);
@@ -81,7 +81,7 @@ describe('journeys (#78)', () => {
     expect(j.host.pictures()).toEqual([]);
   });
 
-  it('Insert picture in one tap: the best picture goes below the word with no grid', async () => {
+  it('Insert best picture in one tap: the best picture goes below the word with no grid', async () => {
     const j = lassoedSoup();
     await j.press(INSERT_BUTTON_ID);
     // No view (#74): the person stays on the note while the picture goes in.
@@ -95,7 +95,7 @@ describe('journeys (#78)', () => {
     expect(j.log().join('\n')).toMatch(/insert best: /);
   });
 
-  it('offline: Find picture shows the no-internet sentence, Insert picture inserts nothing', async () => {
+  it('offline: Choose picture shows the no-internet sentence, Insert best picture inserts nothing', async () => {
     // OpenMoji answers from its bundled index, but its pictures need the network too (#82).
     const j = lassoedSoup();
     j.host.online = false;
@@ -192,7 +192,7 @@ describe('journeys (#78)', () => {
     expect(query(j)).toBe('');
   });
 
-  it('Lasso last word on «Quem foi Miguel de Cervantes», then Insert picture: the name is searched with no extra lookup (#87)', async () => {
+  it('Lasso last word on «Quem foi Miguel de Cervantes», then Insert best picture: the name is searched with no extra lookup (#87)', async () => {
     journey = startJourney();
     const j = journey;
     const line = ['Quem', 'foi', 'Miguel', 'de', 'Cervantes'];

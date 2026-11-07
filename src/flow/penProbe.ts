@@ -498,7 +498,7 @@ async function choosePhrase(
 /**
  * Lasso last word: reads the page's strokes, cold, and lassoes the trailing words of the last
  * line that name the thing, else the last word by position (#87), then closes the view; the view
- * stays open with the problem when nothing was lassoed. Insert picture on that lasso searches
+ * stays open with the problem when nothing was lassoed. Insert best picture on that lasso searches
  * the chosen words.
  */
 export async function lassoLastWord(): Promise<LastWordProblem | null> {

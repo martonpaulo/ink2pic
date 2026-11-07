@@ -64,7 +64,7 @@ registerButton(BUTTON_TYPE_SIDEBAR, ['NOTE'], {
   showType: SHOW_FULL_VIEW,
 }).then(result => report('sidebar button', result));
 
-// Before Find picture: the host gives no position field, so the order may set the menu's (#74).
+// Before Choose picture: the host gives no position field, so the order may set the menu's (#74).
 // No view: the person stays on the note; a failure opens the view (#74, TO TEST).
 registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
   id: INSERT_BUTTON_ID,
@@ -83,7 +83,7 @@ registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
 }).then(result => report('lasso button', result));
 
 // After registerButton, as the official docs order it; before the view exists (gotcha 11).
-// «Insert picture» runs here, with no view (#74); every other press goes to the view.
+// «Insert best picture» runs here, with no view (#74); every other press goes to the view.
 report(
   'button listener',
   startButtonQueue(id => {

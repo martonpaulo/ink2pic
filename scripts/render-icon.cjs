@@ -1,5 +1,5 @@
 // Renders assets/icon.svg to the PNGs the plugin and the README use (#31), and assets/insert.svg
-// to the Insert picture button's icon (#74).
+// to the Insert best picture button's icon (#74).
 // Chromium draws the SVG on a transparent page, so the PNGs never drift from the master.
 const fs = require('fs');
 const path = require('path');

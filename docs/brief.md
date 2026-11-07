@@ -151,7 +151,7 @@ Inference: the known-broken "Insert Image" plugin (`wolfsolver/supernote-image-i
 - The JS is shipped as a Hermes bytecode bundle produced by `buildPlugin.sh` [CONFIRMED in script].
 - The plugin code runs inside the system process `com.ratta.supernote.pluginhost`. A plugin's own Android manifest governs nothing, because the native APK is never installed as an app [REPORTED, ink2task source comments].
 - Plugins lose their in-memory state when their window is hidden. Persist anything important [REPORTED, SuperClaude README].
-- JS timers suspend while the plugin view is closed. Never rely on timers for flushing [REPORTED, apclark31]. «Insert picture» with no view therefore never waits on a timer to end: the search retries with no pause, a limit measured with `Date.now()` is checked before each step, and the log shows the time around each wait, so the device shows whether timers stop [TO TEST] ([#93](https://github.com/martonpaulo/ink2pic/issues/93)).
+- JS timers suspend while the plugin view is closed. Never rely on timers for flushing [REPORTED, apclark31]. «Insert best picture» with no view therefore never waits on a timer to end: the search retries with no pause, a limit measured with `Date.now()` is checked before each step, and the log shows the time around each wait, so the device shows whether timers stop [TO TEST] ([#93](https://github.com/martonpaulo/ink2pic/issues/93)).
 - No dev console. ADB logcat availability is contradictory: apclark31 reports `shell/logcat/push/pull` return "not support command", gorlix documents a working `adb logcat` workflow [REPORTED, conflicting]. Plan for on-device logging (section 10.3).
 
 ### 3.4 Package format and installation
@@ -494,7 +494,7 @@ Search-side quality: prefer results that render well in gray (line art, engravin
 
 1. **Lasso toolbar button** (`registerButton(2, ['NOTE'], { editDataTypes: [0], showType: 1, ... })`): the main flow.
 2. **Sidebar button** (`registerButton(1, ['NOTE'], { showType: 1, ... })`): opens the plugin on the Library tab or an empty search.
-3. **«Insert picture» lasso button** ([#74](https://github.com/martonpaulo/ink2pic/issues/74)), registered before «Find picture», with the same `editDataTypes: [0]` and its own icon: the same search, then the first picture of page 1 in the grid's order is inserted at once at the lasso and left lassoed ([#73](https://github.com/martonpaulo/ink2pic/issues/73)), with no grid. The view shows only «Adding to your note…» and closes; a failure opens the search screen, as «Find picture» opens it, with the word searched and the failure sentence in its status line, so each sentence names a control on screen and a pick still goes to the word ([#96](https://github.com/martonpaulo/ink2pic/issues/96)). Close while an insert runs stops it before the note is written; the one host write itself cannot be stopped ([#96](https://github.com/martonpaulo/ink2pic/issues/96)). A view that opens with no button event cannot tell the two lasso buttons apart, so it opens the grid, which inserts nothing unasked.
+3. **«Insert best picture» lasso button** ([#74](https://github.com/martonpaulo/ink2pic/issues/74)), registered before «Choose picture», with the same `editDataTypes: [0]` and its own icon: the same search, then the first picture of page 1 in the grid's order is inserted at once at the lasso and left lassoed ([#73](https://github.com/martonpaulo/ink2pic/issues/73)), with no grid. It never deletes the word: «In place of word» places the picture below ([#106](https://github.com/martonpaulo/ink2pic/issues/106)). The names say the difference: «Insert best picture» picks, «Choose picture» lets the person pick ([#106](https://github.com/martonpaulo/ink2pic/issues/106)). The view shows only «Adding to your note…» and closes; a failure opens the search screen, as «Choose picture» opens it, with the word searched and the failure sentence in its status line, so each sentence names a control on screen and a pick still goes to the word ([#96](https://github.com/martonpaulo/ink2pic/issues/96)). Close while an insert runs stops it before the note is written; the one host write itself cannot be stopped ([#96](https://github.com/martonpaulo/ink2pic/issues/96)). A view that opens with no button event cannot tell the two lasso buttons apart, so it opens the grid, which inserts nothing unasked.
 
 ### 8.2 Main flow: handwriting as the query
 
@@ -514,7 +514,7 @@ Recognition language: `recognizeElements` has no language parameter. The device 
 - Baseline [CONFIRMED API]: `insertImage(path)`, host default placement, the user moves it with the system lasso.
 - Goal [TO TEST, spike S5]: place the image where the handwritten word was, using `getLassoRect()` for the position and a Picture element with `rect` via `insertElements`, then optionally delete the handwritten word with `deleteLassoElements()` (or by `numInPage` if the lasso context expired). This is the "magic" moment and the biggest differentiator. Only ship it if it works reliably. Otherwise keep the baseline.
 - Capture `getLassoRect()` and the stroke identifiers **before** any navigation, because lasso context is ephemeral.
-- Handwritten word after insertion: **kept** by default [DEFAULT]. The Settings screen's «Where the picture goes» chooses Below (default), Beside (to the right, top-aligned, else to the left, else below) or In place of word: the picture is placed from the word's top-left corner and, only after it was placed there by `insertPageElements` on the person's tap, `deleteLassoElements()` deletes the lassoed handwriting, logged; a failed or host-placed insert keeps the word ([#70](https://github.com/martonpaulo/ink2pic/issues/70)). With no view the person stays on the note, so the lasso rect and the page number are read again just before the delete and before the picture is lassoed; when either changed, nothing is deleted or lassoed and the log says why ([#93](https://github.com/martonpaulo/ink2pic/issues/93)). Whether the lasso still holds the word after the insert, and whether the delete leaves the new picture, is TO TEST on the device.
+- Handwritten word after insertion: **kept** by default [DEFAULT]. The Settings screen's «Where the picture goes» chooses Below (default), Beside (to the right, top-aligned, else to the left, else below) or In place of word: the picture is placed from the word's top-left corner and, only after it was placed there by `insertPageElements` on the person's tap, `deleteLassoElements()` deletes the lassoed handwriting, logged; a failed or host-placed insert keeps the word ([#70](https://github.com/martonpaulo/ink2pic/issues/70)). Only a picture chosen in the grid replaces the word: «Insert best picture» never deletes the handwriting, and with In place of word it places the picture below ([#106](https://github.com/martonpaulo/ink2pic/issues/106)). With no view the person stays on the note, so the lasso rect and the page number are read again just before the picture is lassoed; when either changed, nothing is deleted or lassoed and the log says why ([#93](https://github.com/martonpaulo/ink2pic/issues/93)). Whether the lasso still holds the word after the insert, and whether the delete leaves the new picture, is TO TEST on the device.
 - Size: Small 400, Medium 640 (default), Large 960 page pixels; the picture is prepared at that width, and a library picture saved larger shrinks to it, never enlarged ([#70](https://github.com/martonpaulo/ink2pic/issues/70)); a tall picture shrinks further to the page height of 2560 pixels, keeping its ratio ([#95](https://github.com/martonpaulo/ink2pic/issues/95)).
 
 ### 8.4 Results screen (e-ink rules)
@@ -568,7 +568,7 @@ The minimum is the Supernote's own system text: the note title in the bottom bar
 
 - One `.snplg`, no keys, no account.
 - Request permissions just in time but grouped on first real use, each with one plain sentence ("Internet to search images", "Files to save your image library"). Reference implementation: SuperTask `src/utils/permissions.js` and `PermissionsIntro.tsx` in `apclark31/supernote-plugin-research` [REPORTED].
-- First open shows 3 short steps: write a word, lasso it, tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one ([#50](https://github.com/martonpaulo/ink2pic/issues/50), [#98](https://github.com/martonpaulo/ink2pic/issues/98)). The steps are static rows with dotted separators, as in the system Settings, and Start is the one black-filled primary action.
+- First open shows 3 short steps: write a word, lasso it, tap ••• on the lasso toolbar, then Insert best picture, or Choose picture to choose one ([#50](https://github.com/martonpaulo/ink2pic/issues/50), [#98](https://github.com/martonpaulo/ink2pic/issues/98)). The steps are static rows with dotted separators, as in the system Settings, and Start is the one black-filled primary action.
 - `pluginID` fixed forever so updates keep the library.
 
 ### 8.8 Errors
@@ -588,8 +588,8 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 
 | Key | Text |
 | --- | --- |
-| `button.lasso` | Find picture |
-| `button.insert` | Insert picture |
+| `button.lasso` | Choose picture |
+| `button.insert` | Insert best picture |
 | `button.sidebar` | Ink2Pic |
 | `tab.search` | Search |
 | `tab.library` | Library |
@@ -620,7 +620,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `error.unexpected` | Something went wrong. Close Ink2Pic and open it again. |
 | `onboarding.1` | Write a word in your note. |
 | `onboarding.2` | Circle it with the lasso. |
-| `onboarding.3` | Tap ••• on the lasso toolbar, then Insert picture, or Find picture to choose one. |
+| `onboarding.3` | Tap ••• on the lasso toolbar, then Insert best picture, or Choose picture to choose one. |
 | `onboarding.undo` | A wrong picture stays lassoed: tap Delete. |
 | `onboarding.start` | Start |
 | `languages.title` | Search languages |
@@ -657,7 +657,7 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `settings.placement.below` | Below |
 | `settings.placement.replace` | In place of word |
 | `settings.placement.beside` | Beside |
-| `settings.placementNote` | In place of word deletes the lassoed handwriting when you tap a picture. |
+| `settings.placementNote` | Only a picture chosen in the grid replaces your word. Insert best picture keeps it. |
 | `settings.style` | Picture style |
 | `settings.style.drawings` | Drawings first |
 | `settings.style.photos` | Drawings and photos |
@@ -747,7 +747,7 @@ Miguel de Cervantes» searches «Miguel de Cervantes», «Eu comi uma banana» s
    more is tried only when it starts with a capital letter, so «uma banana» and «a China» never
    are [INFERENCE: the recognition keeps the capital]. The first group that is an article with a
    Wikidata item wins, else the last word.
-4. The words that won are lassoed again and remembered: Insert picture or Find picture on that
+4. The words that won are lassoed again and remembered: Insert best picture or Choose picture on that
    lasso searches them with no second recognition, and the Wikidata lookup
    ([#71](https://github.com/martonpaulo/ink2pic/issues/71)) takes the article the check found
    instead of asking again. A line costs the same Wikipedia requests as a one-word search; one
@@ -975,17 +975,17 @@ Open on the device, each logged so the session log answers it:
   never fails the insert.
 - The lasso toolbar's order ([#74](https://github.com/martonpaulo/ink2pic/issues/74)) [TO TEST]:
   `PluginButton` has no position field (sn-plugin-lib 0.2.3 and the official docs), so «Insert
-  picture» is registered before «Find picture»; the device shows whether that order sets their
+  picture» is registered before «Choose picture»; the device shows whether that order sets their
   order in the «•••» menu, and whether a plugin button can sit on the toolbar itself.
 - A lasso button with `showType: 0` (no plugin view, official docs «PluginButton»: `0` do not
   show plugin UI) [TO TEST]: whether the press still reaches the plugin and the SDK calls work
-  with no view. Build 16 registers «Insert picture» so (owner, build 15,
+  with no view. Build 16 registers «Insert best picture» so (owner, build 15,
   [#74](https://github.com/martonpaulo/ink2pic/issues/74)): `index.js`'s button listener runs
   the insert and logs each step as `insert picture (no view): …`; a failure calls
   `showPluginView()` (official docs: «shows the current plugin UI») to show its sentence, and a
   missing permission opens the view's onboarding. Whether `showPluginView()` opens the view from
   a button listener is TO TEST too. If the press never arrives, build 17 goes back to
-  `showType: 1`. «Find picture» keeps its view.
+  `showType: 1`. «Choose picture» keeps its view.
 - `recognizeElements` over a whole written line [TO TEST]
   ([#87](https://github.com/martonpaulo/ink2pic/issues/87)): S3 recognised single words only. Lasso last word lassoes the line up to its last word
   and recognises it with the page size (117 with any other size, S3), logged as `probe phrase:
@@ -994,7 +994,7 @@ Open on the device, each logged so the session log answers it:
   person's own lasso. The official docs at `docs.supernote.com` do not describe
   `recognizeElements` (every page `llms.txt` lists, read on 2026-11-07); the call is known from
   the sn-plugin-lib 0.2.3 types and S3. Also TO TEST: whether `getLassoRect` after
-  `lassoElements(rect)` lies inside that rect, which Insert picture checks before it reuses the
+  `lassoElements(rect)` lies inside that rect, which Insert best picture checks before it reuses the
   chosen words.
 
 ## 11. Risks

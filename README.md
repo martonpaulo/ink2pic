@@ -25,7 +25,7 @@ Write a word by hand on your Supernote, lasso it, and insert a matching picture 
 ## Why Ink2Pic
 
 Ink2Pic is a **Supernote plugin** that puts **a picture of a real thing** into your note: soup, a
-tree, an apple, a historical person. **Write the word, lasso it, tap Find picture, and tap the
+tree, an apple, a historical person. **Write the word, lasso it, tap Choose picture, and tap the
 picture you want.** Ink2Pic searches **clip art** on Openclipart and pictures on Wikimedia Commons,
 and puts the one you choose **just below your word**. The picture is **already converted for the
 e-ink screen**. You need **no account, no key and no phone**.
@@ -62,11 +62,11 @@ attached.
 
 1. Write a word in English in a note.
 2. Circle it with the lasso.
-3. In the lasso toolbar, tap **Find picture**. It can be in the **⋯** menu of that toolbar.
+3. In the lasso toolbar, tap **Choose picture**. It can be in the **⋯** menu of that toolbar.
 4. Tap the picture you want. Ink2Pic puts it just below your word and closes.
 
-To skip the choice, tap **Insert picture** instead of **Find picture**: Ink2Pic puts the first
-picture just below your word and closes. If you want another one, tap **Find picture**.
+To skip the choice, tap **Insert best picture** instead of **Choose picture**: Ink2Pic puts the
+first picture just below your word and closes. If you want another one, tap **Choose picture**.
 
 The results come six per page; tap ◀ and ▶ for more. If the device read the word wrong, fix it in
 the search field and tap **Search**. Your handwritten word stays in the note.
@@ -76,7 +76,7 @@ search: type a word and tap **Search**.
 
 ### The first time
 
-<p align="center"><img src="docs/images/first-open.png" width="60%" alt="The first Ink2Pic screen: three numbered cards (write a word in your note, circle it with the lasso, tap Find picture and choose one), a Start button, and Log and Close buttons at the top"></p>
+<p align="center"><img src="docs/images/first-open.png" width="60%" alt="The first Ink2Pic screen: three numbered cards (write a word in your note, circle it with the lasso, tap Choose picture and choose one), a Start button, and Log and Close buttons at the top"></p>
 
 The first screen shows the three steps. Tap **Start**, and the device asks for each permission
 Ink2Pic needs. Choose **Always Allow**, or the device asks again each time you open Ink2Pic.
@@ -100,7 +100,8 @@ the box.
   first. **Reset** goes back to the device's language, then English.
 - **Picture size**: Small, Medium (about one third of the page) or Large.
 - **Where the picture goes**: Below the word, Beside it, or In place of the word. In place of the
-  word deletes the lassoed handwriting when you tap a picture.
+  word deletes the lassoed handwriting when you choose a picture from the grid. **Insert best
+  picture** always keeps your word: with In place of the word, it puts the picture below it.
 - **Picture style**: Drawings first, Photos too, or All as contour.
 - **Picture sources**: turn Openclipart, Commons or Wikipedia off; one always stays on.
 - **Data saver**: fewer and smaller pictures, for a weak Wi-Fi.

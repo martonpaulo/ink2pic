@@ -692,7 +692,7 @@ describe('measureFirstPages (#66)', () => {
     expect(converted).toEqual([]);
   });
 
-  describe('the early-download hook of Insert picture (#88)', () => {
+  describe('the early-download hook of Insert best picture (#88)', () => {
     it('runs once every thumbnail is on the device, before the order is returned', async () => {
       const events: string[] = [];
       const thumbs = deps();
