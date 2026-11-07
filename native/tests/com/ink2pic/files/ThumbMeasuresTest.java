@@ -89,6 +89,18 @@ public final class ThumbMeasuresTest {
     check(writing.bands == 3, "three lines of writing are three bands: " + writing.bands);
     check(writing.lineAspect > 8, "lines of writing are wide: " + writing.lineAspect);
 
+    // #83: an outline is one long part; a field of dots is all fragments.
+    check(lines.fragments == 0, "an outline has no fragments: " + lines.fragments);
+    int[] dots = filled(WHITE);
+    for (int y = 10; y < 90; y += 4) {
+      for (int x = 10; x < 90; x += 4) {
+        rect(dots, x, y, 2, 2, BLACK);
+      }
+    }
+    ThumbMeasures speckle = measure(dots);
+    check(speckle.fragments == 1, "dots are all fragments: " + speckle.fragments);
+    check(white.fragments == 0, "a white page has no fragments");
+
     int[] colours = filled(WHITE);
     for (int i = 0; i < colours.length; i++) {
       colours[i] = 0xFF000000 | (int) ((i * 2654435761L) & 0xFFFFFF);

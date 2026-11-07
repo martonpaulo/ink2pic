@@ -14,6 +14,7 @@ import {
   dropNearDuplicates,
   ImageAnalyzer,
   isFaintLines,
+  isSpeckled,
   lineArt,
   MEASURED_RESULTS,
   Measures,
@@ -154,6 +155,11 @@ async function measureFile(
       again.ok ? pixelKind(again.value) : again.message
     }`,
   );
+  if (again.ok && isSpeckled(again.value)) {
+    // Mostly speckle: the picture is shown and inserted as it is (#83).
+    log(`contour ${result.id}: speckled, shown as found`);
+    return {measures: m, contour: null};
+  }
   return {
     measures: again.ok ? again.value : m,
     contour: `${FILE_PREFIX}${dest}`,

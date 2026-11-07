@@ -72,9 +72,82 @@ public final class ContourTest {
     int[] specks = filled(WHITE);
     rect(specks, 2, 2, 2, 2, BLACK);
     rect(specks, 10, 10, 3, 3, BLACK);
-    Contour.removeSpecks(specks, SIZE, SIZE, 8);
+    Contour.removeSpecks(specks, SIZE, SIZE, 8, 1);
     check(gray(specks, 2, 2) == 255, "a 4-pixel part under 8 is removed");
     check(gray(specks, 11, 11) == 0, "a 9-pixel part stays");
+
+    // #83: a short fragment of hatching goes, a long thin stroke of the same width stays.
+    int[] strokes = filled(WHITE);
+    rect(strokes, 4, 10, 6, 1, BLACK);
+    rect(strokes, 4, 30, 40, 1, BLACK);
+    Contour.removeSpecks(strokes, SIZE, SIZE, 1, Contour.fragmentSize(SIZE, SIZE) * 4);
+    check(gray(strokes, 6, 10) == 255, "a short fragment is removed");
+    check(gray(strokes, 20, 30) == 0, "a long thin stroke stays");
+    check(Contour.fragmentSize(400, 300) == 16, "fragments are under 4 % of the longer side");
+
+    // #83: grain (lone dark pixels) fades under the median, before the edge pass draws it.
+    float[] grain = new float[SIZE * SIZE];
+    float[] smooth = new float[SIZE * SIZE];
+    Arrays.fill(grain, 1f);
+    for (int y = 2; y < SIZE; y += 3) {
+      for (int x = 2; x < SIZE; x += 3) {
+        grain[y * SIZE + x] = 0f;
+      }
+    }
+    Contour.median(grain, smooth, SIZE, SIZE);
+    boolean clean = true;
+    for (float v : smooth) {
+      clean &= v == 1f;
+    }
+    check(clean, "lone dark pixels are gone after one median pass");
+
+    // #83: a one-pixel line becomes three pixels wide, legible on e-ink.
+    int[] thin = filled(WHITE);
+    rect(thin, 10, 20, 30, 1, BLACK);
+    Contour.thicken(thin, SIZE, SIZE);
+    check(gray(thin, 20, 19) == 0 && gray(thin, 20, 21) == 0 && gray(thin, 20, 23) == 255,
+        "a line is one pixel wider on each side");
+
+    // #83: a hatched square becomes its outline, not a field of dots.
+    int[] hatched = filled(WHITE);
+    for (int y = 16; y < 48; y++) {
+      for (int x = 16; x < 48; x += 2) {
+        hatched[y * SIZE + x] = BLACK;
+      }
+    }
+    Contour.apply(hatched, SIZE, SIZE);
+    long ink = Arrays.stream(hatched).filter(p -> (p & 0xFF) < 128).count();
+    check(gray(hatched, 32, 32) == 255, "the hatched inside becomes white: " + gray(hatched, 32, 32));
+    check(ink > 0 && ink < SIZE * SIZE / 4, "a hatched square keeps an outline only: " + ink);
+
+    // #89: a diagonal edge keeps gray ramps, never a hard black-and-white stair step.
+    int[] diagonal = filled(WHITE);
+    for (int y = 0; y < SIZE; y++) {
+      for (int x = 0; x < SIZE; x++) {
+        if (x < y) {
+          diagonal[y * SIZE + x] = BLACK;
+        }
+      }
+    }
+    Contour.apply(diagonal, SIZE, SIZE);
+    int ramp = 0;
+    int jump = 0;
+    for (int y = 0; y < SIZE; y++) {
+      for (int x = 0; x < SIZE; x++) {
+        int g = gray(diagonal, x, y);
+        if (g > 0 && g < 255) {
+          ramp++;
+        }
+        if (x + 1 < SIZE) {
+          jump = Math.max(jump, Math.abs(g - gray(diagonal, x + 1, y)));
+        }
+        if (y + 1 < SIZE) {
+          jump = Math.max(jump, Math.abs(g - gray(diagonal, x, y + 1)));
+        }
+      }
+    }
+    check(ramp >= SIZE, "a diagonal's contour has intermediate grays: " + ramp);
+    check(jump < 255, "no neighbour goes straight from black to white: " + jump);
 
     check(Contour.speckSize(640) == 8 && Contour.speckSize(320) == 2
         && Contour.speckSize(10) == 1, "the speck size follows the area");

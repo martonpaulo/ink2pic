@@ -7,8 +7,9 @@ package com.ink2pic.files;
  * with the luma of {@link EinkPixels#luminance}. The measures are features only: the classes and
  * the score that read them live in one place, `src/search/measures.ts`.
  *
- * Cost: three passes over the pixels and three arrays the size of the picture's width and height;
- * no buffer the size of the picture besides the gray values (one int per pixel). The fields are
+ * Cost: four passes over the pixels and three arrays the size of the picture's width and height;
+ * besides the gray values (one int per pixel), one boolean per pixel for the fragment pass and a
+ * stack that grows only to the largest ink part. The fields are
  * set once, by the passes of {@link #of}, and only read afterwards.
  */
 public final class ThumbMeasures {
@@ -34,6 +35,9 @@ public final class ThumbMeasures {
   public static final double EDGE_TRIM = 0.01;
   /** A row holds ink when at least this share of the ink box's width is ink. */
   public static final int BAND_ROW_PERCENT = 1;
+  /** An ink part shorter than this share of the picture's longer side is a fragment. */
+  public static final int FRAGMENT_PERCENT = 10;
+  private static final int FIRST_STACK = 1024;
   /** 12-bit colours: four bits per channel. */
   private static final int COLOUR_BITS = 4;
   private static final int COLOURS = 1 << (3 * COLOUR_BITS);
@@ -74,6 +78,11 @@ public final class ThumbMeasures {
   /** Share of pixels that differ from the background: near zero for a blank thumbnail. */
   public double objectShare;
   /**
+   * Share of the ink in short fragments: 8-connected ink parts whose longer side is under
+   * {@link #FRAGMENT_PERCENT} of the picture's. Near 0 for line art, high for texture and speckle.
+   */
+  public double fragments;
+  /**
    * The darkest ink, by {@link EinkPixels#darkest}: light grey for faint line work, which the
    * insert darkens (#81); 255 without ink.
    */
@@ -98,8 +107,66 @@ public final class ThumbMeasures {
     frame(gray, b);
     inkAndObject(gray, b);
     edges(gray, b);
+    fragments(gray, b);
     b.faintLines = EinkPixels.isFaintLines(b);
     return b;
+  }
+
+  /** Pass 4: the share of the ink in short 8-connected parts. */
+  private static void fragments(int[] gray, ThumbMeasures b) {
+    int w = b.width;
+    int h = b.height;
+    int below = b.borderMedian - INK_MARGIN;
+    int shortSide = Math.max(1, Math.max(w, h) * FRAGMENT_PERCENT / PERCENT);
+    boolean[] seen = new boolean[w * h];
+    int[] stack = new int[FIRST_STACK];
+    long ink = 0;
+    long fragment = 0;
+    for (int start = 0; start < w * h; start++) {
+      if (seen[start] || !isInk(gray[start], below)) {
+        continue;
+      }
+      seen[start] = true;
+      int top = 0;
+      stack[top++] = start;
+      int size = 0;
+      int left = w;
+      int right = -1;
+      int upper = h;
+      int lower = -1;
+      while (top > 0) {
+        int i = stack[--top];
+        size++;
+        int x = i % w;
+        int y = i / w;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        upper = Math.min(upper, y);
+        lower = Math.max(lower, y);
+        for (int dy = -1; dy <= 1; dy++) {
+          for (int dx = -1; dx <= 1; dx++) {
+            int nx = x + dx;
+            int ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) {
+              continue;
+            }
+            int j = ny * w + nx;
+            if (!seen[j] && isInk(gray[j], below)) {
+              seen[j] = true;
+              if (top == stack.length) {
+                stack = java.util.Arrays.copyOf(stack, stack.length * 2);
+              }
+              stack[top++] = j;
+            }
+          }
+        }
+      }
+      ink += size;
+      if (Math.max(right - left, lower - upper) + 1 < shortSide) {
+        fragment += size;
+      }
+    }
+    b.fragments = ink == 0 ? 0 : (double) fragment / ink;
   }
 
   /** Pass 1: gray values, mean, dark, white and mid shares, colour count. */

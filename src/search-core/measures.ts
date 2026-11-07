@@ -48,6 +48,8 @@ export type Measures = {
   objectShare: number;
   /** Perceptual hash, 48 hex digits (`PerceptualHash.java`, #89); absent from an older module. */
   hash?: string;
+  /** Share of the ink in short parts, under 10 % of the longer side: texture and speckle (#83). */
+  fragments: number;
   /** The darkest ink's gray, 255 without ink: light grey for faint line work (#81). */
   darkest: number;
   /** Thin light-grey lines on paper, by `EinkPixels.isFaintLines`: the insert darkens them (#81). */
@@ -164,18 +166,49 @@ const ALREADY_LINES: ReadonlySet<PixelKind> = new Set([
 /**
  * Whether the picture is shown and inserted as a contour drawing (owner decision D5 A): a dark
  * picture, a photo or dark clip art on paper (#81), or any picture not already line work when
- * the query asks for an outline; never when the query asks for a photo or a painting.
+ * the query asks for an outline; never when the query asks for a photo or a painting, and never
+ * for a few flat areas.
  */
 export function needsContour(m: Measures, query: string): boolean {
   // The query's style words are read once, by the query pipeline (#65).
   const {styles} = readIntent(query);
-  if (styles.has('photo') || styles.has('painting')) {
+  if (styles.has('photo') || styles.has('painting') || isFlat(m)) {
     return false;
   }
   const kind = pixelKind(m);
   return (
     CONVERTED.has(kind) || (styles.has('drawing') && !ALREADY_LINES.has(kind))
   );
+}
+
+/**
+ * A picture of a few large flat areas of grey: a flag, clip art with solid colour fills. The
+ * contour turns each flat area white and keeps only its borders, the «white box with two lines»
+ * the flag of Spain became on build 15, so it keeps its grey (#89). In the search lab's 560
+ * thumbnails the contour would convert, every one with at most 64 colours, under 10 % edges and
+ * 20 % mid greys or more was a flag, a sign or colour clip art whose contour lost it; the one-tone
+ * silhouettes, under 5 % mid greys, keep their clean outline (#81).
+ */
+const FLAT_COLOURS = 64;
+const FLAT_EDGE = 0.1;
+const FLAT_MID = 0.2;
+
+export function isFlat(m: Measures): boolean {
+  return m.colours <= FLAT_COLOURS && m.edge < FLAT_EDGE && m.mid >= FLAT_MID;
+}
+
+/**
+ * A contour drawing that is mostly speckle: much of its ink in short fragments (texture, foliage,
+ * water, fine hatching) or ink over much of it (a crowd). Its picture then shows as it is (#83).
+ * Set in the search lab on 72 converted thumbnails with the cleaned contour (2026-11-07): every
+ * drawing the owner would call speckled was over one of the two, the portraits and silhouettes
+ * under both, except a light bust photo at 0.47 fragments.
+ */
+const SPECKLED_FRAGMENTS = 0.35;
+const SPECKLED_INK = 0.4;
+
+export function isSpeckled(contour: Measures): boolean {
+  return contour.fragments >= SPECKLED_FRAGMENTS || contour.ink >= SPECKLED_INK;
 }
 
 /**

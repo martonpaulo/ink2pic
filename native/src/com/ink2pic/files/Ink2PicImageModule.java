@@ -117,6 +117,7 @@ public final class Ink2PicImageModule extends ReactContextBaseJavaModule {
       result.putInt("colours", m.colours);
       result.putDouble("objectShare", m.objectShare);
       result.putString("hash", PerceptualHash.of(decoded.argb, decoded.width, decoded.height));
+      result.putDouble("fragments", m.fragments);
       result.putInt("darkest", m.darkest);
       result.putBoolean("faintLines", m.faintLines);
       result.putDouble("ms", (System.nanoTime() - start) / NANOS_PER_MS);

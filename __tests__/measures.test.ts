@@ -40,6 +40,7 @@ const paper: Measures = {
   edgeBox: 0,
   colours: 1,
   objectShare: 0,
+  fragments: 0,
   darkest: 0,
   faintLines: false,
   ms: 2,
@@ -185,6 +186,24 @@ describe('needsContour (#66, owner decision D5 A)', () => {
     expect(needsContour(photo, 'jesse jackson')).toBe(true);
     expect(needsContour(outline, 'cat')).toBe(false);
     expect(needsContour({...glossy, dark: 0.2, ink: 0.2}, 'apple')).toBe(false);
+  });
+
+  it('never converts a few flat areas: a three-band flag keeps its grey (#89)', () => {
+    // Red, yellow, red: three flat bands that fill the frame, few colours, edges only between them.
+    const flag: Measures = {
+      ...photo,
+      colours: 24,
+      edge: 0.03,
+      mid: 0.95,
+      border: 0,
+      dark: 0,
+    };
+    expect(pixelKind(flag)).toBe('photo');
+    expect(needsContour(flag, 'spain')).toBe(false);
+    // A one-tone silhouette still becomes its outline (#81).
+    expect(
+      needsContour({...glossy, colours: 16, edge: 0.05, mid: 0.02}, 'apple'),
+    ).toBe(true);
   });
 
   it('converts dark clip art too: «apple» shows no black silhouette (#81)', () => {
@@ -416,6 +435,27 @@ describe('measureFirstPages (#66)', () => {
     );
     expect(isContourUri(measured.contourThumbs.get('dark') ?? '')).toBe(true);
     expect(measured.contourThumbs.has('line')).toBe(false);
+  });
+
+  it('shows a picture as found when its contour is mostly speckle (#83)', async () => {
+    const base = deps();
+    const measured = await measureFirstPages(list, '/p', 'x', {
+      ...base,
+      analyzer: {
+        ...base.analyzer,
+        measure: async path =>
+          path === '/p/thumbs/dark.contour.png'
+            ? ok({...outline, fragments: 0.6})
+            : base.analyzer.measure(path),
+      },
+    });
+    expect(converted).toEqual([
+      '/p/thumbs/dark -> /p/thumbs/dark.contour.png at 400',
+    ]);
+    expect(measured.contourThumbs.has('dark')).toBe(false);
+    expect(logLines().join('\n')).toContain(
+      'contour dark: speckled, shown as found',
+    );
   });
 
   it('shows faint light-grey lines darkened, inserted darkened, not as a contour (#81)', async () => {

@@ -76,6 +76,7 @@ export async function pixelOrder(
   const {
     MEASURED_RESULTS,
     needsContour,
+    isSpeckled,
     isFaintLines,
     pixelKind,
     lineArt,
@@ -98,7 +99,9 @@ export async function pixelOrder(
     if (!entry || entry.error) {
       continue;
     }
-    const converted = needsContour(entry.measures, query);
+    // A speckled contour is shown as found, as the device does (#83).
+    const converted =
+      needsContour(entry.measures, query) && !isSpeckled(entry.contour);
     // Faint light-grey lines are shown darkened, as the device does (#81).
     const darkened =
       !converted &&

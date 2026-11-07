@@ -19,6 +19,7 @@ export {createContext, createFetcher} from './fetcher';
 export type {Fetcher, FetchLike} from './fetcher';
 export {
   isFaintLines,
+  isSpeckled,
   lineArt,
   MEASURED_RESULTS,
   needsContour,
