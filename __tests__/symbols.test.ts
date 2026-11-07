@@ -14,6 +14,7 @@ import {
   SearchResult,
   symbolHexes,
 } from '../src/search-core';
+import * as openmoji from '../src/search-core/adapters/openmoji';
 import {resetThumbsForTests, thumbUri} from '../src/search/thumbs';
 import {
   DOWNLOAD_PARALLEL,
@@ -70,7 +71,19 @@ async function symbolResults() {
   return (run.outcome?.results ?? []).filter(r => r.source === 'openmoji');
 }
 
+/**
+ * Lets «Download symbols» fetch only the first `count` symbols, plus `keep`, and returns that
+ * list: the whole 1,447 cost about 2 s a test alone and 17 s under parallel gates (#108). Only the
+ * session log test downloads them all, since it measures the bytes of the whole run.
+ */
+function fewSymbols(count: number, keep: string[] = []): string[] {
+  const few = [...new Set([...keep, ...symbolHexes().slice(0, count)])];
+  jest.spyOn(openmoji, 'symbolHexes').mockReturnValue(few);
+  return few;
+}
+
 beforeEach(() => resetSymbolsForTests());
+afterEach(() => jest.restoreAllMocks());
 
 describe('offline symbols (#91)', () => {
   it('shows and inserts a symbol seen once, with no network, from the symbols folder', async () => {
@@ -177,20 +190,20 @@ describe('offline symbols (#91)', () => {
 
   it('states the size, downloads politely, stops when cut off and resumes', async () => {
     const host = started();
-    const total = symbolHexes().length;
     const status = await symbolsStatus();
-    expect(status).toEqual({total, saved: 0});
+    expect(status).toEqual({total: symbolHexes().length, saved: 0});
     // About 15 MB measured for the 1,447 PNGs (#91).
     expect(missingMegabytes(status)).toBe(15);
 
+    const total = fewSymbols(40).length;
     const cut = await downloadAllSymbols(progress => {
-      if (progress.saved === 100) {
+      if (progress.saved === 10) {
         // The stream ends early: half of each file is written in place, then the call fails.
         host.cutOff.set(PICTURES, 'error');
       }
     });
     expect(cut.complete).toBe(false);
-    expect(cut.saved).toBeGreaterThanOrEqual(100);
+    expect(cut.saved).toBeGreaterThanOrEqual(10);
     expect(cut.saved).toBeLessThan(total);
     // It stops after a few failures in a row: no request for each of the 1,447 (#104).
     expect(cut.stopped).toBe(true);
@@ -226,7 +239,7 @@ describe('offline symbols (#91)', () => {
 
   it('skips a symbol that always fails and finishes the rest (#104)', async () => {
     const host = started();
-    const total = symbolHexes().length;
+    const total = fewSymbols(20).length;
     const [broken] = symbolHexes();
     host.failing.set(openmojiPictureUrl(broken), 404);
     const end = await downloadAllSymbols(() => {});
@@ -244,6 +257,7 @@ describe('offline symbols (#91)', () => {
     const host = started();
     const [symbol] = await symbolResults();
     const hex = symbol.id.slice('openmoji:'.length);
+    fewSymbols(5, [hex]);
     await downloadAllSymbols(() => {});
     // A file cut off midway, the way a grid download can leave one.
     host.files.set(symbolPath(hex), {bytes: 100, order: 0, truncated: true});
