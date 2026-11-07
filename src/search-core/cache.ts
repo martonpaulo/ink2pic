@@ -31,9 +31,10 @@ export type CacheOptions = {
 /**
  * Raised when cached results would show in an order the current ranking no longer gives: 2 since
  * the drawing-first ranking of #43, so a search from build 0.1.0 (12) is not reused (#59); 3 since
- * the adult filter, so no cached search shows a picture it now leaves out (#69).
+ * the adult filter, so no cached search shows a picture it now leaves out (#69); 4 since entries
+ * keep `canonical`, which the measured order and the logo lead read (#99).
  */
-export const CACHE_VERSION = 3;
+export const CACHE_VERSION = 4;
 /** Newest entries kept; the oldest is evicted first. DEFAULT, no device measurement yet. */
 export const CACHE_LIMIT = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -45,10 +46,7 @@ export const CACHE_MAX_AGE_MS = 7 * DAY_MS;
  * as it is (#55), with the insert width as its width, an upper bound. An entry without `original`
  * stays valid and rebuilds the thumbnail, so the cache version does not change.
  */
-export type StoredResult = Omit<
-  SearchResult,
-  'canonical' | 'localPath' | 'localSize'
->;
+export type StoredResult = Omit<SearchResult, 'localPath' | 'localSize'>;
 type StoredOutcome = Omit<SearchOutcome, 'results'> & {results: StoredResult[]};
 type Entry = {query: string; savedAt: number; outcome: StoredOutcome};
 
@@ -83,8 +81,18 @@ export function cacheKey(query: string, variant = ''): string {
 }
 
 function store(result: SearchResult): StoredResult {
-  const {id, source, title, thumbUrl, license, attribution, mime, leads, tags} =
-    result;
+  const {
+    id,
+    source,
+    title,
+    thumbUrl,
+    license,
+    attribution,
+    mime,
+    canonical,
+    leads,
+    tags,
+  } = result;
   const original = storedOriginal(result);
   return {
     id,
@@ -95,6 +103,8 @@ function store(result: SearchResult): StoredResult {
     attribution,
     mime,
     ...(original && {original}),
+    // A canonical picture keeps its slot in the measured order and leads as a logo (#99).
+    ...(canonical && {canonical}),
     // A cached symbol keeps its lead: the measures re-rank it on the way out (#67).
     ...(leads && {leads}),
     // The style rules read them on the way out too (#81).
@@ -129,6 +139,7 @@ function isStoredResult(value: unknown): value is StoredResult {
     isSourceName(value.source) &&
     STRING_FIELDS.every(field => typeof value[field] === 'string') &&
     (value.mime === undefined || typeof value.mime === 'string') &&
+    (value.canonical === undefined || value.canonical === true) &&
     (value.leads === undefined || value.leads === true) &&
     (value.tags === undefined ||
       (Array.isArray(value.tags) &&

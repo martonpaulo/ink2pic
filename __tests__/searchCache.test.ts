@@ -125,6 +125,47 @@ describe('cachedSearch', () => {
     expect(cached.results[1].leads).toBeUndefined();
   });
 
+  it('keeps a canonical picture canonical across a write and a new read (#99)', async () => {
+    const logo: SearchResult = {
+      id: 'commons:Google_logo.svg',
+      source: 'commons',
+      title: 'Google logo',
+      thumbUrl: THUMB,
+      license: 'Public domain',
+      attribution: 'Wikidata',
+      canonical: true,
+      leads: true,
+    };
+    const {storage, files} = memoryStorage();
+    const run = runner(outcome([logo, openclipart]));
+    await (
+      await cachedSearch('google', run, {storage, path: PATH, clock: at(NOW)})
+    ).saved;
+    const {storage: reread} = memoryStorage(files);
+    const {outcome: cached, freshness} = await cachedSearch('google', run, {
+      storage: reread,
+      path: PATH,
+      clock: at(NOW),
+    });
+    expect(freshness).toBe('fresh');
+    expect(cached.results).toEqual([logo, openclipart]);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuilds a cache of version 3, whose entries lost canonical (#99)', async () => {
+    const {storage, files} = memoryStorage({
+      [PATH]: JSON.stringify({version: 3, entries: []}),
+    });
+    const result = await cachedSearch('soup', runner(), {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
+    expect(result.problem).toBe('unknown search cache version 3');
+    await result.saved;
+    expect(JSON.parse(files[PATH]).version).toBe(4);
+  });
+
   it('keeps a narrow Commons original, so a cached result is never upscaled (#55)', async () => {
     const original = {
       url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Soup.png',

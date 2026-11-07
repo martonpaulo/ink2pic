@@ -15,6 +15,7 @@ import {
   pixelScorer,
   reorderByMeasures,
 } from '../src/search-core/measures';
+import {cachedSearch} from '../src/search-core/cache';
 import {readIntent} from '../src/search-core/query';
 import type {SearchResult} from '../src/search-core/types';
 
@@ -352,6 +353,46 @@ describe('reorderByMeasures (#66)', () => {
     expect(
       ids(reorderByMeasures(list, measures, '', new Set(['wikidata']))),
     ).toEqual(['line', 'wikidata', 'best', 'dark']);
+  });
+
+  it('gives a cached search the measured order of the live one (#99)', async () => {
+    const live = [
+      result('best'),
+      result('wikidata', 'wikidata', true),
+      result('line'),
+    ];
+    const measures = new Map([
+      ['best', photo],
+      ['wikidata', photo],
+      ['line', outline],
+    ]);
+    const files: Record<string, string> = {};
+    const storage = {
+      readText: async (path: string) => files[path] ?? null,
+      writeText: async (path: string, text: string) => {
+        files[path] = text;
+      },
+    };
+    const run = async () => ({
+      results: live,
+      statuses: {},
+      sourceDown: false,
+      allFailed: false,
+    });
+    const options = {storage, path: '/plugin/search-cache.json'};
+    await (
+      await cachedSearch('cat', run, options)
+    ).saved;
+    // A new runtime reads the file, not the memory of the first.
+    const cached = await cachedSearch('cat', run, {
+      ...options,
+      storage: {...storage},
+    });
+    expect(cached.freshness).toBe('fresh');
+    const order = (list: SearchResult[]) =>
+      ids(reorderByMeasures(list, measures, 'cat'));
+    expect(order(cached.outcome.results)).toEqual(order(live));
+    expect(order(live)).toEqual(['line', 'wikidata', 'best']);
   });
 
   it('sends a canonical picture shown near-black past page 2 too (#83)', () => {
