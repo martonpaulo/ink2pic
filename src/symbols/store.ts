@@ -13,7 +13,11 @@ import {
   sourceId,
   symbolHexes,
 } from '../search-core';
-import {downloadThumbToFile, listDir} from '../storage/files';
+import {
+  downloadThumbToFile,
+  isCompletePng,
+  listCompletePngs,
+} from '../storage/files';
 import {symbolsDir} from '../storage/paths';
 
 const EXTENSION = '.png';
@@ -41,27 +45,28 @@ function isSymbol(result: SearchResult): boolean {
 }
 
 /**
- * The saved symbols, listed once per session. A folder that cannot be listed counts as empty:
+ * The saved symbols, listed once per session: whole PNGs only, never one a cut-off download
+ * left (#91). A folder that cannot be listed counts as empty:
  * pictures then come from the network, as before.
  */
 export function savedSymbols(): Promise<Set<string>> {
   if (saved) {
     return Promise.resolve(saved);
   }
-  listing ??= logged('listDir symbols', () => listDir(symbolsDir())).then(
-    listed => {
-      if (!listed.ok) {
-        log(`symbols: cannot list ${symbolsDir()}: ${listed.message}`);
-      }
-      const names = listed.ok ? listed.value ?? [] : [];
-      saved = new Set(
-        names
-          .filter(name => name.endsWith(EXTENSION))
-          .map(name => name.slice(0, -EXTENSION.length)),
-      );
-      return saved;
-    },
-  );
+  listing ??= logged('listCompletePngs symbols', () =>
+    listCompletePngs(symbolsDir()),
+  ).then(listed => {
+    if (!listed.ok) {
+      log(`symbols: cannot list ${symbolsDir()}: ${listed.message}`);
+    }
+    const names = listed.ok ? listed.value ?? [] : [];
+    saved = new Set(
+      names
+        .filter(name => name.endsWith(EXTENSION))
+        .map(name => name.slice(0, -EXTENSION.length)),
+    );
+    return saved;
+  });
   return listing;
 }
 
@@ -82,9 +87,9 @@ export async function symbolFile(result: SearchResult): Promise<string | null> {
 
 /**
  * Downloads one symbol into the folder unless it is there; true when it is saved afterwards. In
- * the background lane, so an insert never waits behind it (#46). shortcut: a download cut off
- * midway leaves a partial PNG that the next session counts as saved, and the grid's web retry
- * covers it online; add a size check if a device shows one.
+ * the background lane, so an insert never waits behind it (#46). A download cut off midway leaves
+ * a partial file in place, which is never counted: the file must end with the PNG's IEND chunk,
+ * checked here and again by each session's listing; the next save writes over it.
  */
 function save(hex: string): Promise<boolean> {
   const running = pending.get(hex);
@@ -100,7 +105,14 @@ function save(hex: string): Promise<boolean> {
     const bytes = await logged(`symbol ${hex}`, () =>
       downloadThumbToFile(openmojiPictureUrl(hex), path),
     );
-    if (!bytes.ok || bytes.value === 0) {
+    if (!bytes.ok) {
+      return false;
+    }
+    const whole = await logged(`isCompletePng ${hex}`, () =>
+      isCompletePng(path),
+    );
+    if (!whole.ok || !whole.value) {
+      log(`symbols: ${hex} is not a whole PNG; not saved`);
       return false;
     }
     known.add(hex);

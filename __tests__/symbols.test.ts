@@ -17,6 +17,8 @@ import {
   downloadAllSymbols,
   missingMegabytes,
   resetSymbolsForTests,
+  savedSymbolPath,
+  symbolFile,
   symbolPath,
   symbolsStatus,
 } from '../src/symbols/store';
@@ -104,6 +106,31 @@ describe('offline symbols (#91)', () => {
     expect(host.files.has(symbolPath(hex))).toBe(true);
   });
 
+  it('never counts a symbol whose download was cut off without an error', async () => {
+    const host = started();
+    const hex = '1F327'; // cloud with rain
+    const symbol: SearchResult = {
+      id: `openmoji:${hex}`,
+      source: 'openmoji',
+      title: 'cloud with rain',
+      thumbUrl: openmojiPictureUrl(hex),
+      license: 'CC BY-SA 4.0',
+      attribution: 'OpenMoji',
+      mime: 'image/png',
+    };
+    host.cutOff.set(PICTURES, 'silent');
+    // The grid falls back to the web picture, and the half file is not saved.
+    expect(await thumbUri(symbol, '/unused')).toBe(symbol.thumbUrl);
+    expect(host.files.get(symbolPath(hex))?.truncated).toBe(true);
+    expect(savedSymbolPath(symbol)).toBeNull();
+    resetSymbolsForTests(); // a new session lists the folder again
+    expect(await symbolFile(symbol)).toBeNull();
+    // The next save writes over it in place, with no delete.
+    host.cutOff.delete(PICTURES);
+    expect(await thumbUri(symbol, '/unused')).toBe(`file://${symbolPath(hex)}`);
+    expect(host.files.get(symbolPath(hex))?.truncated).toBeUndefined();
+  });
+
   it('states the size, downloads politely, stops when cut off and resumes', async () => {
     const host = started();
     const total = symbolHexes().length;
@@ -114,7 +141,8 @@ describe('offline symbols (#91)', () => {
 
     const cut = await downloadAllSymbols(progress => {
       if (progress.saved === 100) {
-        host.failing.set(PICTURES, 503);
+        // The stream ends early: half of each file is written in place, then the call fails.
+        host.cutOff.set(PICTURES, 'error');
       }
     });
     expect(cut.complete).toBe(false);
@@ -123,8 +151,12 @@ describe('offline symbols (#91)', () => {
     // It stops at the first failure: at most one failed request per worker.
     expect(pictureRequests(host).length).toBeLessThanOrEqual(cut.saved + 3);
 
-    host.failing.delete(PICTURES);
+    // Each cut-off file stays on the device, but no new session counts it as saved.
+    const partial = [...host.files.entries()].filter(([, e]) => e.truncated);
+    expect(partial.length).toBeGreaterThan(0);
+    host.cutOff.delete(PICTURES);
     resetSymbolsForTests();
+    expect(await symbolsStatus()).toEqual({total, saved: cut.saved});
     const before = pictureRequests(host).length;
     const resumed = await downloadAllSymbols(() => {});
     expect(resumed).toEqual({total, saved: total, complete: true});

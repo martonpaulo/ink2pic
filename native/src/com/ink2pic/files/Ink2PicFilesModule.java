@@ -136,6 +136,34 @@ public final class Ink2PicFilesModule extends ReactContextBaseJavaModule {
     });
   }
 
+  /**
+   * The `.png` files of a folder that are whole (they end with the IEND chunk), or null when the
+   * folder does not exist: a download cut off midway is never counted as saved (#91).
+   */
+  @ReactMethod
+  public void listCompletePngs(String path, Promise promise) {
+    submit(promise, () -> {
+      File folder = new File(SafePaths.checkPath(path).getPath());
+      File[] entries = folder.isDirectory() ? folder.listFiles() : null;
+      if (entries == null) {
+        return null;
+      }
+      com.facebook.react.bridge.WritableArray array = com.facebook.react.bridge.Arguments.createArray();
+      for (File entry : entries) {
+        if (entry.getName().endsWith(".png") && PngTail.isComplete(entry)) {
+          array.pushString(entry.getName());
+        }
+      }
+      return array;
+    });
+  }
+
+  /** True when the file is a whole PNG (#91). */
+  @ReactMethod
+  public void isCompletePng(String path, Promise promise) {
+    submit(promise, () -> PngTail.isComplete(SafePaths.checkPath(path)));
+  }
+
   @ReactMethod
   public void readText(String path, Promise promise) {
     submit(promise, () -> {

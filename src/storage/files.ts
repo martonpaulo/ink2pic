@@ -33,6 +33,8 @@ type NativeFiles = {
   writeText: (path: string, text: string) => Promise<null>;
   readText: (path: string) => Promise<string | null>;
   listDir: (path: string) => Promise<string[] | null>;
+  listCompletePngs: (path: string) => Promise<string[] | null>;
+  isCompletePng: (path: string) => Promise<boolean>;
 };
 
 /**
@@ -108,4 +110,19 @@ export function readText(path: string): Promise<Result<string | null>> {
  */
 export function listDir(path: string): Promise<Result<string[] | null>> {
   return call(files => files.listDir(path));
+}
+
+/**
+ * The whole `.png` files of a folder (they end with the IEND chunk), or null when it does not
+ * exist: a download cut off midway is left out (#91).
+ */
+export function listCompletePngs(
+  path: string,
+): Promise<Result<string[] | null>> {
+  return call(files => files.listCompletePngs(path));
+}
+
+/** True when the file is a whole PNG (#91). */
+export function isCompletePng(path: string): Promise<Result<boolean>> {
+  return call(files => files.isCompletePng(path));
 }

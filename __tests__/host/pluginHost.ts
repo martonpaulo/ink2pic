@@ -93,7 +93,14 @@ export type HostElement = {
   picture?: {picturePath: string; rect: Rect};
 };
 
-type FileEntry = {text?: string; image?: Size; bytes: number; order: number};
+type FileEntry = {
+  text?: string;
+  image?: Size;
+  bytes: number;
+  order: number;
+  /** Written by a download cut off midway: no PNG end (#91). */
+  truncated?: true;
+};
 
 type Channel = 'button' | 'life' | 'config';
 type ButtonListener = {onButtonPress: (msg: unknown) => void};
@@ -226,6 +233,11 @@ export class PluginHost {
   online = true;
   /** Hosts that answer this HTTP status, for one failing source. */
   readonly failing = new Map<string, number>();
+  /**
+   * Hosts whose downloads are cut off midway, leaving half the file written in place (#91):
+   * `error` rejects as the stream ends early, `silent` resolves as a closed connection may.
+   */
+  readonly cutOff = new Map<string, 'error' | 'silent'>();
   /** The words the recognition gives for the lassoed strokes, in page order. */
   recognize: (words: string[]) => string = words => words.join(' ');
   dialog: number | 'wait';
@@ -594,8 +606,22 @@ export class PluginHost {
     if (status !== undefined) {
       throw moduleError(`HTTP_${status}`, `HTTP ${status} for ${url}`);
     }
+    const cut = this.cutOff.get(hostOf(url));
+    if (cut) {
+      const half = Math.floor(DOWNLOAD_BYTES / 2);
+      this.store(dest, {bytes: half, truncated: true});
+      if (cut === 'error') {
+        throw moduleError('IO', 'java.io.IOException: unexpected end of stream');
+      }
+      return half;
+    }
     this.store(dest, {image: size, bytes: DOWNLOAD_BYTES});
     return DOWNLOAD_BYTES;
+  }
+
+  /** A PNG the module's PngTail counts as whole: it ends with IEND. */
+  private isWholePng(path: string, entry: FileEntry): boolean {
+    return path.endsWith('.png') && entry.image !== undefined && !entry.truncated;
   }
 
   private image(path: string): Size {
@@ -816,6 +842,21 @@ export class PluginHost {
         writeText: async (path: string, text: string) => {
           this.store(path, {text, bytes: text.length});
           return null;
+        },
+        listCompletePngs: async (path: string) => {
+          this.checkPath(path);
+          if (!this.folders.has(path)) {
+            return null;
+          }
+          return [...this.files.entries()]
+            .filter(([file, entry]) => parentOf(file) === path && this.isWholePng(file, entry))
+            .map(([file]) => file.slice(path.length + 1));
+        },
+        isCompletePng: async (path: string) => {
+          this.checkPath(path);
+          this.needs(PERMISSION.read, path, 'READ');
+          const entry = this.files.get(path);
+          return entry !== undefined && this.isWholePng(path, entry);
         },
         readText: async (path: string) => {
           this.checkPath(path);
