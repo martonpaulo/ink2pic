@@ -1,10 +1,10 @@
 import {emptyLibrary, ParsedLibrary, parseLibrary, serialize} from './library';
-import type {TextStorage} from '../storage/text';
+import type {TextStore} from '../search-core';
 import type {Library} from './types';
 
 /** A missing file is an empty library; a corrupt one is a failure the caller shows. */
 export async function loadLibrary(
-  storage: TextStorage,
+  storage: TextStore,
   path: string,
 ): Promise<ParsedLibrary> {
   const text = await storage.readText(path);
@@ -14,7 +14,7 @@ export async function loadLibrary(
 }
 
 export function saveLibrary(
-  storage: TextStorage,
+  storage: TextStore,
   path: string,
   library: Library,
 ): Promise<void> {

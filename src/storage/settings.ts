@@ -8,11 +8,12 @@ import {systemLanguage} from '../sdk/buttons';
 import {fail, ok, THROWN_CODE} from '../sdk/result';
 import {parseSettings, serializeSettings, Settings} from '../settings/settings';
 import {settingsPath} from './paths';
-import {deviceStorage, TextStorage} from './text';
+import type {TextStore} from '../search-core';
+import {deviceStorage} from './text';
 
 /** Reads the file; a missing one gives the defaults, a failed read is logged and gives them too. */
 export async function loadSettings(
-  storage: TextStorage,
+  storage: TextStore,
   path: string,
   system: string | null,
 ): Promise<Settings> {

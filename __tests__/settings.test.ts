@@ -12,9 +12,9 @@ import {
   resetSettingsForTests,
   saveSettings,
 } from '../src/storage/settings';
-import type {TextStorage} from '../src/storage/text';
+import type {TextStore} from '../src/search-core';
 
-function memory(files: Record<string, string> = {}): TextStorage {
+function memory(files: Record<string, string> = {}): TextStore {
   return {
     readText: async path => files[path] ?? null,
     writeText: async (path, text) => {
@@ -81,7 +81,7 @@ describe('the settings file (#68)', () => {
   });
 
   it('logs a failed read and uses the default', async () => {
-    const storage: TextStorage = {
+    const storage: TextStore = {
       readText: async () => {
         throw new Error('EACCES');
       },

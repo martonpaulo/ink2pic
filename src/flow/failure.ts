@@ -5,17 +5,18 @@
  */
 import {logged} from '../log/memory';
 import {hasPermission, PERMISSION_INTERNET} from '../sdk/plugin';
-import {EMPTY_LASSO_CODE, Failure, TIMEOUT_CODE} from '../sdk/result';
+import {CallFailure, EMPTY_LASSO_CODE, TIMEOUT_CODE} from '../sdk/result';
+import type {Outcome} from '../search-core';
 import type {FilesErrorCode} from '../storage/files';
 import {copy, CopyKey} from '../ui/copy';
 
 /** Where a failure happened: reading the lasso, getting the picture, or putting it in the note. */
 export type Step = 'lasso' | 'download' | 'place';
-export type StepFailure = Failure & {step: Step};
+export type StepFailure = CallFailure & {step: Step};
 /** A flow's answer: the value, or the failure with the step it happened at. */
-export type Done<T> = {ok: true; value: T} | StepFailure;
+export type Done<T> = Outcome<T, StepFailure>;
 
-export function atStep(step: Step, failure: Failure): StepFailure {
+export function atStep(step: Step, failure: CallFailure): StepFailure {
   return {...failure, step};
 }
 
@@ -66,7 +67,11 @@ function osErrorKeys(message: string): readonly CopyKey[] | null {
  * Any other download failure (an HTTP status, TOO_LARGE, NOT_IMAGE, a module that did not load)
  * belongs to this picture: another one may work.
  */
-function downloadKeys({code, message, moduleCode}: Failure): readonly CopyKey[] {
+function downloadKeys({
+  code,
+  message,
+  moduleCode,
+}: CallFailure): readonly CopyKey[] {
   if (code === TIMEOUT_CODE) {
     return ['error.downloadOffline'];
   }

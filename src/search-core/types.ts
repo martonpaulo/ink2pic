@@ -53,6 +53,14 @@ export type FailureKind =
   /** The adapter's own code threw: a fault, never the network (#104). */
   | 'fault';
 
+/**
+ * A value, or why there is none (#100): the one result shape of the plugin. `F` is the failure's
+ * own fields, such as an SDK call's code or a source's kind.
+ */
+export type Outcome<T, F extends {ok: false; message: string}> =
+  | {ok: true; value: T}
+  | F;
+
 /** A failure; `message` is detail for the log, never shown. */
 export type Failure = {ok: false; kind: FailureKind; message: string};
 

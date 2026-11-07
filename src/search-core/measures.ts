@@ -7,10 +7,10 @@
 import {dropNearDuplicates} from './duplicates';
 import {readIntent} from './query';
 import {DEFAULT_SCORERS, intentFor, PHOTO_SCORERS, Scorer, total} from './rank';
-import {PAGE_SIZE, SearchResult} from './types';
+import {Outcome, PAGE_SIZE, SearchResult} from './types';
 
 /** What an analyzer call gives: the value, or why there is none, for the log. */
-export type Measured<T> = {ok: true; value: T} | {ok: false; message: string};
+export type Measured<T> = Outcome<T, {ok: false; message: string}>;
 
 /**
  * The features `ThumbMeasures.java` computes on gray values flattened on white. Shares are 0 to 1,

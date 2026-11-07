@@ -38,7 +38,7 @@ type NativeFiles = {
 };
 
 /**
- * Calls one of the plugin's own native modules and maps a rejection to a Failure that keeps the
+ * Calls one of the plugin's own native modules and maps a rejection to a CallFailure that keeps the
  * module's text code in `moduleCode`, and in the message for the log; MISSING when PluginHost did
  * not load the module.
  */

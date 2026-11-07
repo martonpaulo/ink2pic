@@ -49,4 +49,10 @@ export type {SearchOptions, SearchOutcome, SourceStatus} from './search';
 export {networkDown, searchState} from './state';
 export type {SearchState, SearchStateKind} from './state';
 export {PAGE_SIZE, sourceId} from './types';
-export type {Failure, FailureKind, SearchResult, SourceName} from './types';
+export type {
+  Failure,
+  FailureKind,
+  Outcome,
+  SearchResult,
+  SourceName,
+} from './types';

@@ -11,7 +11,10 @@ import type {SearchOutcome, SourceStatus} from './search';
 import {networkDown} from './state';
 import type {SearchResult} from './types';
 
-/** Text files where the cache lives; `readText` gives null when the file does not exist. */
+/**
+ * Text files, for every store that keeps one: the search cache, library.json and the settings;
+ * `readText` gives null when the file does not exist.
+ */
 export type TextStore = {
   readText: (path: string) => Promise<string | null>;
   writeText: (path: string, text: string) => Promise<void>;

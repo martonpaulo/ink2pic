@@ -1,7 +1,7 @@
 import {PluginManager} from 'sn-plugin-lib';
 import {attempt, attemptNow, fail, ok, Result, THROWN_CODE} from './result';
 
-/** Must run at startup (brief section 4.1); async in sn-plugin-lib 0.2.3, so a rejection is a Failure (#95). */
+/** Must run at startup (brief section 4.1); async in sn-plugin-lib 0.2.3, so a rejection is a CallFailure (#95). */
 export function initPlugin(): Promise<Result<true>> {
   return attempt(
     () => PluginManager.init(),

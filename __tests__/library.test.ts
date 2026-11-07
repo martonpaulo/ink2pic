@@ -9,7 +9,7 @@ import {
 } from '../src/library/library';
 import {loadLibrary, saveLibrary} from '../src/library/store';
 import type {LibraryItem} from '../src/library/types';
-import type {TextStorage} from '../src/storage/text';
+import type {TextStore} from '../src/search-core';
 
 const item = (n: number, query = 'soup'): LibraryItem => ({
   id: `openclipart:${n}`,
@@ -26,7 +26,7 @@ const item = (n: number, query = 'soup'): LibraryItem => ({
   contour: false,
 });
 
-function memoryStorage(files: Record<string, string> = {}): TextStorage {
+function memoryStorage(files: Record<string, string> = {}): TextStore {
   return {
     readText: async path => files[path] ?? null,
     writeText: async (path, text) => {

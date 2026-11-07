@@ -10,7 +10,7 @@ import type {SearchResult} from '../src/search-core/types';
 import {systemClock} from '../src/search-core/clock';
 import {fullUrl} from '../src/search-core/registry';
 import {searchState} from '../src/search-core/state';
-import type {TextStorage} from '../src/storage/text';
+import type {TextStore} from '../src/search-core';
 
 const PATH = '/plugin/search-cache.json';
 const NOW = Date.UTC(2026, 10, 6, 12);
@@ -50,7 +50,7 @@ function outcome(
 }
 
 function memoryStorage(files: Record<string, string> = {}) {
-  const storage: TextStorage = {
+  const storage: TextStore = {
     readText: async path => files[path] ?? null,
     writeText: async (path, text) => {
       files[path] = text;
@@ -267,7 +267,7 @@ describe('cachedSearch', () => {
   });
 
   it('still returns the outcome when the cache cannot be written', async () => {
-    const storage: TextStorage = {
+    const storage: TextStore = {
       readText: async () => null,
       writeText: async () => {
         throw new Error('disk full');
@@ -301,7 +301,7 @@ describe('cachedSearch', () => {
 
   it('returns the outcome before the cache write ends (#46)', async () => {
     let finish!: () => void;
-    const storage: TextStorage = {
+    const storage: TextStore = {
       readText: async () => null,
       writeText: () => new Promise<void>(resolve => (finish = resolve)),
     };

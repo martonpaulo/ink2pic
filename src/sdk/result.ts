@@ -1,14 +1,16 @@
+import type {Outcome} from '../search-core';
+
 /**
  * One result type for every SDK call, so no failure is swallowed and none throws past a wrapper.
  */
-export type Failure = {
+export type CallFailure = {
   ok: false;
   code: number;
   message: string;
   /** The text code a plugin native module rejected with, such as `IO` or `TOO_LARGE` (#49). */
   moduleCode?: string;
 };
-export type Result<T> = {ok: true; value: T} | Failure;
+export type Result<T> = Outcome<T, CallFailure>;
 
 /*
  * Every negative code, here and nowhere else (#49): the SDK's own codes are positive.
@@ -36,7 +38,7 @@ export function fail(
   code: number,
   message: string,
   moduleCode?: string,
-): Failure {
+): CallFailure {
   return moduleCode === undefined
     ? {ok: false, code, message}
     : {ok: false, code, message, moduleCode};
@@ -57,7 +59,7 @@ export function fromResponse<T>(response: unknown): Result<T> {
   );
 }
 
-/** Runs an SDK call and turns a thrown error into a Failure. */
+/** Runs an SDK call and turns a thrown error into a CallFailure. */
 export async function attempt<T>(
   call: () => Promise<unknown>,
   map: (raw: unknown) => Result<T> = fromResponse,
@@ -72,7 +74,7 @@ export async function attempt<T>(
   }
 }
 
-/** Runs a synchronous SDK call, such as a listener registration; a throw is a Failure. */
+/** Runs a synchronous SDK call, such as a listener registration; a throw is a CallFailure. */
 export function attemptNow(call: () => unknown): Result<true> {
   try {
     call();
