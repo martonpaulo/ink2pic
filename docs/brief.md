@@ -239,6 +239,9 @@ Complete interface: `exists`, `getExternalDirPath`, `makeDir`, `getExportPath`, 
 - `getLassoElements()`, `getLassoElementTypeCounts()`, `getLassoRect()` returns `{left, top, right, bottom}`, `deleteLassoElements()`, `lassoElements(rect)`, `resizeLassoRect(rect)`.
 - `setLassoBoxState(state)`: `0` show, `1` hide, `2` completely remove.
 - `recognizeElements(elements, size)`: recognizes elements as text. **No language parameter.** Uses the device's active handwriting recognition language [CONFIRMED signature, behavior per language TO TEST]. With `size` set to the lasso rect size, every word failed with `117 Recognition failed` [CONFIRMED on the owner's Manta, build 0.1.0 (1)]. `LVEVAN/ink2task` and `j-raghavan/sn-dictionary` pass the note page size from `PluginFileAPI.getPageSize` [REPORTED, source read 2026-11-06]; build 0.1.0 (2) tests that.
+- `lassoElements(rect)` lassoes the elements in a rect, which must stay within the page size
+  (official docs); Ink2Pic lassoes the picture it placed
+  ([#73](https://github.com/martonpaulo/ink2pic/issues/73), section 10.5).
 - `cancelRecognize()`.
 - `getCurrentFilePath()`, `getCurrentPageNum()`, `getPageDisplaySize()`, `reloadFile()`.
 - `insertSticker(path)` (`.sticker` file), `saveStickerByLasso(path)` (strokes and geometries only), `convertElement2Sticker({machineType, elements, stickerPath})`.
@@ -779,6 +782,17 @@ INFERENCE is marked.
   floating selection, at least 100 px and at most 2560 px per side. `createElement(200)` plus
   `insertElements` places the picture at the plugin's `picture.rect`, read as Android pixel
   coordinates, with no clamping to the page.
+
+Open on the device, each logged so the session log answers it:
+
+- `lassoElements(rect)` after `insertPageElements`, with the placed picture's rect, then
+  `closePluginView` ([#73](https://github.com/martonpaulo/ink2pic/issues/73)) [TO TEST]: whether
+  the call selects the new picture, and whether the lasso survives the view's close. The order
+  is chosen by evidence: the official docs make and change a lasso «within a plugin UI», and the
+  lasso the view opened with is still readable while the view is open; if the close drops it,
+  try the call after `closePluginView`. With `insertImage` there is no rect, so the call is
+  skipped: the host already shows that picture as a floating selection. A failure is logged and
+  never fails the insert.
 
 ## 11. Risks
 

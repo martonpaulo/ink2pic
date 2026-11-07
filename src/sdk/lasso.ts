@@ -12,6 +12,14 @@ export function getLassoRect(): Promise<Result<Rect>> {
   return attempt(() => PluginCommAPI.getLassoRect());
 }
 
+/**
+ * Lassoes the elements inside `rect`, in page pixels within the page (official docs,
+ * «lassoElements»); `true` means the selection was made.
+ */
+export function lassoElements(rect: Rect): Promise<Result<boolean>> {
+  return attempt(() => PluginCommAPI.lassoElements(rect));
+}
+
 /** Uses the device's recognition language; there is no language parameter (brief section 4.5). */
 export function recognizeElements(
   elements: object[],

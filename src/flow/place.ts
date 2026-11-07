@@ -53,11 +53,12 @@ export function placeRect(
   return {left, top, right: left + width, bottom: top + height};
 }
 
+/** Inserts the picture beside the lasso; its value is the rect the picture was placed at (#73). */
 export async function placeAtLasso(
   path: string,
   picture: {width: number; height: number},
   place: LassoPlace,
-): Promise<Result<true>> {
+): Promise<Result<Rect>> {
   const rect = placeRect(place.rect, picture, place.pageSize);
   if (!rect) {
     return fail(THROWN_CODE, `no band of ${MIN_PLACE_BAND} px beside the lasso`);
@@ -83,6 +84,6 @@ export async function placeAtLasso(
     return inserted;
   }
   return inserted.value
-    ? ok(true)
+    ? ok(rect)
     : fail(THROWN_CODE, 'insertPageElements answered false');
 }

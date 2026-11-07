@@ -249,3 +249,65 @@ describe('insertPicture (#12)', () => {
     expect(PluginNoteAPI.insertImage).toHaveBeenCalled();
   });
 });
+
+describe('the inserted picture is left lassoed (#73)', () => {
+  const place = {
+    rect: {left: 100, top: 200, right: 300, bottom: 260},
+    page: 3,
+    pageSize: {width: 1920, height: 2560},
+  };
+  const placedRect = {left: 100, top: 284, right: 740, bottom: 877};
+  const lasso = PluginCommAPI.lassoElements as jest.Mock;
+
+  beforeEach(() => {
+    (PluginCommAPI.createElement as jest.Mock).mockResolvedValue({
+      success: true,
+      result: {uuid: 'u'},
+    });
+    (PluginCommAPI.insertPageElements as jest.Mock).mockResolvedValue({
+      success: true,
+      result: true,
+    });
+    lasso.mockResolvedValue({success: true, result: true});
+  });
+
+  it('lassoes the placed rect, the picture alone, after the insert', async () => {
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+    // The picture's rect, below the word: the handwriting is not selected (#39).
+    expect(lasso).toHaveBeenCalledWith(placedRect);
+    expect(lasso.mock.invocationCallOrder[0]).toBeGreaterThan(
+      (PluginCommAPI.insertPageElements as jest.Mock).mock
+        .invocationCallOrder[0],
+    );
+  });
+
+  it('keeps the insert when the lasso fails, throws or answers false', async () => {
+    lasso.mockResolvedValueOnce({
+      success: false,
+      error: {code: 904, message: 'no lasso context'},
+    });
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+    lasso.mockRejectedValueOnce(new Error('host gone'));
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+    lasso.mockResolvedValueOnce({success: true, result: false});
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(true);
+  });
+
+  it('skips the lasso when the host placed the picture with insertImage', async () => {
+    expect((await insertPicture(result, 'soup')).ok).toBe(true);
+    expect(lasso).not.toHaveBeenCalled();
+  });
+
+  it('does not lasso a failed insert', async () => {
+    (PluginCommAPI.insertPageElements as jest.Mock).mockResolvedValue({
+      success: false,
+      error: {code: 107, message: 'bad element'},
+    });
+    (PluginNoteAPI.insertImage as jest.Mock).mockResolvedValue({
+      success: true,
+      result: false,
+    });
+    expect((await insertPicture(result, 'soup', place)).ok).toBe(false);
+    expect(lasso).not.toHaveBeenCalled();
+  });
+});

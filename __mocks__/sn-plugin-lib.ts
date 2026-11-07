@@ -19,6 +19,7 @@ export const PluginManager = {
 export const PluginCommAPI = mocks(
   'getLassoElements',
   'getLassoRect',
+  'lassoElements',
   'recognizeElements',
   'setLassoBoxState',
   'deleteLassoElements',

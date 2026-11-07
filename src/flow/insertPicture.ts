@@ -8,6 +8,7 @@
 import {getLibrary, recordInsert} from '../library/device';
 import {findItem} from '../library/library';
 import {logged, log} from '../log/memory';
+import {lassoElements, Rect} from '../sdk/lasso';
 import {insertImage} from '../sdk/note';
 import {fail, ok, Result, THROWN_CODE, TIMEOUT_CODE} from '../sdk/result';
 import {insertUrl, SearchResult, sourceId} from '../search-core';
@@ -95,11 +96,14 @@ async function picture(
   return download(result, contour);
 }
 
-/** At the lasso when the view opened from the lasso (#20), else where the host puts it. */
+/**
+ * At the lasso when the view opened from the lasso (#20), else where the host puts it. The value
+ * is the placed rect, or null when the host placed it: insertImage gives no rect.
+ */
 async function insertInNote(
   saved: Saved,
   place: LassoPlace | null,
-): Promise<Result<unknown>> {
+): Promise<Result<Rect | null>> {
   if (place && saved.size) {
     const placed = await placeAtLasso(saved.path, saved.size, place);
     // After a TIMEOUT the host may still insert it: a fallback could add a second copy (#33).
@@ -111,9 +115,31 @@ async function insertInNote(
     insertImage(saved.path),
   );
   // `{success: true, result: false}` inserted nothing (#47).
-  return inserted.ok && inserted.value !== true
-    ? fail(THROWN_CODE, 'insertImage answered false')
-    : inserted;
+  if (!inserted.ok) {
+    return inserted;
+  }
+  return inserted.value === true
+    ? ok(null)
+    : fail(THROWN_CODE, 'insertImage answered false');
+}
+
+/**
+ * Leaves the placed picture lassoed, ready to move or resize (#73), while the view is still open:
+ * the lasso the view opened with survives the view (brief section 10.5, TO TEST that this one
+ * does too). A failure is only logged: the picture stays inserted.
+ */
+async function lassoPlaced(rect: Rect | null): Promise<void> {
+  if (!rect) {
+    // insertImage shows the picture as the host's own floating selection (brief section 10.5).
+    log('lassoElements: skipped, the host placed the picture and gave no rect');
+    return;
+  }
+  const lassoed = await logged(`lassoElements(${JSON.stringify(rect)})`, () =>
+    lassoElements(rect),
+  );
+  if (lassoed.ok && lassoed.value !== true) {
+    log('lassoElements answered false: the picture is not lassoed');
+  }
 }
 
 export async function insertPicture(
@@ -130,6 +156,7 @@ export async function insertPicture(
   if (!inserted.ok) {
     return atStep('place', inserted);
   }
+  await lassoPlaced(inserted.value);
   if (saved.value.record) {
     await recordInsert({
       id: result.id,
