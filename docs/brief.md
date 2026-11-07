@@ -871,6 +871,13 @@ INFERENCE is marked.
   `insertElements` places the picture at the plugin's `picture.rect`, read as Android pixel
   coordinates, with no clamping to the page.
 
+The PluginHost simulator in `__tests__/host/` follows these rules in the tests, each with its
+source and its tag in `__tests__/host/rules.ts` and one test in `__tests__/pluginHost.test.ts`;
+whole journeys run through it in `__tests__/journeys.test.tsx`
+([#78](https://github.com/martonpaulo/ink2pic/issues/78)). A host fact a device round finds goes
+into that table in the same change as this section, keeping its tag. The simulator never replaces
+the device check.
+
 Open on the device, each logged so the session log answers it:
 
 - `lassoElements(rect)` after `insertPageElements`, with the placed picture's rect, then

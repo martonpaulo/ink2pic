@@ -7,6 +7,8 @@ module.exports = {
     '<rootDir>/.claude/',
     '<rootDir>/.scratch/',
     '<rootDir>/lab/',
+    // The PluginHost simulator and its helpers: modules the tests import, not tests (#78).
+    '<rootDir>/__tests__/host/',
   ],
   modulePathIgnorePatterns: [
     '<rootDir>/.claude/',
