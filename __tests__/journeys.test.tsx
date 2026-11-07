@@ -18,6 +18,13 @@ import {
   REPLAY_MS,
 } from './host/pluginHost';
 
+/**
+ * Each journey loads the whole plugin in a fresh registry; the first one also compiles it. On a
+ * machine shared with other gates (load average 20 on 4 cores) the first journey took past Jest's
+ * 5 s default, so a journey gets 20 s; each step keeps its own 4 s limit (host/journey.tsx).
+ */
+jest.setTimeout(20000);
+
 const word = {left: 100, top: 200, right: 300, bottom: 260};
 
 let journey: Journey | null = null;
