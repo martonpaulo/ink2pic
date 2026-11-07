@@ -8,7 +8,32 @@ Ink2Pic is MIT-licensed ([LICENSE](LICENSE)). It adapts third-party work:
 | [Gabarito](https://github.com/naipefoundry/gabarito), `@fontsource/gabarito` 5.3.0 | OFL-1.1 | The name on the social card, 700 latin WOFF2 | [OFL-Gabarito.txt](design/social-card/fonts/OFL-Gabarito.txt) |
 | [Figtree](https://github.com/erikdkennedy/figtree), `@fontsource/figtree` 5.3.0 | OFL-1.1 | The other social-card text, 500 and 700 latin WOFF2 | [OFL-Figtree.txt](design/social-card/fonts/OFL-Figtree.txt) |
 | [Caveat](https://github.com/googlefonts/caveat), `@fontsource/caveat` 5.3.0 | OFL-1.1 | The handwritten word on the social card, 600 latin WOFF2 | [OFL-Caveat.txt](design/social-card/fonts/OFL-Caveat.txt) |
+| [OpenMoji](https://github.com/hfg-gmuend/openmoji) 17.0.0, `data/openmoji.json` at `f9fc506` | CC-BY-SA-4.0 | The symbols' names and keywords in the shipped index; the pictures, fetched at search time | [below](#openmoji-and-keyword-data) |
+| [emojilib](https://github.com/muan/emojilib) 4.0.3, `dist/emoji-en-US.json` at `b4da694` | MIT | English keywords in the OpenMoji index | [below](#openmoji-and-keyword-data) |
+| [CLDR annotations](https://github.com/unicode-org/cldr-json) 49.0.0, `cldr-annotations-full` pt, es, zh at `a4b6724` | Unicode-3.0 | Portuguese, Spanish and Chinese names and keywords in the OpenMoji index | [below](#openmoji-and-keyword-data) |
 | [Openclipart 185227 "tureen"](https://openclipart.org/detail/185227) by johnny_automatic, from Dorothy Daly's *Italian Cooking* (not in copyright) | CC0-1.0 | The engraving on the social card, unchanged SVG | [tureen.svg](design/social-card/tureen.svg) |
+
+## OpenMoji and keyword data
+
+`src/search-core/data/openmoji-index.json` is built by `scripts/build-openmoji-index.cjs` from
+these files, each pinned to a commit and a SHA-256 in the script ([#67](https://github.com/martonpaulo/ink2pic/issues/67)):
+
+- `https://raw.githubusercontent.com/hfg-gmuend/openmoji/f9fc506a3f913be9897ab0181d611d4c910a4104/data/openmoji.json`:
+  OpenMoji 17.0.0 by HfG Schwäbisch Gmünd and the OpenMoji contributors, CC BY-SA 4.0
+  (<https://creativecommons.org/licenses/by-sa/4.0/>). Taken: hexcode, annotation, tags,
+  openmoji_tags and group. Changed: folded to lowercase without accents; flags, skin tones, the
+  «man» and «woman» twins and the OpenMoji and Unicode extras (brand logos among them) left out.
+  The index, as an adaptation of this data, is under CC BY-SA 4.0 too.
+- `https://raw.githubusercontent.com/muan/emojilib/b4da69426d5dc6e8c8c02c09b163ff3e7160b316/dist/emoji-en-US.json`:
+  emojilib 4.0.3, MIT, copyright (c) Mu-An Chiou. Taken: the keywords, folded.
+- `https://raw.githubusercontent.com/unicode-org/cldr-json/a4b67247b446fd51b475991017a2481911210c60/cldr-json/cldr-annotations-full/annotations/<pt|es|zh>/annotations.json`:
+  Unicode CLDR 49.0.0, Unicode License V3, copyright (c) 1991-2026 Unicode, Inc.
+  (<https://www.unicode.org/license.txt>). Taken: each emoji's name (`tts`) and keywords
+  (`default`), folded.
+
+The pictures, `https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/black/618x618/<HEX>.png`,
+are OpenMoji's, CC BY-SA 4.0: each result and each saved picture records the credit «OpenMoji» and
+the license.
 
 ## Keplex/supernote-pic2note
 

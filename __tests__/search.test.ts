@@ -89,7 +89,7 @@ const withFetch = (fetch: FetchLike) => ({
 });
 
 describe('the default adapters', () => {
-  it('queries Openclipart, Commons and Wikidata with the given fetch', async () => {
+  it('queries Openclipart, Commons and Wikidata with the given fetch, OpenMoji with none (#67)', async () => {
     jest.useFakeTimers();
     const fetch = jest
       .fn()
@@ -101,7 +101,11 @@ describe('the default adapters', () => {
       'openclipart',
       'commons',
       'wikidata',
+      'openmoji',
     ]);
+    // Off the network the symbols still answer, with the «source down» note.
+    expect(outcome.statuses.openmoji.state).toBe('ok');
+    expect(outcome.sourceDown).toBe(true);
     // A 5xx is tried once more (#65): two per source.
     expect(fetch).toHaveBeenCalledTimes(6);
   });

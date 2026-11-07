@@ -32,6 +32,7 @@ npm run validate
 | `npm run typecheck` | Checks TypeScript types without emitting files. |
 | `npm test` | Runs the Jest unit tests. |
 | `npm start` | Starts the Metro bundler. |
+| `node scripts/build-openmoji-index.cjs` | Rebuilds the OpenMoji keyword index from its pinned data files; `--check` compares, `--cache <dir>` keeps the downloads. Behind a proxy, set `NODE_USE_ENV_PROXY=1`. |
 
 The package manager is npm, not pnpm: the template's build script calls `npx` and reads a flat
 `node_modules` ([`AGENTS.md`](AGENTS.md#project-identity-and-policy)).

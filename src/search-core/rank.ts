@@ -67,6 +67,12 @@ const ASKED_STYLE_SCORE = 2;
 const STYLISED_SCORE = -5;
 const MENTION_SCORE = 1;
 const PLAIN_SUBJECT_SCORE = 3;
+/**
+ * A symbol (#67) leads only when its source says so: above any drawing, measures included. Else it
+ * falls below a drawing that names the word as plainly: «apple» shows the drawing first.
+ */
+const SYMBOL_LEAD_SCORE = 10;
+const SYMBOL_SCORE = -2;
 
 /** Whether `word` is `queryWord` or its plural. */
 function sameWord(word: string, queryWord: string): boolean {
@@ -130,6 +136,13 @@ const formatScorer: Scorer = result => {
   return result.mime && LINE_FORMATS.has(result.mime) ? FORMAT_SCORE : 0;
 };
 
+const symbolScorer: Scorer = result => {
+  if (result.source !== 'openmoji') {
+    return 0;
+  }
+  return result.leads ? SYMBOL_LEAD_SCORE : SYMBOL_SCORE;
+};
+
 /** The ranking's signals, in the order they are read; every scorer sees every result. */
 export const DEFAULT_SCORERS: readonly Scorer[] = [
   subjectScorer,
@@ -139,6 +152,7 @@ export const DEFAULT_SCORERS: readonly Scorer[] = [
   textScorer,
   askedStyleScorer,
   formatScorer,
+  symbolScorer,
 ];
 
 function total(

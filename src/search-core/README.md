@@ -20,7 +20,7 @@ Import from `src/search-core` (its `index.ts`) only.
 | :--- | :--- |
 | `createContext({fetch, userAgent, clock?, log?, timeoutMs?})` | The context adapters search with: one fetcher, the User-Agent and the log |
 | `searchAll(query, adapters, {ctx, clock?, timeoutMs?})` | Searches every adapter in parallel, merges and ranks; never throws |
-| `DEFAULT_ADAPTERS` | Openclipart, Commons and Wikidata, in that order |
+| `DEFAULT_ADAPTERS` | Openclipart, Commons, Wikidata and OpenMoji, in that order; each has a `name` to switch it off by |
 | `cachedSearch(query, run, {storage, path, clock?})` | A fresh cached outcome, or `run`'s outcome stored when worth keeping |
 | `searchState(outcome)` | The one state a finished search is in, for the screen to name |
 | `rankForEink(lists, query, scorers?)`, `DEFAULT_SCORERS`, `Scorer` | The ranking as an ordered list of signals |
@@ -34,6 +34,9 @@ Every failure is a `Failure` with a typed `kind` (`network`, `timeout`, `http`, 
 
 - `adapter.ts`: the `SourceAdapter` interface and the `SourceContext` it searches with.
 - `adapters/`: one file per source, each with its URL builders and parsers.
+- `adapters/openmoji.ts` and `data/openmoji-index.json`: symbols for abstract words, matched on
+  the device with no request ([#67](https://github.com/martonpaulo/ink2pic/issues/67)). Rebuild the index with
+  `node scripts/build-openmoji-index.cjs`; `--check` fails when the committed file differs.
 - `registry.ts`: the default adapters and the picture host of each source that owns results.
 - `fetcher.ts`: the only network path, with the User-Agent and the per-request timeout.
 - `clock.ts`: the injected clock and log.

@@ -100,6 +100,31 @@ describe('cachedSearch', () => {
     expect(fullUrl(photo, 1000)).toBe(THUMB.replace('/330px-', '/1280px-'));
   });
 
+  it('keeps a symbol that leads, so the measures keep it first (#67)', async () => {
+    const symbol: SearchResult = {
+      id: 'openmoji:2744',
+      source: 'openmoji',
+      title: 'snowflake',
+      thumbUrl:
+        'https://raw.githubusercontent.com/hfg-gmuend/openmoji/master/black/618x618/2744.png',
+      license: 'CC BY-SA 4.0',
+      attribution: 'OpenMoji',
+      mime: 'image/png',
+      leads: true,
+    };
+    const {storage} = memoryStorage();
+    const run = runner(outcome([symbol, openclipart]));
+    await cachedSearch('cold', run, {storage, path: PATH, clock: at(NOW)});
+    const {outcome: cached, freshness} = await cachedSearch('cold', run, {
+      storage,
+      path: PATH,
+      clock: at(NOW),
+    });
+    expect(freshness).toBe('fresh');
+    expect(cached.results[0]).toEqual(symbol);
+    expect(cached.results[1].leads).toBeUndefined();
+  });
+
   it('keeps a narrow Commons original, so a cached result is never upscaled (#55)', async () => {
     const original = {
       url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Soup.png',

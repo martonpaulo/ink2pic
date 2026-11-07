@@ -5,20 +5,27 @@
 import type {PictureHost, SourceAdapter} from './adapter';
 import {commonsAdapter, commonsPictures} from './adapters/commons';
 import {openclipartAdapter, openclipartPictures} from './adapters/openclipart';
+import {openmojiAdapter, openmojiPictures} from './adapters/openmoji';
 import {wikidataAdapter} from './adapters/wikidata';
 import {SearchResult, SourceName} from './types';
 
-/** Searched in parallel, in this order; Wikidata adds the word's canonical pictures (#43). */
+/**
+ * Searched in parallel, in this order; Wikidata adds the word's canonical pictures (#43), OpenMoji
+ * the symbols of abstract words, matched on the device (#67). A setting switches a source off by
+ * its `name` (#70).
+ */
 export const DEFAULT_ADAPTERS: readonly SourceAdapter[] = [
   openclipartAdapter,
   commonsAdapter,
   wikidataAdapter,
+  openmojiAdapter,
 ];
 
 /** The host of each source that owns results; Wikidata's results are Commons files. */
 const HOSTS: Record<SourceName, PictureHost> = {
   openclipart: openclipartPictures,
   commons: commonsPictures,
+  openmoji: openmojiPictures,
 };
 
 export function isSourceName(name: unknown): name is SourceName {

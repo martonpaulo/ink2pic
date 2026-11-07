@@ -25,7 +25,7 @@ const LIBRARY_FILE = 'library.json';
 /** The rebuild from the folder is checked once per session. */
 let rebuildChecked = false;
 /** A prepared picture: `<source>-<source id>.png`, as insertPicture names it. */
-const PICTURE_FILE = /^(openclipart|commons)-([^.]+)\.png$/;
+const PICTURE_FILE = /^(openclipart|commons|openmoji)-([^.]+)\.png$/;
 /** What the file name cannot tell about a picture from an older build. */
 const UNKNOWN = 'unknown';
 /** One second apart: rebuilt items keep the folder's order, which stands in for their dates. */
@@ -36,6 +36,7 @@ const KNOWN_LICENSES: Record<
 > = {
   openclipart: {license: 'CC0 1.0', attribution: 'Openclipart'},
   commons: {license: UNKNOWN, attribution: 'Wikimedia Commons'},
+  openmoji: {license: 'CC BY-SA 4.0', attribution: 'OpenMoji'},
 };
 
 async function libraryPath(): Promise<Result<string>> {

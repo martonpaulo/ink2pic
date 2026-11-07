@@ -139,18 +139,20 @@ Ink2Pic never fails silently: it shows one sentence that says what to do.
 ## Privacy
 
 Ink2Pic sends only the searched word, and only to Openclipart, Wikimedia Commons and Wikidata,
-which names the word's typical pictures on Commons. The device reads your handwriting itself; your
+which names the word's typical pictures on Commons. OpenMoji symbols are matched on the device;
+only the chosen symbol's picture is downloaded, from GitHub. The device reads your handwriting itself; your
 notes never leave the device. Ink2Pic has no account, no server and no analytics.
 
 ## Picture sources and licenses
 
-Every picture comes from one of two sites. Ink2Pic records the source, the license and the
+Every picture comes from one of these sources. Ink2Pic records the source, the license and the
 attribution of each picture it saves.
 
 | Source | License |
 | :--- | :--- |
 | [Openclipart](https://openclipart.org/) | CC0 1.0: free to use, no attribution needed |
 | [Wikimedia Commons](https://commons.wikimedia.org/) | The license of each file, recorded with the picture with its attribution |
+| [OpenMoji](https://openmoji.org/) | CC BY-SA 4.0: credit «OpenMoji»; a picture made from it keeps the license |
 
 ## Limitations
 
@@ -168,7 +170,7 @@ product definition and the technical brief are in [`docs/`](docs/).
 
 [MIT](LICENSE) © 2026 Marton Paulo.
 
-Pictures come from Openclipart (CC0) and Wikimedia Commons (license per file, recorded with each
-picture).
+Pictures come from Openclipart (CC0), Wikimedia Commons (license per file, recorded with each
+picture) and OpenMoji (CC BY-SA 4.0). Data credits are in [`NOTICE.md`](NOTICE.md).
 
 Third-party notices are in [`NOTICE.md`](NOTICE.md).

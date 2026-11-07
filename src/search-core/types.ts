@@ -19,9 +19,11 @@ export type SearchResult = {
   localPath?: string;
   /** The library picture's size, so it can be placed at the lasso too (#33). */
   localSize?: {width: number; height: number};
+  /** A symbol that leads the page: the word is abstract or names it exactly (#67). */
+  leads?: true;
 };
 
-export type SourceName = 'openclipart' | 'commons';
+export type SourceName = 'openclipart' | 'commons' | 'openmoji';
 
 /** The source's own id: the part of a result id after `<source>:`. */
 export function sourceId(id: string): string {

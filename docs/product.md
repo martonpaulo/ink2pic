@@ -37,7 +37,7 @@ background that cannot move ([brief section 13](brief.md#13-history-of-options-c
 | Need a companion phone app | Everything happens on the Supernote | Never, by the owner's choice |
 | Use sources that need an API key or account | Install must stay one file with no sign-up | A keyless source stops working and no keyless replacement exists |
 | Ship a heavy component: a machine-learning model or runtime, or a large library, on the device | The owner wants the plugin light: search quality comes from rules, light pixel measures and better sources (owner, 2026-11-06) | Never, by the owner's choice |
-| Localize the UI, or use a translation service | English is a requirement for the screens; queries in Portuguese, Spanish and Chinese are understood through Wikidata's own labels instead (owner, 2026-11-06, D4) | Never, by the owner's choice |
+| Localize the UI, or use a translation service | English is a requirement for the screens; queries in Portuguese, Spanish and Chinese are understood through Wikidata's own labels and the CLDR keywords of the OpenMoji index instead (owner, 2026-11-06, D4, [#67](https://github.com/martonpaulo/ink2pic/issues/67)) | Never, by the owner's choice |
 | Create native `.snstk` sticker collections | Importing one always needs a manual tap | The SDK gains an import call without a tap |
 | Put settings in the main flow | Defaults must make adjustment unnecessary | A device test shows a default that fails for real use |
 | Support iOS or first-generation A5 / A6 | PluginHost runs on Android devices; the target is Manta | Nomad or A5X / A6X: when the owner has such a device to test on |
