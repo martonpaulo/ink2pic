@@ -201,7 +201,12 @@ describe('Insert picture with no view (#74)', () => {
   it('inserts the lassoed word and opens no view', async () => {
     const deps = headless();
     await insertWithoutView(deps);
-    expect(deps.insert).toHaveBeenCalledWith('soup', place);
+    expect(deps.insert).toHaveBeenCalledWith(
+      'soup',
+      {...place, recheck: true},
+      undefined,
+      expect.any(Number),
+    );
     expect(deps.show).not.toHaveBeenCalled();
     expect(takeHeadlessNote()).toBeNull();
   });

@@ -92,8 +92,11 @@ describe('journeys (#78)', () => {
     const k = lassoedSoup();
     k.host.online = false;
     await k.press(INSERT_BUTTON_ID);
+    // The press ends: the failure opens the view with its sentence (#93).
+    await k.settle(() => k.host.view === 'shown');
+    await k.mountIfShown();
     await k.settle(
-      () => k.shows(copy['error.offline']) || k.host.view === 'hidden',
+      () => k.shows(copy['error.offline']) || k.shows(copy['error.downloadOffline']),
     );
     expect(k.host.pictures()).toEqual([]);
   });

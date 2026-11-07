@@ -78,7 +78,9 @@ describe('Insert picture inserts the best result at once (#74)', () => {
       ok: true,
       value: '/s/2.png',
     });
-    expect(d.search).toHaveBeenCalledWith('soup');
+    expect(d.search).toHaveBeenCalledWith('soup', undefined, undefined, {
+      noTimerWait: true,
+    });
     expect(d.measure.mock.calls[0].slice(0, 3)).toEqual([
       [first, second],
       '/p',

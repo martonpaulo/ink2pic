@@ -7,11 +7,16 @@
  * Each step logs its time (#88). Once page 1's thumbnails are on the device, the full download
  * of the picture leading the search order starts while they are measured; the winner is still the
  * measured order's first, and the early download is used only when it is that picture.
+ *
+ * With no view, JS timers may stop (brief section 3.3, REPORTED), so this flow never waits on one
+ * to end (#93): the search retries with no pause, and a limit measured with Date.now() is checked
+ * before each step. The log shows the time around each wait.
  */
-import {log, logTime} from '../log/memory';
+import {log, logTime, timed} from '../log/memory';
 import {MEASURED_RESULTS, searchState} from '../search-core';
 import {failureText, offlineText} from './failure';
 import {
+  dropEarly,
   EarlyDownload,
   insertPicture,
   startEarlyDownload,
@@ -40,13 +45,35 @@ const DEVICE: QuickInsertDeps = {
   early: startEarlyDownload,
 };
 
+/** False, logged, once Date.now() passed `deadline` before `step` (#93). */
+export function inTime(deadline: number, step: string): boolean {
+  const late = Date.now() - deadline;
+  if (late <= 0) {
+    return true;
+  }
+  log(`insert best: the limit passed before ${step}, ${late} ms late`);
+  return false;
+}
+
+const LATE: QuickInsert = {ok: false, text: copy['error.sourcesDown']};
+
+/**
+ * `deadline` is a Date.now() value the flow gives up at, checked before each step; the
+ * no-view flow sets it (#93).
+ */
 export async function insertBest(
   word: string,
   place: LassoPlace | null,
   deps: QuickInsertDeps = DEVICE,
+  deadline = Number.POSITIVE_INFINITY,
 ): Promise<QuickInsert> {
   const started = Date.now();
-  const run = await deps.search(word);
+  if (!inTime(deadline, 'search')) {
+    return LATE;
+  }
+  const run = await timed('search', () =>
+    deps.search(word, undefined, undefined, {noTimerWait: true}),
+  );
   logTime('search', started, `${run.outcome?.results.length ?? 0} results`);
   // Only a newer search makes it null; this flow runs one search.
   const outcome = run.outcome;
@@ -57,14 +84,13 @@ export async function insertBest(
   const measuring = Date.now();
   const early: {value: EarlyDownload | null} = {value: null};
   const leading = outcome.results[0];
-  const pages = await deps.measure(
-    outcome.results,
-    run.thumbDir,
-    word,
-    undefined,
-    () => {
+  if (!inTime(deadline, 'thumbnails')) {
+    return LATE;
+  }
+  const pages = await timed('thumbnails', () =>
+    deps.measure(outcome.results, run.thumbDir, word, undefined, () => {
       early.value = leading ? deps.early(leading) : null;
-    },
+    }),
   );
   logTime(
     'thumbnails',
@@ -87,15 +113,24 @@ export async function insertBest(
   const usable = early.value?.id === best.id ? early.value : null;
   if (early.value && !usable) {
     log(`early download ${early.value.id} dropped: ${best.id} won`);
+    dropEarly(early.value);
+  }
+  if (!inTime(deadline, 'the insert')) {
+    if (usable) {
+      dropEarly(usable);
+    }
+    return LATE;
   }
   // As a contour drawing when its tile shows one, as a tap in the grid does (#66, #72).
-  const inserted = await deps.insert(
-    best,
-    word,
-    place,
-    isContourUri(pages.contourThumbs.get(best.id) ?? ''),
-    undefined,
-    usable,
+  const inserted = await timed('insert', () =>
+    deps.insert(
+      best,
+      word,
+      place,
+      isContourUri(pages.contourThumbs.get(best.id) ?? ''),
+      undefined,
+      usable,
+    ),
   );
   if (!inserted.ok) {
     log(

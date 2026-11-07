@@ -220,7 +220,7 @@ export class PluginHost {
   now = 0;
   view: 'hidden' | 'shown' | 'destroyed' = 'hidden';
   readonly pageSize: Size;
-  readonly page: number;
+  page: number;
   elements: HostElement[] = [];
   lasso: {uuids: string[]; rect: Rect} | null = null;
   /** Every SDK, module and network call, in order. */
@@ -341,6 +341,12 @@ export class PluginHost {
     if ((button?.[2] as {showType?: number} | undefined)?.showType !== 0) {
       this.show();
     }
+  }
+
+  /** The person turns to page `page`; the lasso ends with it (rule lassoEnds). */
+  turnPage(page: number): void {
+    this.page = page;
+    this.lasso = null;
   }
 
   /** The Note app paused or the file changed: hidden, with no lifecycle event (rule silentHide). */
@@ -535,12 +541,12 @@ export class PluginHost {
     return inside(rect, {left: 0, top: 0, ...this.corner()});
   }
 
-  private addPicture(path: string, rect: Rect): HostElement {
+  private addPicture(path: string, rect: Rect, page = this.page): HostElement {
     const element: HostElement = {
       uuid: `picture-${++this.serial}`,
       type: PICTURE_TYPE,
       numInPage: this.elements.length,
-      pageNum: this.page,
+      pageNum: page,
       layerNum: 0,
       rect,
       picture: {picturePath: path, rect},
@@ -784,7 +790,7 @@ export class PluginHost {
           for (const element of elements as {picture?: {picturePath: string; rect: Rect}}[]) {
             if (element.picture) {
               // At the plugin's rect, with no clamping to the page (rule placeAtRect).
-              this.addPicture(element.picture.picturePath, element.picture.rect);
+              this.addPicture(element.picture.picturePath, element.picture.rect, page);
             }
           }
           return success(true);

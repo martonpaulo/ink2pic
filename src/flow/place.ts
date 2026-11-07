@@ -16,7 +16,16 @@ import {
 import {fail, ok, Result, THROWN_CODE} from '../sdk/result';
 
 /** Where the lasso was when the view opened; lasso context does not survive navigation. */
-export type LassoPlace = {rect: Rect; page: number; pageSize: Size};
+export type LassoPlace = {
+  rect: Rect;
+  page: number;
+  pageSize: Size;
+  /**
+   * The person stayed on the note (no view, #93): the lasso and the page are read again before
+   * the word is deleted or the picture lassoed, and nothing is done when they changed.
+   */
+  recheck?: true;
+};
 
 /** Space between the word and the picture, in page pixels. */
 export const PLACE_GAP = 24;

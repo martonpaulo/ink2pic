@@ -83,6 +83,23 @@ export function logTime(step: string, since: number, detail = ''): void {
   log(`time ${step}: ${Date.now() - since} ms${detail ? `, ${detail}` : ''}`);
 }
 
+/**
+ * Runs one wait and logs the time it starts and how long it took, so the device log shows
+ * whether JS timers stop with no view (#93).
+ */
+export async function timed<T>(
+  step: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  const at = Date.now();
+  log(`wait ${step}: start at ${at}`);
+  try {
+    return await work();
+  } finally {
+    log(`wait ${step}: ${Date.now() - at} ms`);
+  }
+}
+
 /** Long enough for a lasso rect or a page size, short enough for the report. */
 const BRIEF_MAX = 160;
 

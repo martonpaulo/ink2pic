@@ -8,15 +8,22 @@
 import {getLibrary, recordInsert} from '../library/device';
 import {findItem} from '../library/library';
 import {logged, log, logTime} from '../log/memory';
-import {deleteLassoElements, lassoElements, Rect} from '../sdk/lasso';
+import {
+  deleteLassoElements,
+  getLassoRect,
+  lassoElements,
+  Rect,
+} from '../sdk/lasso';
+import {getCurrentPageNum} from '../sdk/page';
 import {insertImage} from '../sdk/note';
 import {fail, ok, Result, THROWN_CODE, TIMEOUT_CODE} from '../sdk/result';
 import {insertUrl, SearchResult, sourceId} from '../search-core';
-import {downloadToFile} from '../storage/files';
+import {deleteFile, downloadToFile} from '../storage/files';
 import {prepareForEink} from '../storage/image';
 import {
   earlyDownloadPath,
   insertDownloadPath,
+  isTemporaryDownload,
   libraryDir,
   safeFileName,
 } from '../storage/paths';
@@ -81,6 +88,32 @@ export type EarlyDownload = {
 };
 
 /**
+ * Removes a temporary download once the insert no longer needs it (#93), so the private folder
+ * does not grow by one file per picture; any other path is left alone. A failure is only logged.
+ */
+async function removeTemporary(pluginDir: string, path: string): Promise<void> {
+  if (!isTemporaryDownload(pluginDir, path)) {
+    return;
+  }
+  const removed = await logged(`deleteFile(${path})`, () => deleteFile(path));
+  if (removed.ok && removed.value !== true) {
+    log(`deleteFile answered false: ${path} stays`);
+  }
+}
+
+/** Removes a dropped early download's file once its download ends (#93). Never rejects. */
+export function dropEarly(early: EarlyDownload): void {
+  early.raw
+    .then(async raw => {
+      const dir = await pluginFolder();
+      if (raw?.ok && dir.ok) {
+        await removeTemporary(dir.value, raw.value);
+      }
+    })
+    .catch(error => log(`early download ${early.id}: ${String(error)}`));
+}
+
+/**
  * Starts the leading picture's download before it is known to win (#88). Never rejects. A
  * library file is reused only in the style «All contour» asks for (#103): the tile's own style
  * is not known yet, and a download it does not need is dropped.
@@ -100,11 +133,16 @@ export function startEarlyDownload(result: SearchResult): EarlyDownload {
       return dir;
     }
     const url = insertUrl(result);
-    const path = earlyDownloadPath(dir.value, imageExtension(url));
+    const path = earlyDownloadPath(dir.value, result.id, imageExtension(url));
     const bytes = await logged(`downloadToFile(${url} -> ${path}, early)`, () =>
       downloadToFile(url, path),
     );
-    return bytes.ok ? ok(path) : bytes;
+    if (!bytes.ok) {
+      // A download cut off midway may leave part of the file (#91).
+      await removeTemporary(dir.value, path);
+      return bytes;
+    }
+    return ok(path);
   })().catch(error => fail(THROWN_CODE, String(error)));
   return {id: result.id, started, raw};
 }
@@ -171,7 +209,7 @@ async function download(
   // A saved OpenMoji symbol needs no download (#91).
   let raw = (await symbolFile(result)) ?? (await earlyFile(result, early));
   if (!raw) {
-    raw = insertDownloadPath(dir.value, imageExtension(url));
+    raw = insertDownloadPath(dir.value, result.id, imageExtension(url));
     const path = raw;
     const at = Date.now();
     const bytes = await logged(`downloadToFile(${url} -> ${path})`, () =>
@@ -179,6 +217,7 @@ async function download(
     );
     logTime('download', at);
     if (!bytes.ok) {
+      await removeTemporary(dir.value, path);
       return bytes;
     }
   }
@@ -189,6 +228,8 @@ async function download(
     () => prepareForEink(from, preparedPath, width, 'png', contour),
   );
   logTime('conversion', at);
+  // The prepared or downloaded-again library file is the one kept (#93).
+  await removeTemporary(dir.value, from);
   if (prepared.ok) {
     return ok({
       path: preparedPath,
@@ -270,15 +311,68 @@ async function insertInNote(
     : fail(THROWN_CODE, 'insertImage answered false');
 }
 
+function sameRect(a: Rect, b: Rect): boolean {
+  return (
+    a.left === b.left &&
+    a.top === b.top &&
+    a.right === b.right &&
+    a.bottom === b.bottom
+  );
+}
+
+/**
+ * Why the note changed since the lasso was read, or null when it did not (#93): the page, and the
+ * lasso rect when `rect`. A place without `recheck` comes from the view, which covers the note.
+ */
+async function noteChanged(
+  place: LassoPlace | null,
+  rect: boolean,
+): Promise<string | null> {
+  if (!place?.recheck) {
+    return null;
+  }
+  const page = await logged('getCurrentPageNum', getCurrentPageNum);
+  if (!page.ok) {
+    return `the page cannot be read: ${page.message}`;
+  }
+  if (page.value !== place.page) {
+    return `the page changed from ${place.page} to ${page.value}`;
+  }
+  if (!rect) {
+    return null;
+  }
+  const lasso = await logged('getLassoRect', getLassoRect);
+  if (!lasso.ok) {
+    return `the lasso cannot be read: ${lasso.message}`;
+  }
+  return sameRect(lasso.value, place.rect)
+    ? null
+    : `the lasso changed from ${JSON.stringify(place.rect)} to ${JSON.stringify(
+        lasso.value,
+      )}`;
+}
+
 /**
  * Leaves the placed picture lassoed, ready to move or resize (#73), while the view is still open:
  * the lasso the view opened with survives the view (brief section 10.5, TO TEST that this one
- * does too). A failure is only logged: the picture stays inserted.
+ * does too). With no view, only on the page the lasso was read on, and, unless the word was just
+ * deleted, while the lasso is still the one read (#93). A failure is only logged: the picture
+ * stays inserted.
  */
-async function lassoPlaced(rect: Rect | null): Promise<void> {
+async function lassoPlaced(
+  rect: Rect | null,
+  place: LassoPlace | null,
+  wordDeleted: boolean,
+): Promise<void> {
   if (!rect) {
     // insertImage shows the picture as the host's own floating selection (brief section 10.5).
     log('lassoElements: skipped, the host placed the picture and gave no rect');
+    return;
+  }
+  // A delete ends the lasso by design: then only the page is compared.
+  const changed = await noteChanged(place, !wordDeleted);
+  if (changed) {
+    log(`lassoElements: skipped, ${changed}`);
     return;
   }
   const lassoed = await logged(`lassoElements(${JSON.stringify(rect)})`, () =>
@@ -292,12 +386,22 @@ async function lassoPlaced(rect: Rect | null): Promise<void> {
 /**
  * «In place of the word» (#70): the lassoed handwriting is deleted only after the picture was
  * placed at the word, on the person's own tap with that setting on; logged. Whether the lasso
- * still holds the word after the insert is TO TEST on the device. A failure keeps the word.
+ * still holds the word after the insert is TO TEST on the device. With no view, only while the
+ * page and the lasso rect are the ones read at the start (#93). A failure keeps the word. True
+ * when the word was deleted.
  */
-async function deleteWord(rect: Rect | null): Promise<void> {
+async function deleteWord(
+  rect: Rect | null,
+  place: LassoPlace | null,
+): Promise<boolean> {
   if (!rect) {
     log('deleteLassoElements: skipped, the picture is not at the word');
-    return;
+    return false;
+  }
+  const changed = await noteChanged(place, true);
+  if (changed) {
+    log(`deleteLassoElements: skipped, ${changed}; the strokes stay`);
+    return false;
   }
   const deleted = await logged(
     'deleteLassoElements (in place of the word)',
@@ -306,6 +410,7 @@ async function deleteWord(rect: Rect | null): Promise<void> {
   if (deleted.ok && deleted.value !== true) {
     log('deleteLassoElements answered false: the word stays');
   }
+  return deleted.ok && deleted.value === true;
 }
 
 export async function insertPicture(
@@ -332,13 +437,14 @@ export async function insertPicture(
   if (!inserted.ok) {
     return atStep('place', inserted);
   }
+  let wordDeleted = false;
   if (place && chosen.placement === 'replace') {
     at = Date.now();
-    await deleteWord(inserted.value);
+    wordDeleted = await deleteWord(inserted.value, place);
     logTime('word delete', at);
   }
   at = Date.now();
-  await lassoPlaced(inserted.value);
+  await lassoPlaced(inserted.value, place, wordDeleted);
   logTime('lasso', at);
   if (saved.value.record) {
     at = Date.now();

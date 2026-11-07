@@ -142,7 +142,7 @@ describe('a library picture is reused only in its own style (#103)', () => {
     const early = startEarlyDownload(result);
     expect(await early.raw).toEqual({
       ok: true,
-      value: '/data/plugin/insert-early.png',
+      value: '/data/plugin/insert-early-openclipart-340609.png',
     });
   });
 
@@ -168,10 +168,10 @@ describe('the early download of Insert picture (#88)', () => {
     });
     expect(native.downloadToFile).toHaveBeenCalledTimes(1);
     expect(native.downloadToFile.mock.calls[0][1]).toBe(
-      '/data/plugin/insert-early.png',
+      '/data/plugin/insert-early-openclipart-340609.png',
     );
     expect(image.prepareForEink.mock.calls[0][0]).toBe(
-      '/data/plugin/insert-early.png',
+      '/data/plugin/insert-early-openclipart-340609.png',
     );
     const text = logLines().join('\n');
     expect(text).toMatch(/time download: \d+ ms, early, started \d+ ms before/);
@@ -186,10 +186,10 @@ describe('the early download of Insert picture (#88)', () => {
     native.downloadToFile.mockClear();
     await insertPicture(result, 'soup', null, false, undefined, early);
     expect(native.downloadToFile.mock.calls[0][1]).toBe(
-      '/data/plugin/insert-download.png',
+      '/data/plugin/insert-openclipart-340609.png',
     );
     expect(image.prepareForEink.mock.calls[0][0]).toBe(
-      '/data/plugin/insert-download.png',
+      '/data/plugin/insert-openclipart-340609.png',
     );
   });
 
@@ -201,7 +201,7 @@ describe('the early download of Insert picture (#88)', () => {
     await insertPicture(result, 'soup', null, false, undefined, early);
     expect(native.downloadToFile).toHaveBeenCalledTimes(2);
     expect(native.downloadToFile.mock.calls[1][1]).toBe(
-      '/data/plugin/insert-download.png',
+      '/data/plugin/insert-openclipart-340609.png',
     );
   });
 });
@@ -220,10 +220,10 @@ describe('insertPicture (#12)', () => {
     expect(native.downloadToFile.mock.calls[0].slice(0, 2)).toEqual([
       'https://openclipart.org/image/800px/340609',
       // Private: replacing a file in MyStyle needs FILE:DELETE (#62).
-      '/data/plugin/insert-download.png',
+      '/data/plugin/insert-openclipart-340609.png',
     ]);
     expect(image.prepareForEink.mock.calls[0].slice(0, 5)).toEqual([
-      '/data/plugin/insert-download.png',
+      '/data/plugin/insert-openclipart-340609.png',
       path,
       640,
       'png',
@@ -298,7 +298,7 @@ describe('insertPicture (#12)', () => {
       '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.original.png';
     expect(done).toEqual({ok: true, value: kept});
     expect(native.downloadToFile.mock.calls.map(call => call[1])).toEqual([
-      '/data/plugin/insert-download.png',
+      '/data/plugin/insert-openclipart-340609.png',
       kept,
     ]);
   });
@@ -319,7 +319,7 @@ describe('insertPicture (#12)', () => {
         '/storage/emulated/0/MyStyle/Ink2Pic/library/openclipart-340609.original.png';
       expect(await done).toEqual({ok: true, value: kept});
       const written = native.downloadToFile.mock.calls.map(call => call[1]);
-      expect(written).toEqual(['/data/plugin/insert-download.png', kept]);
+      expect(written).toEqual(['/data/plugin/insert-openclipart-340609.png', kept]);
       expect(written).not.toContain(prepared);
       expect(logLines().join('\n')).toMatch(/TIMEOUT/);
       // Recorded unprepared: a later contour insert prepares it again.

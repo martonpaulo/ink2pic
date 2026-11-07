@@ -5,8 +5,14 @@
  * showPluginView (official docs); a missing permission opens the view's onboarding, which then
  * runs the insert as before. Whether the host delivers a showType 0 press and runs the SDK calls
  * with no view is TO TEST on the device (brief section 10.5).
+ *
+ * JS timers may stop while no view is open (brief section 3.3, REPORTED), so the flow never waits
+ * on one to end (#93): its limit is measured with Date.now() before each step, and a press after
+ * that limit starts again instead of waiting for a run that may never end. The lasso place is
+ * marked to be read again before the word is deleted or the picture lassoed: the person stays on
+ * the note meanwhile.
  */
-import {log, logged} from '../log/memory';
+import {log, logged, timed} from '../log/memory';
 import {missingPermissions} from '../onboarding/permissions';
 import {queuePress} from '../sdk/buttons';
 import {showPluginView} from '../sdk/plugin';
@@ -39,10 +45,18 @@ const DEVICE: HeadlessDeps = {
   press: queuePress,
 };
 
+/**
+ * The longest one press may take, measured with Date.now(): about four source budgets (brief
+ * section 8.5) for the search, the thumbnails, the download and the insert.
+ */
+export const NO_VIEW_LIMIT_MS = 60000;
+
 /** The failure sentence the view shows once it opens; taken once. */
 let note: string | null = null;
 const noteListeners = new Set<() => void>();
-let running = false;
+/** When the running press started, or null; a newer press holds `run` (#93). */
+let runningSince: number | null = null;
+let run = 0;
 
 /** The sentence of the last failed headless insert, once; null when there is none. */
 export function takeHeadlessNote(): string | null {
@@ -68,14 +82,23 @@ async function showFailure(text: string, deps: HeadlessDeps): Promise<void> {
 export async function insertWithoutView(
   deps: HeadlessDeps = DEVICE,
 ): Promise<void> {
-  if (running) {
+  const started = Date.now();
+  const age = runningSince === null ? null : started - runningSince;
+  if (age !== null && age <= NO_VIEW_LIMIT_MS) {
     log('insert picture (no view): already running, press ignored');
     return;
   }
-  running = true;
+  runningSince = started;
+  const own = ++run;
+  const deadline = started + NO_VIEW_LIMIT_MS;
   try {
     await deps.session();
     log('insert picture (no view): start');
+    if (age !== null) {
+      log(
+        `insert picture (no view): the last press is still running after ${age} ms; starting again`,
+      );
+    }
     await deps.folder();
     if ((await deps.missing()).length > 0) {
       log(
@@ -85,14 +108,20 @@ export async function insertWithoutView(
       await logged('showPluginView', deps.show);
       return;
     }
-    const query = await deps.read();
+    const query = await timed('lasso', () => deps.read());
     if (!query.ok) {
       log(`insert picture (no view): no word, ${query.code} ${query.message}`);
       await showFailure(failureText(atStep('lasso', query)), deps);
       return;
     }
     log(`insert picture (no view): "${query.value.query}"`);
-    const inserted = await deps.insert(query.value.query, query.value.place);
+    const {place} = query.value;
+    const inserted = await deps.insert(
+      query.value.query,
+      place ? {...place, recheck: true} : null,
+      undefined,
+      deadline,
+    );
     if (!inserted.ok) {
       await showFailure(inserted.text, deps);
       return;
@@ -102,6 +131,8 @@ export async function insertWithoutView(
     log(`insert picture (no view) failed: ${String(error)}`);
     await showFailure(copy['error.unexpected'], deps);
   } finally {
-    running = false;
+    if (run === own) {
+      runningSince = null;
+    }
   }
 }

@@ -95,7 +95,9 @@ async function attempt(
 
 /**
  * One request within `timeoutMs`: a 429, a 5xx or a network error is tried once more after
- * `retryDelayMs`, when the budget still has room for it (#65). Each retry is logged.
+ * `retryDelayMs`, when the budget still has room for it (#65). Each retry is logged. A
+ * `retryDelayMs` of 0 retries at once, with no timer: the no-view insert must end while JS
+ * timers may stop (#93, brief section 3.3).
  */
 export function createFetcher({
   fetch,
@@ -125,7 +127,9 @@ export function createFetcher({
       return failure(first.kind, first.message);
     }
     log(`request ${url}: ${first.message}; retrying in ${retryDelayMs} ms`);
-    await sleep(clock, retryDelayMs);
+    if (retryDelayMs > 0) {
+      await sleep(clock, retryDelayMs);
+    }
     const second = await attempt(fetch, url, headers, clock, left, timeoutMs);
     return second.ok ? second : failure(second.kind, second.message);
   };

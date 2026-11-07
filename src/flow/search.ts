@@ -33,18 +33,20 @@ export type AfterSearch = {offline: string} | {library: Library} | null;
 export type SearchRunOptions = {
   /** Search the word as typed: no corrected spelling, no cached answer (#65). */
   exact?: boolean;
+  /** No wait on a JS timer, for the no-view insert: timers may stop with no view (#93). */
+  noTimerWait?: boolean;
 };
 
 export async function runSearch(
   word: string,
   sources: readonly SourceAdapter[] = DEFAULT_ADAPTERS,
   isNewest: () => boolean = () => true,
-  {exact = false}: SearchRunOptions = {},
+  {exact = false, noTimerWait = false}: SearchRunOptions = {},
 ): Promise<SearchRun> {
   log(`search "${word}"${exact ? ' exactly' : ''}`);
   // The stored thumbnails are listed while the search runs, so the grid knows them at once.
   const [found, thumbDir] = await Promise.all([
-    searchCached(word, sources, undefined, {exact}),
+    searchCached(word, sources, undefined, {exact, noTimerWait}),
     prepareThumbs(),
   ]);
   // Saved OpenMoji pictures are marked; with no network, only those show (#91).

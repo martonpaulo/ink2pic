@@ -18,28 +18,42 @@ export function libraryDir(externalRoot = SHARED_ROOT): string {
   return sharedDir(externalRoot, 'library');
 }
 
+/** The start of every temporary download's name in the private folder (#93). */
+export const TEMPORARY_PREFIX = 'insert-';
+
 /**
- * `<plugin folder>/insert-download.<extension>`: the raw download of an insert, in the private
- * folder, where replacing it needs no permission; PluginHost counts replacing a file in shared
- * storage as a delete (#62). One fixed name, overwritten by each insert.
+ * `<plugin folder>/insert-<result id>.<extension>`: the raw download of an insert, in the private
+ * folder, where writing it needs no permission; PluginHost counts replacing a file in shared
+ * storage as a delete (#62). Named per result, so two inserts at the same time never write one
+ * file (#93); removed after the insert.
  */
 export function insertDownloadPath(
   pluginDir: string,
+  id: string,
   extension: string,
 ): string {
-  return `${pluginDir}/insert-download.${extension}`;
+  return `${pluginDir}/${TEMPORARY_PREFIX}${safeFileName(id)}.${extension}`;
 }
 
 /**
- * `<plugin folder>/insert-early.<extension>`: the full download «Insert picture» starts for the
- * leading picture before page 1's order is known (#88); its own name, so a dropped one never
- * overwrites the winner's download. One fixed name, overwritten by each early download.
+ * `<plugin folder>/insert-early-<result id>.<extension>`: the full download «Insert picture»
+ * starts for the leading picture before page 1's order is known (#88); its own name, so a dropped
+ * one never overwrites the winner's download (#93); removed once used or dropped.
  */
 export function earlyDownloadPath(
   pluginDir: string,
+  id: string,
   extension: string,
 ): string {
-  return `${pluginDir}/insert-early.${extension}`;
+  return `${pluginDir}/${TEMPORARY_PREFIX}early-${safeFileName(id)}.${extension}`;
+}
+
+/** True for a temporary download of `insertDownloadPath` or `earlyDownloadPath` in `pluginDir`. */
+export function isTemporaryDownload(pluginDir: string, path: string): boolean {
+  return (
+    path.startsWith(`${pluginDir}/${TEMPORARY_PREFIX}`) &&
+    !path.slice(pluginDir.length + 1).includes('/')
+  );
 }
 
 /** A file name safe on the device: letters, digits, dot, dash and underscore only. */

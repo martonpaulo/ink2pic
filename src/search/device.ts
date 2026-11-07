@@ -27,11 +27,12 @@ const breaker = createBreaker();
 
 /**
  * The search context on the device, with the person's query languages (#68), style and data
- * saver (#70).
+ * saver (#70). `noTimerWait` retries a failed request at once, with no timer (#93).
  */
 export function deviceContext(
   settings: Settings,
   fetch: FetchLike = globalThis.fetch,
+  noTimerWait = false,
 ): SourceContext {
   return {
     ...createContext({
@@ -39,6 +40,7 @@ export function deviceContext(
       userAgent: USER_AGENT,
       log,
       languages: settings.languages,
+      ...(noTimerWait ? {retryDelayMs: 0} : {}),
     }),
     photos: settings.style === 'photos',
     dataSaver: settings.dataSaver,
@@ -49,10 +51,10 @@ export async function searchCached(
   query: string,
   sources: readonly SourceAdapter[] = DEFAULT_ADAPTERS,
   context?: SourceContext,
-  {exact = false}: {exact?: boolean} = {},
+  {exact = false, noTimerWait = false}: {exact?: boolean; noTimerWait?: boolean} = {},
 ): Promise<SearchOutcome> {
   const settings = await getSettings();
-  const ctx = context ?? deviceContext(settings);
+  const ctx = context ?? deviceContext(settings, undefined, noTimerWait);
   // Only the sources the person left on (#70); one always is.
   const active = sources.filter(source => sourceOn(settings, source.name));
   const run = (q: string) =>
