@@ -8,8 +8,9 @@ const box = (left: number, top: number, right: number, bottom: number): Box => (
   bottom,
 });
 const screen = {name: 'the screen', box: box(0, 0, 1024, 1365)};
-const limits: Limits = {touchTarget: 63, minFont: 19};
+const limits: Limits = {touchTarget: 63, minFont: 19, screenPadding: 5};
 const measured = (over: Partial<Measured>): Measured => ({
+  screen: screen.box,
   targets: [],
   texts: [],
   ...over,
@@ -63,7 +64,7 @@ describe('renders: the e-ink rules (#80)', () => {
     expect(
       breaksOf(
         measured({
-          targets: [{name: 'Close', width: 63, height: 75.6}],
+          targets: [{name: 'Close', width: 63, height: 75.6, box: box(10, 10, 73, 85.6)}],
           texts: [{name: 'Close', text: 'Close', fontSize: 21, glyphs: box(10, 10, 60, 30), within: [screen]}],
         }),
         limits,
@@ -76,8 +77,8 @@ describe('renders: the e-ink rules (#80)', () => {
       breaksOf(
         measured({
           targets: [
-            {name: '◀', width: 40, height: 75},
-            {name: 'Search', width: 120, height: 50},
+            {name: '◀', width: 40, height: 75, box: box(10, 10, 50, 85)},
+            {name: 'Search', width: 120, height: 50, box: box(60, 10, 180, 60)},
           ],
         }),
         limits,
@@ -101,12 +102,32 @@ describe('renders: the e-ink rules (#80)', () => {
         limits,
       ),
     ).toEqual([
+      '«Wide» reaches into the screen padding',
       'text «Close the view» runs outside «Close»',
       'text «Wide» runs outside the screen',
     ]);
   });
 
-  it('fails text under the minimum font size, and passes it at the minimum (#85)', () => {
+  it('fails a target or text in the screen padding, and passes one at its edge (#97)', () => {
+    const bottom = screen.box.bottom - limits.screenPadding;
+    expect(
+      breaksOf(
+        measured({
+          targets: [
+            {name: 'Reset all', width: 120, height: 75, box: box(800, bottom - 72, 920, bottom + 3)},
+            {name: 'Cancel', width: 100, height: 75, box: box(680, bottom - 75, 780, bottom)},
+          ],
+          texts: [
+            {name: 'Reset all', text: 'Reset all', fontSize: 21, glyphs: box(820, bottom - 40, 900, bottom + 1), within: [screen]},
+            {name: 'Cancel', text: 'Cancel', fontSize: 21, glyphs: box(700, bottom - 50, 760, bottom - 30), within: [screen]},
+          ],
+        }),
+        limits,
+      ),
+    ).toEqual(['«Reset all» reaches into the screen padding']);
+  });
+
+    it('fails text under the minimum font size, and passes it at the minimum (#85)', () => {
     const text = (name: string, fontSize: number) => ({
       name,
       text: name,

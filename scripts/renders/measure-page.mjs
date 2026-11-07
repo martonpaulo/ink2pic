@@ -36,7 +36,12 @@ export function measurePage() {
     .filter(el => shown(el) && getComputedStyle(el).pointerEvents !== 'none')
     .map(el => {
       const rect = el.getBoundingClientRect();
-      return {name: nameOf(el), width: rect.width / zoom, height: rect.height / zoom};
+      return {
+        name: nameOf(el),
+        width: rect.width / zoom,
+        height: rect.height / zoom,
+        box: boxOf(rect),
+      };
     });
 
   const texts = [...document.querySelectorAll('.text')]
@@ -65,5 +70,5 @@ export function measurePage() {
         within,
       };
     });
-  return {targets, texts};
+  return {screen: boxOf(root.getBoundingClientRect()), targets, texts};
 }

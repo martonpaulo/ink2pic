@@ -69,12 +69,15 @@ afterAll(async () => {
 
 it('renders every screen and finds no e-ink rule break (#80)', async () => {
   const report: Record<string, string[]> = {};
+  /** Every target's box per screen, to compare a layout change before and after (#97). */
+  const geometry: Record<string, Measured['targets']> = {};
   for (const screen of SCREENS) {
     const tree = await screen.render();
     const json = tree.toJSON();
     await page.setContent(toHtml(json, scale), {waitUntil: 'load'});
     await page.screenshot({path: path.join(OUT, `${screen.name}.png`)});
     const measured = await page.evaluate<Measured>(MEASURE);
+    geometry[screen.name] = measured.targets;
     const contrast = await page.evaluate<ContrastResult>(CONTRAST);
     report[screen.name] = [
       ...animationBreaks(json),
@@ -90,6 +93,7 @@ it('renders every screen and finds no e-ink rule break (#80)', async () => {
     });
   }
   fs.writeFileSync(path.join(OUT, 'report.json'), `${JSON.stringify(report, null, 1)}\n`);
+  fs.writeFileSync(path.join(OUT, 'geometry.json'), `${JSON.stringify(geometry, null, 1)}\n`);
   const lines = Object.entries(report).flatMap(([name, found]) =>
     found.map(line => `${name}: ${line}`),
   );

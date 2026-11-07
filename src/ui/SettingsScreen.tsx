@@ -199,6 +199,20 @@ export function SettingsScreen({
     }
     setBottom((await onClear()) ? 'cleared' : 'clearFailed');
   };
+  const confirmButton = (
+    <Button
+      label={
+        copy[
+          bottom === 'clear'
+            ? 'settings.clearConfirm'
+            : bottom === 'symbols'
+            ? 'settings.symbolsConfirm'
+            : 'settings.reset'
+        ]
+      }
+      onPress={confirm}
+    />
+  );
   return (
     <Screen>
       <ToolBar
@@ -268,30 +282,22 @@ export function SettingsScreen({
               onPress={askSymbols}
             />
           </View>
-          <View style={styles.grow} />
-          {/* Reserved: a question or a result never moves the options above. */}
-          <Text style={[shared.text, shared.statusLine]}>
-            {symbolsLine ?? BOTTOM_TEXT[bottom]}
-          </Text>
-          <View style={shared.actions}>
+          {/* The line beside the actions, at the bottom: a question or a result never moves the
+              options above, and the screen keeps its padding free (#97). */}
+          <View style={[shared.actions, styles.bottom]}>
+            <Text style={[shared.text, shared.statusLine, styles.grow]}>
+              {symbolsLine ?? BOTTOM_TEXT[bottom]}
+            </Text>
             {asking ? (
               <>
-                <Button
-                  label={
-                    copy[
-                      bottom === 'clear'
-                        ? 'settings.clearConfirm'
-                        : bottom === 'symbols'
-                        ? 'settings.symbolsConfirm'
-                        : 'settings.reset'
-                    ]
-                  }
-                  onPress={confirm}
-                />
+                {/* Clear holds the leading slot, so its confirm takes the trailing one: a double
+                    tap lands on Cancel, never on the confirm (#97). */}
+                {bottom !== 'clear' && confirmButton}
                 <Button
                   label={copy['action.cancel']}
                   onPress={() => ask('none')}
                 />
+                {bottom === 'clear' && confirmButton}
               </>
             ) : (
               <>
@@ -316,6 +322,8 @@ export function SettingsScreen({
 
 const styles = StyleSheet.create({
   grow: {flex: 1},
+  /** At the bottom of the screen, without a spacer and its section gap. */
+  bottom: {marginTop: 'auto'},
   /** The option's label above its row of values. */
   option: {gap: metrics.rowPadding},
 });
