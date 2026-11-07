@@ -133,6 +133,15 @@ export function savedSymbolPath(result: SearchResult): string | null {
 }
 
 /**
+ * The `file://` URI of a saved symbol, else null: the one place a tile reads it, before any
+ * thumbnail store, so a saved symbol shows offline with the plugin folder unlisted (#99).
+ */
+export function savedSymbolUri(result: SearchResult): string | null {
+  const path = savedSymbolPath(result);
+  return path ? `${FILE_PREFIX}${path}` : null;
+}
+
+/**
  * As `savedSymbolPath`, listing the folder first when this session has not, and only when the
  * file is a whole PNG: the insert's saved picture (#91, #102).
  */

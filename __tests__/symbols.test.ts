@@ -3,7 +3,9 @@
  * shown once is saved in MyStyle/Ink2Pic/symbols and shows and inserts with no network; with
  * none saved, no symbol shows offline; «Download symbols» resumes after it was cut off.
  */
-import {NativeModules} from 'react-native';
+import React from 'react';
+import {Image, NativeModules} from 'react-native';
+import renderer, {act, ReactTestRenderer} from 'react-test-renderer';
 import * as sdk from 'sn-plugin-lib';
 import {runSearch} from '../src/flow/search';
 import {insertPicture} from '../src/flow/insertPicture';
@@ -12,7 +14,7 @@ import {
   SearchResult,
   symbolHexes,
 } from '../src/search-core';
-import {thumbUri} from '../src/search/thumbs';
+import {resetThumbsForTests, thumbUri} from '../src/search/thumbs';
 import {
   DOWNLOAD_PARALLEL,
   downloadAllSymbols,
@@ -24,6 +26,7 @@ import {
   STOP_AFTER_FAILURES,
   symbolsStatus,
 } from '../src/symbols/store';
+import {ResultsGrid} from '../src/ui/ResultsGrid';
 import {USER_AGENT} from '../src/config';
 import {setAfterCall} from '../src/log/memory';
 import {
@@ -98,6 +101,36 @@ describe('offline symbols (#91)', () => {
     );
     expect(inserted.ok).toBe(true);
     expect(pictureRequests(host).length).toBe(before);
+  });
+
+  it('shows a saved symbol offline in a grid with no thumbnail store (#99)', async () => {
+    const host = started();
+    const [first] = await symbolResults();
+    const file = `file://${symbolPath(first.id.slice('openmoji:'.length))}`;
+    expect(await thumbUri(first, '/unused')).toBe(file);
+
+    resetSymbolsForTests(); // a new session lists the folder again
+    resetThumbsForTests(); // and its plugin folder is not listed: no store
+    host.online = false;
+    const offline = await symbolResults();
+    expect(offline.map(r => r.id)).toEqual([first.id]);
+    expect(await thumbUri(offline[0], '/unused')).toBe(file);
+    let tree!: ReactTestRenderer;
+    act(() => {
+      tree = renderer.create(
+        React.createElement(ResultsGrid, {
+          results: offline,
+          searching: false,
+          onPick: () => {},
+          thumbDir: null,
+        }),
+      );
+    });
+    const uris = tree.root
+      .findAllByType(Image)
+      .map(image => image.props.source.uri);
+    expect(uris).toEqual([file]);
+    act(() => tree.unmount());
   });
 
   it('saves a symbol inserted from the search, for the next time', async () => {

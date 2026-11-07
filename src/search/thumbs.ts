@@ -9,7 +9,7 @@ import {deleteFile, downloadThumbToFile, listDir} from '../storage/files';
 import {safeFileName} from '../storage/paths';
 import {pluginFolder} from '../storage/session';
 import type {SearchResult} from '../search-core';
-import {savedSymbolPath, symbolUri} from '../symbols/store';
+import {savedSymbolUri, symbolUri} from '../symbols/store';
 
 /** Most thumbnail files kept; the oldest is removed first. DEFAULT: about 100 KB each, 30 MB. */
 export const THUMB_LIMIT = 300;
@@ -74,9 +74,9 @@ export function cachedThumbUri(
   if (!result.thumbUrl.startsWith(WEB_PREFIX)) {
     return result.thumbUrl;
   }
-  const symbol = savedSymbolPath(result);
+  const symbol = savedSymbolUri(result);
   if (symbol) {
-    return `${FILE_PREFIX}${symbol}`;
+    return symbol;
   }
   const path = thumbPath(pluginDir, result);
   return stored(path) ? `${FILE_PREFIX}${path}` : result.thumbUrl;
@@ -100,7 +100,7 @@ export function needsDownload(
   return (
     known !== null &&
     result.thumbUrl.startsWith(WEB_PREFIX) &&
-    !savedSymbolPath(result) &&
+    !savedSymbolUri(result) &&
     !known.has(thumbPath(pluginDir, result))
   );
 }
@@ -238,12 +238,16 @@ export function thumbUri(
   pluginDir: string,
 ): Promise<string> {
   const stored = known;
-  if (!stored || !result.thumbUrl.startsWith(WEB_PREFIX)) {
+  if (!result.thumbUrl.startsWith(WEB_PREFIX)) {
     return Promise.resolve(result.thumbUrl);
   }
   if (result.source === 'openmoji') {
-    // Kept in the symbols folder for offline use, not in the thumbnail store (#91).
+    // Kept in the symbols folder for offline use, not in the thumbnail store, so it works
+    // with the store off too (#91, #99).
     return symbolUri(result);
+  }
+  if (!stored) {
+    return Promise.resolve(result.thumbUrl);
   }
   const path = thumbPath(pluginDir, result);
   if (stored.has(path)) {

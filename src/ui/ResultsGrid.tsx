@@ -22,6 +22,7 @@ import {
 } from '../search/thumbs';
 import {MEASURED_RESULTS, PAGE_SIZE} from '../search-core';
 import type {SearchResult} from '../search-core';
+import {savedSymbolUri} from '../symbols/store';
 import {Button} from './Button';
 import {copy} from './copy';
 import {metrics} from './metrics';
@@ -79,15 +80,17 @@ export function ResultsGrid({
   const page = paging.results === results ? paging.page : 0;
   const setPage = (next: number) => setPaging({results, page: next});
   const measuring = Boolean(thumbDir && measureLater);
-  // Chosen once per results list: the contour drawing that is inserted (#66), the stored file, the
-  // web URL when there is no store, or null while the thumbnail must be downloaded first (#46), or
-  // downloaded and measured first on page 3 and later (#72).
+  // Chosen once per results list: the contour drawing that is inserted (#66), a saved symbol even
+  // with no store (#99), the stored file, the web URL when there is no store, or null while the
+  // thumbnail must be downloaded first (#46), or downloaded and measured first on page 3 and later
+  // (#72).
   const thumbUris = useMemo(
     () =>
       new Map<string, string | null>(
         results.map((result, index) => [
           result.id,
           contourThumbs?.get(result.id) ??
+            savedSymbolUri(result) ??
             (!thumbDir
               ? result.thumbUrl
               : (measuring && index >= MEASURED_RESULTS) ||
