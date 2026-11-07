@@ -32,3 +32,9 @@ describe('copy', () => {
     expect(copy[key as CopyKey]).toBe(text);
   });
 });
+
+it('asks for another spelling or word on an empty page, not for English (#65)', () => {
+  // Portuguese, Spanish and Chinese words are understood (owner D4 A).
+  expect(copy['search.empty']).not.toMatch(/English/);
+  expect(copy['search.empty']).toMatch(/spelling/);
+});

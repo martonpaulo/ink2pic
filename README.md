@@ -114,7 +114,7 @@ Ink2Pic never fails silently: it shows one sentence that says what to do.
 | «No internet. Showing your library.» | Connect to Wi-Fi, or insert a picture you saved before. |
 | «Ink2Pic needs internet access to search pictures.» | Turn on Network Access in Settings > Apps > Plugins > Ink2Pic > Permissions. |
 | «Could not read the word. Type it instead.» | Type the word in the search field and tap Search. |
-| «No pictures found. Try a simpler English word.» | Try a shorter or more common word. |
+| «No pictures found. Check the spelling or try one word.» | Check the spelling, or try one word or a more common one. |
 | «Could not put the picture in the note. Open a note page and try again.» | Open a page of a note, lasso the word again and try again. |
 | «Something went wrong. Open Log for details.» | Tap Log, then report the problem as below. |
 

@@ -9,7 +9,7 @@ export const copy = {
   'tab.library': 'Library',
   'search.placeholder': 'Type a word',
   'search.running': 'Searching…',
-  'search.empty': 'No pictures found. Try a simpler English word.',
+  'search.empty': 'No pictures found. Check the spelling or try one word.',
   'search.recent': 'Recent',
   'search.needWord': 'Type a word first.',
   'search.corrected': 'Showing results for {query}.',
