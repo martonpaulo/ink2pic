@@ -18,34 +18,27 @@ import {
   SourceContext,
 } from '../search-core';
 import {pluginFolder} from '../storage/session';
+import {getSettings} from '../storage/settings';
 import {deviceStorage} from '../storage/text';
 
 /** In memory for the plugin's run: a source that keeps failing is skipped for a while (#65). */
 const breaker = createBreaker();
 
-/**
- * shortcut: the product default with no system language read yet, English alone; #68 reads the
- * person's setting and the system language.
- */
-const LANGUAGES: readonly string[] = ['en'];
-
+/** The search context on the device, with the person's query languages (#68). */
 export function deviceContext(
+  languages: readonly string[],
   fetch: FetchLike = globalThis.fetch,
 ): SourceContext {
-  return createContext({
-    fetch,
-    userAgent: USER_AGENT,
-    log,
-    languages: LANGUAGES,
-  });
+  return createContext({fetch, userAgent: USER_AGENT, log, languages});
 }
 
 export async function searchCached(
   query: string,
   sources: readonly SourceAdapter[] = DEFAULT_ADAPTERS,
-  ctx: SourceContext = deviceContext(),
+  context?: SourceContext,
   {exact = false}: {exact?: boolean} = {},
 ): Promise<SearchOutcome> {
+  const ctx = context ?? deviceContext((await getSettings()).languages);
   const run = (q: string) =>
     searchAll(q, sources, {ctx, correct: !exact, breaker});
   if (exact) {
@@ -60,6 +53,8 @@ export async function searchCached(
   const cached = await cachedSearch(query, run, {
     storage: deviceStorage,
     path: `${dir.value}/search-cache.json`,
+    // Another language order looks the word up elsewhere: a new search, not the cached one.
+    variant: ctx.languages.join(','),
   });
   if (cached.problem) {
     log(`search cache: ${cached.problem}`);

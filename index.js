@@ -14,9 +14,17 @@ import {
   SHOW_FULL_VIEW,
   SIDEBAR_BUTTON_ID,
 } from './src/buttons';
-import {initPlugin, registerButton, startButtonQueue} from './src/sdk/buttons';
+import {
+  initPlugin,
+  registerButton,
+  registerConfigButton,
+  startButtonQueue,
+  startConfigQueue,
+  startLangListener,
+} from './src/sdk/buttons';
+import {showPluginView} from './src/sdk/plugin';
 import {copy} from './src/ui/copy';
-import {log, setAfterCall} from './src/log/memory';
+import {log, logged, setAfterCall} from './src/log/memory';
 import {flushLogFile, openLogFile} from './src/storage/logFile';
 import {logsDir} from './src/storage/paths';
 import {catchCrashes} from './src/flow/crash';
@@ -73,3 +81,21 @@ registerButton(BUTTON_TYPE_LASSO, ['NOTE'], {
 
 // After registerButton, as the official docs order it; before the view exists (gotcha 11).
 report('button listener', startButtonQueue());
+
+// The plugin's own Settings entry opens the Languages screen (#68): registered first, then its
+// listener, as the official docs order it. A click queues like a press and shows the view, which
+// may be closed; the host keeps the last config event only 1000 ms.
+registerConfigButton().then(result => report('config button', result));
+report(
+  'config listener',
+  startConfigQueue(() => {
+    log('config button clicked');
+    logged('showPluginView', showPluginView);
+  }),
+);
+
+// The system language, for the default query languages; there is no getter (#68, TO TEST).
+report(
+  'language listener',
+  startLangListener(msg => log(`system language: ${JSON.stringify(msg)}`)),
+);

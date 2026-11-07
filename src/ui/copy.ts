@@ -62,6 +62,26 @@ export const copy = {
   'probe.lastWord': 'Lasso last word',
   // Outside the brief's table: the empty Library tab (#15).
   'library.empty': 'No saved pictures yet. Insert one from a search.',
+  // The Languages screen, from the plugin's Settings entry (#68).
+  'languages.title': 'Languages',
+  'languages.hint': 'The first language is tried first.',
+  'languages.inUse': 'IN USE',
+  'languages.addSection': 'ADD A LANGUAGE',
+  'languages.up': '↑',
+  'languages.down': '↓',
+  'languages.remove': 'Remove',
+  'languages.add': 'Add',
+  'languages.upLabel': 'Move {language} up',
+  'languages.downLabel': 'Move {language} down',
+  'languages.removeLabel': 'Remove {language}',
+  'languages.addLabel': 'Add {language}',
+  'languages.reset': 'Reset',
+  'languages.resetQuestion': 'Reset languages to the default?',
+  'action.cancel': 'Cancel',
+  'language.zh': '中文 (Chinese)',
+  'language.es': 'Español',
+  'language.en': 'English',
+  'language.pt': 'Português',
 } as const;
 
 export type CopyKey = keyof typeof copy;

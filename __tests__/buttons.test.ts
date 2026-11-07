@@ -76,3 +76,61 @@ describe('button queue (#13, gotcha 11)', () => {
     expect(states).toEqual([3]);
   });
 });
+
+describe('config button (#68)', () => {
+  const actual = () =>
+    jest.requireActual(
+      '../src/sdk/buttons',
+    ) as typeof import('../src/sdk/buttons');
+
+  it('registers, and fails on a false answer', async () => {
+    const config = PluginManager.registerConfigButton as jest.Mock;
+    config.mockResolvedValue(true);
+    expect((await actual().registerConfigButton()).ok).toBe(true);
+    config.mockResolvedValue(false);
+    expect((await actual().registerConfigButton()).ok).toBe(false);
+  });
+
+  it('keeps a click that came before the view listened, once', () => {
+    const {startConfigQueue, takePendingConfig, onConfigClick} = actual();
+    let click: (() => void) | undefined;
+    (
+      PluginManager.registerConfigButtonListener as jest.Mock
+    ).mockImplementation(listener => {
+      click = listener.onClick;
+      return {remove: jest.fn()};
+    });
+    const shown = jest.fn();
+    expect(startConfigQueue(shown).ok).toBe(true);
+    click?.();
+    expect(shown).toHaveBeenCalledTimes(1);
+    expect(takePendingConfig()).toBe(true);
+    expect(takePendingConfig()).toBe(false);
+    const seen = jest.fn();
+    const stop = onConfigClick(seen);
+    click?.();
+    stop();
+    click?.();
+    expect(seen).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads the system language from the language event, in any shape', () => {
+    const {startLangListener, systemLanguage} = actual();
+    let send: ((msg: unknown) => void) | undefined;
+    (PluginManager.registerLangListener as jest.Mock).mockImplementation(
+      listener => {
+        send = listener.onMsg;
+        return {remove: jest.fn()};
+      },
+    );
+    expect(startLangListener().ok).toBe(true);
+    expect(systemLanguage()).toBeNull();
+    send?.('es');
+    expect(systemLanguage()).toBe('es');
+    send?.({data: {lang: 'zh_CN'}});
+    expect(systemLanguage()).toBe('zh_CN');
+    // A message with no language keeps the last one.
+    send?.({});
+    expect(systemLanguage()).toBe('zh_CN');
+  });
+});

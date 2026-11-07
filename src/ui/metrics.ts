@@ -13,6 +13,8 @@ const PX_PER_MM = 11.8;
 
 const TOUCH_TARGET_MM = 10;
 const CONTROL_HEIGHT_MM = 12;
+/** A button in a list row: one width, so the buttons of every row share a column (#68). */
+const ROW_BUTTON_WIDTH_MM = 22;
 /** The one spacing step every spacing role starts from [DEFAULT, calibrate on device]. */
 const SPACE_MM = 3;
 const BORDER_MM = 0.3;
@@ -36,6 +38,7 @@ export const metrics = {
   touchTarget: mm(TOUCH_TARGET_MM),
   /** A button and the text field: one height, so a field and its button line up. */
   controlHeight: mm(CONTROL_HEIGHT_MM),
+  rowButtonWidth: mm(ROW_BUTTON_WIDTH_MM),
   border,
   selectedBarHeight: border * SELECTED_BAR_BORDERS,
 

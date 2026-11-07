@@ -41,3 +41,11 @@ export function safeFileName(name: string): string {
 export function logsDir(externalRoot = SHARED_ROOT): string {
   return sharedDir(externalRoot, 'logs');
 }
+
+/**
+ * `<root>/MyStyle/Ink2Pic/settings.json`, the person's settings (#68): in shared storage, so a
+ * plugin update keeps them, written in place (#62).
+ */
+export function settingsPath(externalRoot = SHARED_ROOT): string {
+  return sharedDir(externalRoot, 'settings.json');
+}

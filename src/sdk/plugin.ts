@@ -60,3 +60,11 @@ export function closePluginView(): Promise<Result<boolean>> {
     raw => ok(Boolean(raw)),
   );
 }
+
+/** Shows the plugin view, for a config click while it is closed (#68). */
+export function showPluginView(): Promise<Result<boolean>> {
+  return attempt(
+    () => PluginManager.showPluginView(),
+    raw => ok(Boolean(raw)),
+  );
+}

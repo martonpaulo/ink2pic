@@ -5,6 +5,8 @@ import {closeLogFileForTests} from '../src/storage/logFile';
 import {searchCached} from '../src/search/device';
 import type {SourceAdapter} from '../src/search-core';
 import {fullUrl} from '../src/search-core/registry';
+import {settingsPath} from '../src/storage/paths';
+import {resetSettingsForTests, saveSettings} from '../src/storage/settings';
 
 const files: Record<string, string> = {};
 const native = {
@@ -20,6 +22,7 @@ beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
   NativeModules.Ink2PicFiles = native;
   resetSessionForTests();
+  resetSettingsForTests();
   closeLogFileForTests();
   (FileUtils.getExternalDirPath as jest.Mock).mockResolvedValue([
     '/storage/emulated/0',
@@ -52,5 +55,37 @@ describe('searchCached (#16)', () => {
       'https://openclipart.org/image/800px/1',
     );
     expect(Object.keys(files)).toContain('/data/plugin/search-cache.json');
+  });
+});
+
+describe('the search languages (#68)', () => {
+  it('looks the word up in the saved order, and a new order is a new search', async () => {
+    files[settingsPath()] = JSON.stringify({languages: ['pt', 'en']});
+    const seen: string[][] = [];
+    const search = jest.fn(async (_query: string, ctx) => {
+      seen.push([...ctx.languages]);
+      return {
+        ok: true as const,
+        results: [
+          {
+            id: 'commons:Gato.png',
+            source: 'commons' as const,
+            title: 'Gato',
+            thumbUrl: 'https://upload.wikimedia.org/gato.png',
+            license: 'CC0',
+            attribution: 'Wikimedia Commons',
+          },
+        ],
+      };
+    });
+    const sources: SourceAdapter[] = [{name: 'commons', search}];
+    await searchCached('gato', sources);
+    expect(seen).toEqual([['pt', 'en']]);
+    await saveSettings({languages: ['en', 'pt']});
+    await searchCached('gato', sources);
+    expect(seen).toEqual([
+      ['pt', 'en'],
+      ['en', 'pt'],
+    ]);
   });
 });

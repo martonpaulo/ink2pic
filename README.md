@@ -89,6 +89,13 @@ The Library also works with no internet, and shows your recent search words as b
 Ink2Pic never deletes your files. Builds before 0.1.0 (13) also kept a `*.source.*` copy of each
 picture in `MyStyle/Ink2Pic/library/`; you can delete those copies with the file manager.
 
+### Languages
+
+Ink2Pic looks a word up in your languages, in your order: Chinese, Spanish, English and
+Portuguese are supported. Open **Settings > Apps > Plugins > Ink2Pic > Settings** to add, remove or
+move a language; the first one is tried first. Every tap is saved at once. **Reset** goes back to
+the device's language, then English.
+
 ### Log
 
 Tap **Log** to see what Ink2Pic did, step by step. Ink2Pic also writes the log to files on the

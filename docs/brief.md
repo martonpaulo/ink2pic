@@ -217,6 +217,8 @@ All signatures below were read from `sn-plugin-lib@0.2.3` source (`src/`) [CONFI
 - `showPluginView()`, `closePluginView()`.
 - `hasPermission(permission)`, `requestPermission(permission, desc?)`.
 - `registerPluginLifeListener(...)` (lifecycle events).
+- `registerConfigButton()` (`Promise<boolean>`) adds the plugin's own Settings entry, Settings > Apps > Plugins > Ink2Pic; `registerConfigButtonListener({onClick})` returns a subscription with `remove()`; the host replays the last config event to a listener added within 1000 ms [CONFIRMED in source and docs.supernote.com «register-config-button»]. Ink2Pic queues a click like a button press, calls `showPluginView()` and opens the Languages screen ([#68](https://github.com/martonpaulo/ink2pic/issues/68)). Whether the host shows the view by itself on a click, and whether write APIs fail there with `102` as apclark31 reports, is TO TEST.
+- `registerLangListener({onMsg})`: the system language event `plugin_event_lang`; there is **no getter**, and the event is not cached [CONFIRMED in source]. Whether the host sends it at start, and its message shape, is TO TEST: until one comes the default query languages are English alone ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
 - `registerEventListener('event_pen_up', registerType, listener)`: the only event the docs list; its message is the `Element[]` just written. `registerMotionListener(registerType, listener)`: `MotionEvent`s in screen pixels, `action` 0 down, 1 up, 2 move, 3 cancel [CONFIRMED in docs and source; whether they arrive while the view is closed is TO TEST, [#75](https://github.com/martonpaulo/ink2pic/issues/75)]. Elements carry no time and no rect: a stroke's rect comes from its `stroke.points` accessor.
 
 ### 4.2 `FileUtils` (`src/module/NativeFileUtils.ts`, TurboModule `RTNFileUtils`)
@@ -558,7 +560,7 @@ The Manta screen is 1920 x 2560 px on a 10.7 inch diagonal, which is about 299 p
 
 ### 8.9 No settings in the flow
 
-Defaults are chosen so the user never needs to adjust. A minimal config screen (`registerConfigButton`) is optional and can come later.
+Defaults are chosen so the user never needs to adjust. The plugin's own Settings entry (`registerConfigButton`) opens the Languages screen, outside the flow: the query languages in the order they are tried, each tap saved at once to `MyStyle/Ink2Pic/settings.json`, and a Reset to the default, the system language then English ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
 
 ### 8.10 User-facing copy
 
@@ -599,6 +601,25 @@ All strings live in one module, `src/ui/copy.ts`, never inline in components. En
 | `onboarding.2` | Circle it with the lasso. |
 | `onboarding.3` | Tap ••• on the lasso toolbar, then Find picture. |
 | `onboarding.start` | Start |
+| `languages.title` | Languages |
+| `languages.hint` | The first language is tried first. |
+| `languages.inUse` | IN USE |
+| `languages.addSection` | ADD A LANGUAGE |
+| `languages.up` | ↑ |
+| `languages.down` | ↓ |
+| `languages.remove` | Remove |
+| `languages.add` | Add |
+| `languages.upLabel` | Move {language} up |
+| `languages.downLabel` | Move {language} down |
+| `languages.removeLabel` | Remove {language} |
+| `languages.addLabel` | Add {language} |
+| `languages.reset` | Reset |
+| `languages.resetQuestion` | Reset languages to the default? |
+| `action.cancel` | Cancel |
+| `language.zh` | 中文 (Chinese) |
+| `language.es` | Español |
+| `language.en` | English |
+| `language.pt` | Português |
 
 Permission request descriptions (`requestPermission(permission, desc)`) reuse the `error.permission.*` texts.
 

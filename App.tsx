@@ -1,8 +1,9 @@
 /**
  * The plugin view: a button press checks the permissions (onboarding, #18), then opens the
  * search; the lasso button first turns the lassoed word into the query (#13). A tap on a result
- * inserts it (#12). «Insert picture» inserts the best result with no grid (#74). Every step is
- * logged; the log shows only behind the Log button (#36).
+ * inserts it (#12). «Insert picture» inserts the best result with no grid (#74). The plugin's
+ * Settings entry opens the Languages screen (#68). Every step is logged; the log shows only behind
+ * the Log button (#36).
  *
  * @format
  */
@@ -24,6 +25,7 @@ import {insertBest} from './src/flow/quickInsert';
 import {startSession} from './src/storage/logFile';
 import {pluginFolder} from './src/storage/session';
 import {
+  CONFIG_BUTTON_ID,
   INSERT_BUTTON_ID,
   LASSO_BUTTON_ID,
   SIDEBAR_BUTTON_ID,
@@ -31,9 +33,23 @@ import {
 import {log, logged} from './src/log/memory';
 import {missingPermissions, PermissionNeed} from './src/onboarding/permissions';
 import {getLassoElements} from './src/sdk/lasso';
-import {onButtonEvent, onLifecycle, takePendingButton} from './src/sdk/buttons';
+import {
+  onButtonEvent,
+  onConfigClick,
+  onLifecycle,
+  systemLanguage,
+  takePendingButton,
+  takePendingConfig,
+} from './src/sdk/buttons';
 import {closePluginView} from './src/sdk/plugin';
 import type {SearchResult} from './src/search-core';
+import {
+  LanguageCode,
+  LanguagesAction,
+  languagesStep,
+} from './src/settings/languages';
+import {getSettings, saveSettings} from './src/storage/settings';
+import {LanguagesScreen} from './src/ui/LanguagesScreen';
 import {Onboarding} from './src/ui/Onboarding';
 import {SearchScreen} from './src/ui/SearchScreen';
 import {StatusScreen} from './src/ui/StatusScreen';
@@ -44,6 +60,8 @@ type Screen =
   | {name: 'failed'}
   /** One line: «Adding…» while Insert picture runs, then its failure, if any (#74). */
   | {name: 'note'; text: string}
+  /** The plugin's Settings entry: the query languages, saved at every tap (#68). */
+  | {name: 'languages'; languages: readonly LanguageCode[]}
   | {
       name: 'onboarding';
       buttonId: number;
@@ -108,6 +126,12 @@ function App(): React.JSX.Element {
     flow: number,
     lasso: OpenedLasso,
   ) => {
+    if (buttonId === CONFIG_BUTTON_ID) {
+      place.current = null;
+      const settings = await getSettings();
+      show(flow, {name: 'languages', languages: settings.languages});
+      return;
+    }
     if (buttonId === INSERT_BUTTON_ID) {
       place.current = null;
       await insertNow(flow, lasso);
@@ -235,6 +259,24 @@ function App(): React.JSX.Element {
       takePendingButton();
       dispatch({type: 'press', id, how: 'live', now: Date.now()});
     });
+    // 2b. The plugin's Settings entry, pending or live, as a press of its own id (#68).
+    if (takePendingConfig()) {
+      dispatch({
+        type: 'press',
+        id: CONFIG_BUTTON_ID,
+        how: 'pending',
+        now: Date.now(),
+      });
+    }
+    const stopConfig = onConfigClick(() => {
+      takePendingConfig();
+      dispatch({
+        type: 'press',
+        id: CONFIG_BUTTON_ID,
+        how: 'live',
+        now: Date.now(),
+      });
+    });
     // 3. Closed: the next opening starts fresh; opened again: decide again, unless pressed.
     const stopLife = onLifecycle(state => dispatch({type: 'lifecycle', state}));
     // 4. Now, on mount, unless a press already chose: the controller starts the session log
@@ -242,6 +284,7 @@ function App(): React.JSX.Element {
     dispatch({type: 'mount'});
     return () => {
       stopPresses();
+      stopConfig();
       stopLife();
     };
     // Registered once for the life of the view; the controller holds the state.
@@ -263,7 +306,35 @@ function App(): React.JSX.Element {
     return inserted;
   };
 
+  /** One tap: the screen redraws once with the new list, then the file is written (#68). */
+  const changeLanguages = async (
+    current: readonly LanguageCode[],
+    action: LanguagesAction,
+  ) => {
+    const next = languagesStep(current, action);
+    if (next === current) {
+      return;
+    }
+    log(`languages: ${action.type} -> ${next.join(', ')}`);
+    setScreen({name: 'languages', languages: next});
+    await saveSettings({...(await getSettings()), languages: next});
+  };
+
   switch (screen.name) {
+    case 'languages':
+      return (
+        <LanguagesScreen
+          languages={screen.languages}
+          onChange={action => changeLanguages(screen.languages, action)}
+          onReset={() =>
+            changeLanguages(screen.languages, {
+              type: 'reset',
+              system: systemLanguage(),
+            })
+          }
+          onClose={() => closePluginView()}
+        />
+      );
     case 'onboarding':
       return (
         <Onboarding

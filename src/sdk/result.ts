@@ -71,3 +71,16 @@ export async function attempt<T>(
     );
   }
 }
+
+/** Runs a synchronous SDK call, such as a listener registration; a throw is a Failure. */
+export function attemptNow(call: () => unknown): Result<true> {
+  try {
+    call();
+    return ok(true);
+  } catch (error) {
+    return fail(
+      THROWN_CODE,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+}

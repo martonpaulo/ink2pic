@@ -21,6 +21,11 @@ export type CacheOptions = {
   /** The cache file in `storage`. */
   path: string;
   clock?: Clock;
+  /**
+   * The configuration the results depend on, such as the query languages (#68): an answer found
+   * with another configuration is a different entry.
+   */
+  variant?: string;
 };
 
 /**
@@ -72,8 +77,9 @@ function remembered(storage: TextStore): Map<string, Entry[]> {
   return byPath;
 }
 
-export function cacheKey(query: string): string {
-  return query.trim().toLowerCase();
+export function cacheKey(query: string, variant = ''): string {
+  const word = query.trim().toLowerCase();
+  return variant ? `${word}|${variant}` : word;
 }
 
 function store(result: SearchResult): StoredResult {
@@ -211,10 +217,10 @@ async function readEntries(
 export async function cachedSearch(
   query: string,
   run: (query: string) => Promise<SearchOutcome>,
-  {storage, path, clock = systemClock}: CacheOptions,
+  {storage, path, clock = systemClock, variant}: CacheOptions,
 ): Promise<CachedSearch> {
   const now = clock.now();
-  const key = cacheKey(query);
+  const key = cacheKey(query, variant);
   const byPath = remembered(storage);
   const inMemory = byPath.get(path);
   const read: ParsedCache = inMemory

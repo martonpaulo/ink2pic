@@ -1,17 +1,9 @@
 import {PluginManager} from 'sn-plugin-lib';
-import {attempt, fail, ok, Result, THROWN_CODE} from './result';
+import {attempt, attemptNow, fail, ok, Result, THROWN_CODE} from './result';
 
 /** Must run at startup (brief section 4.1). */
 export function initPlugin(): Result<true> {
-  try {
-    PluginManager.init();
-    return ok(true);
-  } catch (error) {
-    return fail(
-      THROWN_CODE,
-      error instanceof Error ? error.message : String(error),
-    );
-  }
+  return attemptNow(() => PluginManager.init());
 }
 
 /** Registers one plugin button; a `false` answer from the host is a failure. */
@@ -40,20 +32,14 @@ let pending: number | null = null;
 const pressListeners = new Set<(press: ButtonPress) => void>();
 
 export function startButtonQueue(): Result<true> {
-  try {
+  return attemptNow(() =>
     PluginManager.registerButtonListener({
       onButtonPress: event => {
         pending = event.id;
         pressListeners.forEach(listener => listener({id: event.id}));
       },
-    });
-    return ok(true);
-  } catch (error) {
-    return fail(
-      THROWN_CODE,
-      error instanceof Error ? error.message : String(error),
-    );
-  }
+    }),
+  );
 }
 
 /** The press that arrived before the view listened, once; null when there is none. */
@@ -81,4 +67,94 @@ export function onLifecycle(listener: (state: number) => void): () => void {
     onMsg: (msg: {state?: number}) => listener(Number(msg?.state)),
   });
   return () => subscription.remove();
+}
+
+/**
+ * The plugin's own Settings entry, Settings > Apps > Plugins > Ink2Pic (#68; official docs,
+ * «registerConfigButton»). A `false` answer from the host is a failure.
+ */
+export function registerConfigButton(): Promise<Result<true>> {
+  return attempt(
+    () => PluginManager.registerConfigButton(),
+    raw =>
+      raw === true
+        ? ok(true)
+        : fail(THROWN_CODE, `registerConfigButton answered ${String(raw)}`),
+  );
+}
+
+/**
+ * A config click, kept like a button press until the view takes it: the host keeps the last
+ * config event only 1000 ms (docs/research/2026-11-pluginhost-sdk.md), and the view may not exist
+ * yet when it comes.
+ */
+let configPending = false;
+const configListeners = new Set<() => void>();
+
+/** Listens at startup; `onClick` also runs for every click, after the click is queued. */
+export function startConfigQueue(onClick: () => void = () => {}): Result<true> {
+  return attemptNow(() =>
+    PluginManager.registerConfigButtonListener({
+      onClick: () => {
+        configPending = true;
+        configListeners.forEach(listener => listener());
+        onClick();
+      },
+    }),
+  );
+}
+
+/** True once when a config click arrived before the view listened. */
+export function takePendingConfig(): boolean {
+  const pendingClick = configPending;
+  configPending = false;
+  return pendingClick;
+}
+
+/** Config clicks while the view is mounted; returns the function that stops listening. */
+export function onConfigClick(listener: () => void): () => void {
+  configListeners.add(listener);
+  return () => configListeners.delete(listener);
+}
+
+/**
+ * The system language, from the last `plugin_event_lang` message: sn-plugin-lib 0.2.3 has no
+ * getter, only `registerLangListener`, and whether the host sends one at start is TO TEST, so
+ * null until one comes. The message's shape is TO TEST too: a string, or `lang`, `language` or
+ * `data` of an object.
+ */
+let lastLanguage: string | null = null;
+
+function languageOf(msg: unknown): string | null {
+  if (typeof msg === 'string') {
+    return msg || null;
+  }
+  if (msg && typeof msg === 'object') {
+    const fields = msg as Record<string, unknown>;
+    for (const key of ['lang', 'language', 'data']) {
+      const value = languageOf(fields[key]);
+      if (value) {
+        return value;
+      }
+    }
+  }
+  return null;
+}
+
+export function startLangListener(
+  onLanguage: (raw: unknown) => void = () => {},
+): Result<true> {
+  return attemptNow(() =>
+    PluginManager.registerLangListener({
+      onMsg: (msg: unknown) => {
+        lastLanguage = languageOf(msg) ?? lastLanguage;
+        onLanguage(msg);
+      },
+    }),
+  );
+}
+
+/** The last system language the host sent, or null. */
+export function systemLanguage(): string | null {
+  return lastLanguage;
 }

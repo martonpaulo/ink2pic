@@ -13,3 +13,9 @@ export const EDIT_DATA_STROKES = 0;
 
 /** `showType` value for a full-screen React Native view. */
 export const SHOW_FULL_VIEW = 1;
+
+/**
+ * The plugin's Settings entry (#68): not a registered button, but its click goes through the same
+ * opening controller as a press, so a pending click and the host's replay behave the same.
+ */
+export const CONFIG_BUTTON_ID = 900;

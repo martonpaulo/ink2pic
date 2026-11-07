@@ -25,6 +25,9 @@ background that cannot move ([brief section 13](brief.md#13-history-of-options-c
   a word's typical pictures), the most typical picture of the word first, six per page.
 - Inserts the chosen picture with one tap, already sized and converted for the 16-gray screen.
 - Keeps every inserted picture, with its license and attribution, in a library that works offline.
+- Looks a word up in the languages the person chose, in their order, from the plugin's own Settings
+  entry; never in a hardcoded list. The default is the system language, then English
+  ([#68](https://github.com/martonpaulo/ink2pic/issues/68)).
 
 ## What it will never do
 
