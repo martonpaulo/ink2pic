@@ -6,7 +6,7 @@
  */
 import type {PictureHost, SourceAdapter, SourceContext} from '../adapter';
 import INDEX from '../data/openmoji-index.json';
-import {lookupLanguages, normalise} from '../query';
+import {lookupLanguages, normalise, withoutAccents} from '../query';
 import {PAGE_SIZE, SearchResult, SourceOutcome, sourceId} from '../types';
 
 /** The pinned release's pictures, as the index build recorded them (#99): never `master`. */
@@ -50,9 +50,7 @@ const HAN = /\p{Script=Han}/u;
 
 /** Lowercase with accents removed, as the index stores its words: «Frío» is «frio». */
 export function fold(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/\p{M}+/gu, '')
+  return withoutAccents(text)
     .toLowerCase()
     .replace(/[_\s]+/g, ' ')
     .trim();

@@ -32,13 +32,35 @@ export function lookupLanguages(
   return languages.filter(lang => lang !== 'zh');
 }
 
-/** The query's words, lowercased, without numbers or punctuation. */
+/**
+ * The query's words, lowercased, without numbers or punctuation. NFC first: a decomposed accent
+ * is a mark, not a letter, and would split «Napoleão» in two (#110).
+ */
 export function words(text: string): string[] {
   return text
+    .normalize('NFC')
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter(word => word !== '' && !/^\d+$/.test(word));
 }
+
+/** The text without its accents: «Limão» reads as «Limao». */
+export function withoutAccents(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}+/gu, '');
+}
+
+/** Whether `word` is `queryWord` or its plural. */
+export function sameWord(word: string, queryWord: string): boolean {
+  return (
+    word === queryWord || word === `${queryWord}s` || word === `${queryWord}es`
+  );
+}
+
+/**
+ * Words that join a subject but never name it: «photo of a cat» is about «cat» (#110). Only the
+ * English ones the ranker already reads as filler.
+ */
+export const FILLER_WORDS: ReadonlySet<string> = new Set(['of', 'the', 'a', 'an']);
 
 /** Whole words or phrases of any script, case-insensitive: «logo» in «Apple_logo.svg». */
 function wordPattern(alternatives: string): RegExp {
@@ -84,11 +106,8 @@ export type QueryIntent = {
   styles: ReadonlySet<StyleGroup>;
 };
 
-/**
- * Splits the query into subject words and style words: «apple logo» is the subject «apple» in
- * the style «logo». A query of style words only («logo») keeps them as its subject.
- */
-export function readIntent(query: string): QueryIntent {
+/** The query without its style words, and the style groups they named. */
+function splitStyles(query: string): {rest: string; styles: Set<StyleGroup>} {
   const styles = new Set<StyleGroup>();
   let rest = query;
   for (const group of Object.keys(STYLE_GROUPS) as StyleGroup[]) {
@@ -98,8 +117,26 @@ export function readIntent(query: string): QueryIntent {
       rest = rest.replace(global, ' ');
     }
   }
-  const subject = words(rest);
-  return {subject: subject.length > 0 ? subject : words(query), styles};
+  return {rest, styles};
+}
+
+/** The query without its style words, as written; a query of style words only stays whole. */
+export function withoutStyles(query: string): string {
+  const {rest} = splitStyles(query);
+  return words(rest).length > 0 ? normalise(rest) : query;
+}
+
+/**
+ * Splits the query into subject words and style words: «apple logo» is the subject «apple» in
+ * the style «logo». Filler words leave the subject unless nothing else is left (#110). A query of
+ * style words only («logo») keeps them as its subject.
+ */
+export function readIntent(query: string): QueryIntent {
+  const {rest, styles} = splitStyles(query);
+  const left = words(rest);
+  const named = left.filter(word => !FILLER_WORDS.has(word));
+  const subject = [named, left, words(query)].find(list => list.length > 0);
+  return {subject: subject ?? [], styles};
 }
 
 /** Whether the title carries a style group's word. */

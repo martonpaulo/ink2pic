@@ -4,7 +4,15 @@
  * rest; logos, maps, diagrams and other stylised graphics last (brief sections 5.4, 7 and 8.4).
  * Every signal is one the sources already return: no request per result.
  */
-import {hasStyle, QueryIntent, readIntent, StyleGroup, words} from './query';
+import {
+  FILLER_WORDS,
+  hasStyle,
+  QueryIntent,
+  readIntent,
+  sameWord,
+  StyleGroup,
+  words,
+} from './query';
 import type {SearchResult} from './types';
 
 /**
@@ -47,10 +55,7 @@ const FORM_WORDS = new Set([
   'sketch',
   'black',
   'white',
-  'of',
-  'the',
-  'a',
-  'an',
+  ...FILLER_WORDS,
 ]);
 /** A title naming the word with at most this many other words is a picture of the thing alone. */
 const PLAIN_SUBJECT_WORDS = 1;
@@ -73,13 +78,6 @@ const PLAIN_SUBJECT_SCORE = 3;
  */
 const SYMBOL_LEAD_SCORE = 10;
 const SYMBOL_SCORE = -2;
-
-/** Whether `word` is `queryWord` or its plural. */
-function sameWord(word: string, queryWord: string): boolean {
-  return (
-    word === queryWord || word === `${queryWord}s` || word === `${queryWord}es`
-  );
-}
 
 /**
  * Whether the picture carries a style group's word in its title or in what its source files it
@@ -130,6 +128,22 @@ const lineWorkScorer: Scorer = result =>
 const photoScorer: Scorer = (result, {styles}) =>
   !styles.has('photo') && hasStyle(result.title, 'photo') ? PHOTO_SCORE : 0;
 
+/** A drawing: clip art, a vector file, or a title that names line work. */
+function isDrawing(result: SearchResult): boolean {
+  return (
+    result.source === 'openclipart' ||
+    result.mime === 'image/svg+xml' ||
+    LINE_WORK.test(result.title)
+  );
+}
+
+/**
+ * A query that asks for a photo («photo of a cat») is not asking for a drawing: a drawing falls
+ * with the stylised graphics, below the photos (#110).
+ */
+const drawingScorer: Scorer = (result, {styles}) =>
+  styles.has('photo') && isDrawing(result) ? STYLISED_SCORE : 0;
+
 /**
  * One penalty for any stylised graphic the query did not ask for: a logo of something else than
  * the subject («apple», the fruit) falls here, by its title or its categories (#81).
@@ -168,6 +182,7 @@ export const DEFAULT_SCORERS: readonly Scorer[] = [
   subjectScorer,
   lineWorkScorer,
   photoScorer,
+  drawingScorer,
   stylisedScorer,
   textScorer,
   askedStyleScorer,

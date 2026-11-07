@@ -34,6 +34,13 @@ describe('the adult filter (#69)', () => {
     'Nude women with shaved genitalia',
     'Penile-vaginal intercourse in art',
     'Ecchi|Fan service',
+    // Digits and camel case join words in file names (#110).
+    'File:Nude2.jpg',
+    'naked3 woman',
+    'NakedWoman.svg',
+    'Pornographic film',
+    'Porno',
+    'porn',
   ])('leaves out «%s»', text => {
     expect(hasAdultWords(text)).toBe(true);
   });
@@ -51,6 +58,9 @@ describe('the adult filter (#69)', () => {
     'Nudo de corbata',
     'Super Bowl XXX logo',
     'Kit body away',
+    // French towns that open with an adult stem (#110).
+    'Château de Pornic',
+    'Pornichet',
   ])('keeps «%s»', text => {
     expect(hasAdultWords(text)).toBe(false);
   });

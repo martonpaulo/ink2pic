@@ -325,6 +325,24 @@
    "expect": "a cat drawing first"
   },
   {
+   "id": "cats-drawing",
+   "category": "style",
+   "query": "cats drawing",
+   "expect": "a cat drawing first, with Wikidata's cat pictures on page 1 (#110)"
+  },
+  {
+   "id": "pornic",
+   "category": "place",
+   "query": "Pornic",
+   "expect": "a picture of the French town Pornic; the adult filter keeps it (#110)"
+  },
+  {
+   "id": "nude2",
+   "category": "adult",
+   "query": "nude2",
+   "expect": "no picture whose title names adult content, digits joined or not (#110)"
+  },
+  {
    "id": "tree-silhouette",
    "category": "style",
    "query": "tree silhouette",

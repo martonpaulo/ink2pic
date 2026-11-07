@@ -261,6 +261,11 @@ async function ask(
     : sourceFailure(response.kind, response.message);
 }
 
+/** The data saver asks for the fewest results and smaller thumbnails (#70), on every request. */
+function sizeFor(ctx: SourceContext): {limit?: number; thumbWidth?: number} {
+  return ctx.dataSaver ? {limit: MIN_LIMIT, thumbWidth: SAVER_THUMB_WIDTH} : {};
+}
+
 /**
  * Drawings first (#43). Only when they fill less than one results page does a plain search add
  * what Commons has, so a word with no drawing still shows pictures.
@@ -270,10 +275,7 @@ export async function searchCommons(
   ctx: SourceContext,
 ): Promise<SourceOutcome> {
   const parse = (text: string) => parseSearchResponse(text, query);
-  // The data saver asks for the fewest results and smaller thumbnails (#70).
-  const size = ctx.dataSaver
-    ? {limit: MIN_LIMIT, thumbWidth: SAVER_THUMB_WIDTH}
-    : {};
+  const size = sizeFor(ctx);
   if (ctx.photos) {
     // «Photos too» (#70): every picture in one search, photos not kept behind drawings.
     return ask(searchUrl(query, size), ctx, parse);
@@ -315,7 +317,9 @@ export function commonsSearch(
   search: string,
   ctx: SourceContext,
 ): Promise<SourceOutcome> {
-  return ask(searchUrl(search), ctx, text => parseSearchResponse(text, search));
+  return ask(searchUrl(search, sizeFor(ctx)), ctx, text =>
+    parseSearchResponse(text, search),
+  );
 }
 
 /** The named Commons files as results, in the order given; no request for an empty list. */
@@ -326,7 +330,9 @@ export async function commonsFiles(
   if (names.length === 0) {
     return {ok: true, value: {results: []}};
   }
-  return ask(filesUrl(names), ctx, text => parseFilesResponse(text, names));
+  return ask(filesUrl(names, sizeFor(ctx)), ctx, text =>
+    parseFilesResponse(text, names),
+  );
 }
 
 function pictureUrl(result: SearchResult, width: number): string {

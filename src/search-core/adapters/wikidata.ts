@@ -11,7 +11,15 @@
 import type {SourceAdapter, SourceContext} from '../adapter';
 import {apiFailure} from '../fetcher';
 import {knownHit} from '../phrase';
-import {lookupLanguages, normalise, readIntent, words} from '../query';
+import {
+  lookupLanguages,
+  normalise,
+  readIntent,
+  sameWord,
+  withoutAccents,
+  withoutStyles,
+  words,
+} from '../query';
 import {Failure, Outcome, SourceOutcome, sourceFailure} from '../types';
 import {commonsFiles, commonsSearch} from './commons';
 
@@ -181,8 +189,9 @@ export function notablePersonUrl(name: string): string {
     'format=json',
     'formatversion=2',
     'list=search',
+    // The style words name no person: «Napoleão portrait» asks for «Napoleão» (#110).
     `srsearch=${encodeURIComponent(
-      `${normalise(name)} haswbstatement:P31=${HUMAN}`,
+      `${normalise(withoutStyles(name))} haswbstatement:P31=${HUMAN}`,
     )}`,
     'srlimit=1',
     'srprop=',
@@ -412,8 +421,11 @@ export function isQueryArticle(query: string, title: string): boolean {
   if (styles.size === 0) {
     return true;
   }
-  const have = words(title);
-  return subject.some(word => have.includes(word));
+  // Plural and accents aside: «cats drawing» is the article «Cat» (#110).
+  const have = words(withoutAccents(title));
+  return subject
+    .map(withoutAccents)
+    .some(q => have.some(word => sameWord(word, q) || sameWord(q, word)));
 }
 
 /**
@@ -609,12 +621,18 @@ function withoutExtension(file: string): string {
 }
 
 /**
+ * The requests after the articles, in a row: the entity, the namesake and its entity, then the
+ * Commons files; the logo path's two requests replace the namesake's two (#92, #110).
+ */
+const CHAIN_REQUESTS = 4;
+
+/**
  * The article and its item, the claims, then the files with the people gallery beside them; it
  * only adds pictures to the other sources.
  */
 export const wikidataAdapter: SourceAdapter = {
   name: 'wikidata',
   search: searchWikidata,
-  requests: ctx => ctx.languages.length + 2,
+  requests: ctx => ctx.languages.length + CHAIN_REQUESTS,
   supplement: true,
 };

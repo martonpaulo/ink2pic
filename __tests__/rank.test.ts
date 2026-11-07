@@ -1,3 +1,4 @@
+import {readIntent, words} from '../src/search-core/query';
 import {einkScore, rankForEink} from '../src/search-core/rank';
 import type {SearchResult, SourceName} from '../src/search-core/types';
 
@@ -361,5 +362,47 @@ describe('logos (#81)', () => {
       'Example Institute old logo',
       'Example Institute building',
     ]);
+  });
+});
+
+describe('filler words in the query (#110)', () => {
+  it('«photo of a cat» has the subject «cat», not «of a cat»', () => {
+    expect(readIntent('photo of a cat').subject).toEqual(['cat']);
+  });
+
+  it('keeps the filler words when nothing else is left', () => {
+    expect(readIntent('the a').subject).toEqual(['the', 'a']);
+  });
+
+  it('a photo titled only «Cat» names the subject plainly', () => {
+    const cat = r('commons', 'Cat photo', 'image/jpeg');
+    expect(einkScore(cat, 'photo of a cat')).toBe(einkScore(cat, 'cat photo'));
+  });
+});
+
+describe('a query that asks for a photo (#110)', () => {
+  it('«photo of a cat» puts a cat photo before a cat drawing', () => {
+    const titles = rankForEink(
+      [
+        [r('openclipart', 'Cat'), r('commons', 'Cat outline', 'image/svg+xml')],
+        [r('commons', 'Cat Iran', 'image/jpeg')],
+      ],
+      'photo of a cat',
+    ).map(x => x.title);
+    expect(titles[0]).toBe('Cat Iran');
+  });
+
+  it('«cat» still puts the drawing first', () => {
+    const titles = rankForEink(
+      [[r('openclipart', 'Cat')], [r('commons', 'Cat Iran', 'image/jpeg')]],
+      'cat',
+    ).map(x => x.title);
+    expect(titles[0]).toBe('Cat');
+  });
+});
+
+describe('decomposed accents (#110)', () => {
+  it('reads NFD text as the same words as NFC', () => {
+    expect(words('Napoleão'.normalize('NFD'))).toEqual(['napoleão']);
   });
 });

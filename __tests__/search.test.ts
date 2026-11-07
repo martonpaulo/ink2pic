@@ -317,14 +317,14 @@ describe('sources of two requests and the supplement (#43)', () => {
     expect(offline.outcome.results.map(x => x.id)).toEqual(['a1']);
   });
 
-  it('Commons makes two requests, Wikidata one per language and two more; Wikidata only adds pictures', () => {
+  it('Commons makes two requests, Wikidata one per language and four more (#110); Wikidata only adds pictures', () => {
     const byName = Object.fromEntries(
       DEFAULT_ADAPTERS.map(source => [source.name, source]),
     );
     expect(byName.commons.requests).toBe(2);
     const {ctx} = withFetch(jest.fn());
     const wikidata = byName.wikidata.requests as (c: typeof ctx) => number;
-    expect(wikidata(ctx)).toBe(3);
+    expect(wikidata(ctx)).toBe(5);
     expect(byName.wikidata.supplement).toBe(true);
     expect(byName.openclipart.supplement).toBeUndefined();
   });

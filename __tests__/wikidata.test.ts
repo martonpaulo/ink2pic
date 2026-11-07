@@ -117,7 +117,7 @@ describe('the query languages (#71, owner D7)', () => {
 
   it('gives every language its own request budget', () => {
     const requests = wikidataAdapter.requests as (c: unknown) => number;
-    expect(requests(ctx(jest.fn(), ['zh', 'es', 'en', 'pt']))).toBe(6);
+    expect(requests(ctx(jest.fn(), ['zh', 'es', 'en', 'pt']))).toBe(8);
   });
 });
 
@@ -340,6 +340,9 @@ describe('logos of organisations and brands (#81)', () => {
     expect(isQueryArticle('apple logo', 'Apple Inc.')).toBe(true);
     // Without a style word the search's spelling tolerance decides.
     expect(isQueryArticle('elephent', 'Elephant')).toBe(true);
+    // A plural or accented query finds its singular article (#110).
+    expect(isQueryArticle('cats drawing', 'Cat')).toBe(true);
+    expect(isQueryArticle('cafés drawing', 'Cafe')).toBe(true);
     const page = JSON.stringify({
       batchcomplete: true,
       query: {
@@ -456,7 +459,11 @@ describe('the notable namesake (#92)', () => {
   const instance = (id: string) => [
     {rank: 'normal', mainsnak: {snaktype: 'value', datavalue: {value: {id}}}},
   ];
-  it('takes the most notable person a name article names: «Napoleão» is Napoleon', async () => {
+  const person = JSON.stringify({
+    batchcomplete: true,
+    query: {search: [{ns: 0, title: 'Q517'}]},
+  });
+  const napoleonFetch = () => {
     const page = JSON.stringify({
       batchcomplete: true,
       query: {
@@ -472,20 +479,19 @@ describe('the notable namesake (#92)', () => {
     const surname = JSON.stringify({
       entities: {Q109674583: {claims: {P31: instance('Q101352')}}},
     });
-    const person = JSON.stringify({
-      batchcomplete: true,
-      query: {search: [{ns: 0, title: 'Q517'}]},
-    });
     const napoleon = JSON.stringify({
       entities: {Q517: {claims: {P31: instance('Q5')}}},
     });
-    const fetch = jest
+    return jest
       .fn()
       .mockResolvedValueOnce(ok(page))
       .mockResolvedValueOnce(ok(surname))
       .mockResolvedValueOnce(ok(person))
       .mockResolvedValueOnce(ok(napoleon))
       .mockResolvedValue(ok(NONE));
+  };
+  it('takes the most notable person a name article names: «Napoleão» is Napoleon', async () => {
+    const fetch = napoleonFetch();
     expect((await searchWikidata('Napoleão', ctx(fetch))).ok).toBe(true);
     expect(fetch.mock.calls[2][0]).toBe(notablePersonUrl('Napoleão'));
     expect(fetch.mock.calls[3][0]).toBe(entityUrl('Q517'));
@@ -497,6 +503,28 @@ describe('the notable namesake (#92)', () => {
     expect(
       parseNotablePerson(JSON.stringify({query: {search: []}})),
     ).toBeNull();
+  });
+
+  it('budgets for every request of the name path (#110)', async () => {
+    const fetch = napoleonFetch();
+    const context = ctx(fetch);
+    await searchWikidata('Napoleão', context);
+    const requests = wikidataAdapter.requests as (c: unknown) => number;
+    expect(requests(context)).toBeGreaterThanOrEqual(fetch.mock.calls.length);
+  });
+
+  it('asks Commons with the data saver for fewer and smaller pictures (#110)', async () => {
+    const fetch = napoleonFetch();
+    await searchWikidata('Napoleão', {...ctx(fetch), dataSaver: true});
+    const gallery = fetch.mock.calls[4][0];
+    expect(decodeURIComponent(gallery)).toContain('haswbstatement:P180=Q517');
+    expect(gallery).toContain('gsrlimit=12');
+    expect(gallery).toContain('iiurlwidth=250');
+  });
+
+  it('leaves the style words out of the namesake search (#110)', () => {
+    const url = decodeURIComponent(notablePersonUrl('Napoleão portrait'));
+    expect(url).toContain('srsearch=Napoleão haswbstatement:P31=Q5&');
   });
 
   it('asks for a person, the most linked first', () => {

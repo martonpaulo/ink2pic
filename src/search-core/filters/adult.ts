@@ -5,7 +5,7 @@
  * Commons, the file's categories. A classical nude statue filtered out is an accepted false
  * positive; an explicit picture on page 1 is not (brief section 5.6).
  */
-import {words} from '../query';
+import {withoutAccents, words} from '../query';
 import type {SearchResult} from '../types';
 
 /**
@@ -90,11 +90,19 @@ const ADULT_WORDS = new Set([
   'sessuale',
   // Dutch
   'naakt',
+  // Every language
+  'porn',
+  'porns',
+  'pornstar',
+  'pornstars',
 ]);
 
-/** Word starts that are adult in every word they begin: pornografia, erotica, genitalia. */
+/**
+ * Word starts that are adult in every word they begin: pornografia, erotica, genitalia. «porn»
+ * alone is a word above, not a stem: the French towns Pornic and Pornichet stay (#110).
+ */
 const ADULT_STEMS = [
-  'porn',
+  'porno',
   'erotic',
   'erotiq',
   'erotik',
@@ -115,9 +123,16 @@ const ADULT_PHRASES = [
   'sexually explicit',
 ];
 
-/** Lowercase words with the accents removed: «Nudité» reads as «nudite». */
+/**
+ * Lowercase words with the accents removed: «Nudité» reads as «nudite». File names join words
+ * with digits and capitals, so «Nude2» and «NakedWoman» split there first (#110).
+ */
 function plainWords(text: string): string[] {
-  return words(text.normalize('NFD').replace(/\p{M}+/gu, ''));
+  return words(
+    withoutAccents(text)
+      .replace(/(\p{L})(?=\p{N})|(\p{N})(?=\p{L})/gu, '$1$2 ')
+      .replace(/(\p{Ll})(?=\p{Lu})/gu, '$1 '),
+  );
 }
 
 function isAdultWord(word: string): boolean {
